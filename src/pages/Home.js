@@ -8,32 +8,52 @@ import { db } from '../config/firebase';
 function Home() {
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
   const carouselRef = useRef(null);
 
   useEffect(() => {
     loadUpcomingEvents();
   }, []);
 
-  // Auto-scroll carousel
-  useEffect(() => {
-    if (upcomingEvents.length > 3) {
-      const scrollInterval = setInterval(() => {
-        if (carouselRef.current) {
-          const cardWidth = carouselRef.current.scrollWidth / upcomingEvents.length;
-          const scrollAmount = carouselRef.current.scrollLeft + cardWidth;
+  // Mouse/Touch drag handlers
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    setStartX(e.pageX - carouselRef.current.offsetLeft);
+    setScrollLeft(carouselRef.current.scrollLeft);
+  };
 
-          // If reached the end, scroll back to start
-          if (scrollAmount >= carouselRef.current.scrollWidth - carouselRef.current.clientWidth) {
-            carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
-          } else {
-            carouselRef.current.scrollBy({ left: cardWidth, behavior: 'smooth' });
-          }
-        }
-      }, 3000); // Scroll every 3 seconds
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
 
-      return () => clearInterval(scrollInterval);
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const x = e.pageX - carouselRef.current.offsetLeft;
+    const walk = (x - startX) * 2; // Scroll speed multiplier
+    carouselRef.current.scrollLeft = scrollLeft - walk;
+  };
+
+  // Arrow button handlers
+  const scrollToLeft = () => {
+    if (carouselRef.current) {
+      const cardWidth = carouselRef.current.offsetWidth / 3;
+      carouselRef.current.scrollBy({ left: -cardWidth, behavior: 'smooth' });
     }
-  }, [upcomingEvents]);
+  };
+
+  const scrollToRight = () => {
+    if (carouselRef.current) {
+      const cardWidth = carouselRef.current.offsetWidth / 3;
+      carouselRef.current.scrollBy({ left: cardWidth, behavior: 'smooth' });
+    }
+  };
 
   const loadUpcomingEvents = async () => {
     try {
@@ -123,8 +143,35 @@ function Home() {
             <h2 className="section-title text-center mb-5">
               Upcoming Events
             </h2>
-            <div className="events-scroll-container" ref={carouselRef}>
-              <div className="events-scroll-track">
+            <div className="position-relative">
+              {upcomingEvents.length > 3 && (
+                <>
+                  <button
+                    className="carousel-arrow carousel-arrow-left"
+                    onClick={scrollToLeft}
+                    aria-label="Scroll left"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    className="carousel-arrow carousel-arrow-right"
+                    onClick={scrollToRight}
+                    aria-label="Scroll right"
+                  >
+                    ›
+                  </button>
+                </>
+              )}
+              <div
+                className="events-scroll-container"
+                ref={carouselRef}
+                onMouseDown={handleMouseDown}
+                onMouseLeave={handleMouseLeave}
+                onMouseUp={handleMouseUp}
+                onMouseMove={handleMouseMove}
+                style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+              >
+                <div className="events-scroll-track">
                 {upcomingEvents.map((event) => {
                   const { dateStr, timeStr } = formatEventDateTime(event);
                   return (
@@ -166,6 +213,7 @@ function Home() {
                     </div>
                   );
                 })}
+                </div>
               </div>
             </div>
             <div className="text-center mt-4">

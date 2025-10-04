@@ -261,7 +261,7 @@ body {
   transform: none;
 }
 
-/* Auto-Scrolling Events Carousel */
+/* Events Carousel with Drag */
 .events-scroll-container {
   overflow-x: auto;
   overflow-y: hidden;
@@ -270,6 +270,7 @@ body {
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE and Edge */
   padding: 1rem 0;
+  user-select: none;
 }
 
 .events-scroll-container::-webkit-scrollbar {
@@ -286,17 +287,81 @@ body {
   flex: 0 0 calc(33.333% - 1rem);
   min-width: 300px;
   max-width: 400px;
+  pointer-events: none;
+}
+
+.event-card-wrapper * {
+  pointer-events: auto;
+}
+
+/* Carousel Arrow Buttons */
+.carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bcb-blue);
+  color: var(--bcb-white);
+  border: none;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  font-size: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
+  line-height: 1;
+  padding: 0;
+}
+
+.carousel-arrow:hover {
+  background: var(--bcb-dark-blue);
+  box-shadow: 0 6px 16px rgba(0, 102, 204, 0.4);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.carousel-arrow:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+.carousel-arrow-left {
+  left: -25px;
+}
+
+.carousel-arrow-right {
+  right: -25px;
 }
 
 @media (max-width: 992px) {
   .event-card-wrapper {
     flex: 0 0 calc(50% - 0.75rem);
   }
+
+  .carousel-arrow {
+    width: 40px;
+    height: 40px;
+    font-size: 1.5rem;
+  }
+
+  .carousel-arrow-left {
+    left: 0;
+  }
+
+  .carousel-arrow-right {
+    right: 0;
+  }
 }
 
 @media (max-width: 576px) {
   .event-card-wrapper {
     flex: 0 0 calc(100% - 1rem);
+  }
+
+  .carousel-arrow {
+    display: none;
   }
 }
 
