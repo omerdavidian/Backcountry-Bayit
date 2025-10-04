@@ -305,7 +305,7 @@ body {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  font-size: 2rem;
+  font-size: 2.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -313,8 +313,9 @@ body {
   z-index: 10;
   transition: all 0.3s ease;
   box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
-  line-height: 1;
+  line-height: 0.8;
   padding: 0;
+  font-family: Arial, sans-serif;
 }
 
 .carousel-arrow:hover {
@@ -328,11 +329,13 @@ body {
 }
 
 .carousel-arrow-left {
-  left: -25px;
+  left: -60px;
+  padding-right: 2px;
 }
 
 .carousel-arrow-right {
-  right: -25px;
+  right: -60px;
+  padding-left: 2px;
 }
 
 @media (max-width: 992px) {
