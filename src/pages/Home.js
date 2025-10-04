@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Carousel } from 'react-bootstrap';
+import React, { useState, useEffect, useRef } from 'react';
+import { Container, Row, Col, Card, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { FaStar, FaCalendarAlt, FaHeart, FaUsers, FaMapMarkerAlt, FaClock } from 'react-icons/fa';
 import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
@@ -8,10 +8,32 @@ import { db } from '../config/firebase';
 function Home() {
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const carouselRef = useRef(null);
 
   useEffect(() => {
     loadUpcomingEvents();
   }, []);
+
+  // Auto-scroll carousel
+  useEffect(() => {
+    if (upcomingEvents.length > 3) {
+      const scrollInterval = setInterval(() => {
+        if (carouselRef.current) {
+          const cardWidth = carouselRef.current.scrollWidth / upcomingEvents.length;
+          const scrollAmount = carouselRef.current.scrollLeft + cardWidth;
+
+          // If reached the end, scroll back to start
+          if (scrollAmount >= carouselRef.current.scrollWidth - carouselRef.current.clientWidth) {
+            carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+          } else {
+            carouselRef.current.scrollBy({ left: cardWidth, behavior: 'smooth' });
+          }
+        }
+      }, 3000); // Scroll every 3 seconds
+
+      return () => clearInterval(scrollInterval);
+    }
+  }, [upcomingEvents]);
 
   const loadUpcomingEvents = async () => {
     try {
@@ -101,60 +123,51 @@ function Home() {
             <h2 className="section-title text-center mb-5">
               Upcoming Events
             </h2>
-            <Carousel
-              indicators={upcomingEvents.length > 3}
-              controls={upcomingEvents.length > 3}
-              interval={5000}
-              className="events-carousel"
-            >
-              {chunkArray(upcomingEvents, 3).map((eventChunk, chunkIndex) => (
-                <Carousel.Item key={chunkIndex}>
-                  <Row className="g-4 justify-content-center">
-                    {eventChunk.map((event) => {
-                      const { dateStr, timeStr } = formatEventDateTime(event);
-                      return (
-                        <Col key={event.id} md={4}>
-                          <Card className="h-100 card-hover border-0 shadow">
-                            <Card.Body className="d-flex flex-column">
-                              <div className="text-center mb-3" style={{ fontSize: '2.5rem', color: 'var(--bcb-blue)' }}>
-                                <FaCalendarAlt />
-                              </div>
-                              <Card.Title as="h4" className="text-center mb-3">
-                                {event.title}
-                              </Card.Title>
-                              <Card.Text className="mb-2">
-                                <FaClock className="me-2" style={{ color: 'var(--bcb-blue)' }} />
-                                <strong>{dateStr}</strong>
-                              </Card.Text>
-                              <Card.Text className="mb-2">
-                                <FaClock className="me-2" style={{ color: 'var(--bcb-blue)' }} />
-                                {timeStr}
-                              </Card.Text>
-                              {event.location && (
-                                <Card.Text className="mb-3">
-                                  <FaMapMarkerAlt className="me-2" style={{ color: 'var(--bcb-blue)' }} />
-                                  {event.location}
-                                </Card.Text>
-                              )}
-                              <div className="mt-auto text-center">
-                                <Button
-                                  as={Link}
-                                  to="/events"
-                                  variant="primary"
-                                  className="w-100"
-                                >
-                                  View Details & RSVP
-                                </Button>
-                              </div>
-                            </Card.Body>
-                          </Card>
-                        </Col>
-                      );
-                    })}
-                  </Row>
-                </Carousel.Item>
-              ))}
-            </Carousel>
+            <div className="events-scroll-container" ref={carouselRef}>
+              <div className="events-scroll-track">
+                {upcomingEvents.map((event) => {
+                  const { dateStr, timeStr } = formatEventDateTime(event);
+                  return (
+                    <div key={event.id} className="event-card-wrapper">
+                      <Card className="h-100 card-hover border-0 shadow">
+                        <Card.Body className="d-flex flex-column">
+                          <div className="text-center mb-3" style={{ fontSize: '2.5rem', color: 'var(--bcb-blue)' }}>
+                            <FaCalendarAlt />
+                          </div>
+                          <Card.Title as="h4" className="text-center mb-3">
+                            {event.title}
+                          </Card.Title>
+                          <Card.Text className="mb-2">
+                            <FaClock className="me-2" style={{ color: 'var(--bcb-blue)' }} />
+                            <strong>{dateStr}</strong>
+                          </Card.Text>
+                          <Card.Text className="mb-2">
+                            <FaClock className="me-2" style={{ color: 'var(--bcb-blue)' }} />
+                            {timeStr}
+                          </Card.Text>
+                          {event.location && (
+                            <Card.Text className="mb-3">
+                              <FaMapMarkerAlt className="me-2" style={{ color: 'var(--bcb-blue)' }} />
+                              {event.location}
+                            </Card.Text>
+                          )}
+                          <div className="mt-auto text-center">
+                            <Button
+                              as={Link}
+                              to="/events"
+                              variant="primary"
+                              className="w-100"
+                            >
+                              View Details & RSVP
+                            </Button>
+                          </div>
+                        </Card.Body>
+                      </Card>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
             <div className="text-center mt-4">
               <Button
                 as={Link}
