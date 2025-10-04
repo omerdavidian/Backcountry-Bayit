@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaUsers, FaSignOutAlt } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaUsers, FaSignOutAlt, FaCheck, FaTimes } from 'react-icons/fa';
+import LocationAutocomplete from '../components/LocationAutocomplete';
 
 function Admin() {
   const { currentUser, logout, isManager } = useAuth();
@@ -17,10 +18,14 @@ function Admin() {
   const [eventForm, setEventForm] = useState({
     title: '',
     date: '',
-    time: '',
+    hour: '6',
+    minute: '30',
+    ampm: 'PM',
     location: 'BCB Community Center, Frisco',
     description: '',
-    capacity: 40
+    capacity: 40,
+    requireRSVP: true,
+    rsvpApprovalMode: 'immediate' // 'immediate' or 'approval'
   });
 
   // Redirect if not logged in or not a manager
@@ -75,13 +80,21 @@ function Admin() {
   const handleEventSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Convert time to display format
+      const timeString = `${eventForm.hour}:${eventForm.minute} ${eventForm.ampm}`;
+
+      const eventData = {
+        ...eventForm,
+        time: timeString
+      };
+
       if (editingEvent) {
         // Update existing event
-        await updateDoc(doc(db, 'events', editingEvent.id), eventForm);
+        await updateDoc(doc(db, 'events', editingEvent.id), eventData);
         setAlert({ show: true, message: 'Event updated successfully!', type: 'success' });
       } else {
         // Create new event
-        await addDoc(collection(db, 'events'), eventForm);
+        await addDoc(collection(db, 'events'), eventData);
         setAlert({ show: true, message: 'Event created successfully!', type: 'success' });
       }
 
@@ -109,13 +122,29 @@ function Admin() {
 
   const handleEditEvent = (event) => {
     setEditingEvent(event);
+
+    // Parse existing time if it exists
+    let hour = '6', minute = '30', ampm = 'PM';
+    if (event.time) {
+      const timeMatch = event.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+      if (timeMatch) {
+        hour = timeMatch[1];
+        minute = timeMatch[2];
+        ampm = timeMatch[3].toUpperCase();
+      }
+    }
+
     setEventForm({
       title: event.title,
       date: event.date,
-      time: event.time,
+      hour: hour,
+      minute: minute,
+      ampm: ampm,
       location: event.location,
       description: event.description,
-      capacity: event.capacity
+      capacity: event.capacity,
+      requireRSVP: event.requireRSVP !== undefined ? event.requireRSVP : true,
+      rsvpApprovalMode: event.rsvpApprovalMode || 'immediate'
     });
     setShowEventModal(true);
   };
@@ -125,10 +154,14 @@ function Admin() {
     setEventForm({
       title: '',
       date: '',
-      time: '',
+      hour: '6',
+      minute: '30',
+      ampm: 'PM',
       location: 'BCB Community Center, Frisco',
       description: '',
-      capacity: 40
+      capacity: 40,
+      requireRSVP: true,
+      rsvpApprovalMode: 'immediate'
     });
   };
 
@@ -148,6 +181,47 @@ function Admin() {
   const getTotalGuestsForEvent = (eventId) => {
     const eventRSVPs = getRSVPsForEvent(eventId);
     return eventRSVPs.reduce((total, rsvp) => total + (rsvp.guests || 1), 0);
+  };
+
+  const handleApproveRSVP = async (rsvpId) => {
+    try {
+      await updateDoc(doc(db, 'rsvps', rsvpId), {
+        status: 'approved'
+      });
+      setAlert({ show: true, message: 'RSVP approved successfully!', type: 'success' });
+      loadRSVPs();
+    } catch (error) {
+      console.error('Error approving RSVP:', error);
+      setAlert({ show: true, message: 'Error approving RSVP. Please try again.', type: 'danger' });
+    }
+  };
+
+  const handleRejectRSVP = async (rsvpId) => {
+    if (window.confirm('Are you sure you want to reject this RSVP?')) {
+      try {
+        await updateDoc(doc(db, 'rsvps', rsvpId), {
+          status: 'rejected'
+        });
+        setAlert({ show: true, message: 'RSVP rejected.', type: 'info' });
+        loadRSVPs();
+      } catch (error) {
+        console.error('Error rejecting RSVP:', error);
+        setAlert({ show: true, message: 'Error rejecting RSVP. Please try again.', type: 'danger' });
+      }
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    if (!status || status === 'approved') {
+      return <span className="badge bg-success">Approved</span>;
+    } else if (status === 'pending') {
+      return <span className="badge bg-warning text-dark">Pending</span>;
+    } else if (status === 'waitlist') {
+      return <span className="badge bg-info">Waitlist</span>;
+    } else if (status === 'rejected') {
+      return <span className="badge bg-danger">Rejected</span>;
+    }
+    return null;
   };
 
   if (!currentUser || !isManager) {
@@ -266,8 +340,10 @@ function Admin() {
                       <th>Email</th>
                       <th>Phone</th>
                       <th>Guests</th>
+                      <th>Status</th>
                       <th>Dietary Restrictions</th>
-                      <th>Date Submitted</th>
+                      <th>Date</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -277,12 +353,51 @@ function Admin() {
                         <td>{rsvp.name}</td>
                         <td>{rsvp.email}</td>
                         <td>{rsvp.phone || '-'}</td>
-                        <td>{rsvp.guests}</td>
+                        <td className="text-center">{rsvp.guests}</td>
+                        <td>{getStatusBadge(rsvp.status)}</td>
                         <td>{rsvp.dietaryRestrictions || '-'}</td>
                         <td>
                           {rsvp.timestamp?.toDate
                             ? rsvp.timestamp.toDate().toLocaleDateString()
                             : '-'}
+                        </td>
+                        <td>
+                          {(rsvp.status === 'pending' || rsvp.status === 'waitlist') && (
+                            <>
+                              <Button
+                                variant="success"
+                                size="sm"
+                                className="me-1"
+                                onClick={() => handleApproveRSVP(rsvp.id)}
+                                title="Approve RSVP"
+                              >
+                                <FaCheck />
+                              </Button>
+                              <Button
+                                variant="danger"
+                                size="sm"
+                                onClick={() => handleRejectRSVP(rsvp.id)}
+                                title="Reject RSVP"
+                              >
+                                <FaTimes />
+                              </Button>
+                            </>
+                          )}
+                          {rsvp.status === 'approved' && (
+                            <span className="text-muted small">
+                              <FaCheck className="text-success" /> Confirmed
+                            </span>
+                          )}
+                          {rsvp.status === 'rejected' && (
+                            <Button
+                              variant="outline-success"
+                              size="sm"
+                              onClick={() => handleApproveRSVP(rsvp.id)}
+                              title="Re-approve RSVP"
+                            >
+                              <FaCheck /> Approve
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -320,7 +435,7 @@ function Admin() {
             </Form.Group>
 
             <Row>
-              <Col md={6}>
+              <Col lg={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>Date *</Form.Label>
                   <Form.Control
@@ -331,29 +446,65 @@ function Admin() {
                   />
                 </Form.Group>
               </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Time *</Form.Label>
-                  <Form.Control
-                    type="text"
-                    required
-                    value={eventForm.time}
-                    onChange={(e) => setEventForm({ ...eventForm, time: e.target.value })}
-                    placeholder="e.g., 6:30 PM"
-                  />
-                </Form.Group>
+              <Col lg={6}>
+                <Form.Label>Time *</Form.Label>
+                <Row>
+                  <Col xs={4}>
+                    <Form.Group className="mb-3">
+                      <Form.Select
+                        required
+                        value={eventForm.hour}
+                        onChange={(e) => setEventForm({ ...eventForm, hour: e.target.value })}
+                      >
+                        {[...Array(12)].map((_, i) => {
+                          const hour = i + 1;
+                          return <option key={hour} value={hour}>{hour}</option>;
+                        })}
+                      </Form.Select>
+                      <Form.Text className="text-muted small">Hour</Form.Text>
+                    </Form.Group>
+                  </Col>
+                  <Col xs={4}>
+                    <Form.Group className="mb-3">
+                      <Form.Select
+                        required
+                        value={eventForm.minute}
+                        onChange={(e) => setEventForm({ ...eventForm, minute: e.target.value })}
+                      >
+                        {['00', '10', '20', '30', '40', '50'].map(min => (
+                          <option key={min} value={min}>{min}</option>
+                        ))}
+                      </Form.Select>
+                      <Form.Text className="text-muted small">Min</Form.Text>
+                    </Form.Group>
+                  </Col>
+                  <Col xs={4}>
+                    <Form.Group className="mb-3">
+                      <Form.Select
+                        required
+                        value={eventForm.ampm}
+                        onChange={(e) => setEventForm({ ...eventForm, ampm: e.target.value })}
+                      >
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                      </Form.Select>
+                      <Form.Text className="text-muted small">AM/PM</Form.Text>
+                    </Form.Group>
+                  </Col>
+                </Row>
               </Col>
             </Row>
 
             <Form.Group className="mb-3">
               <Form.Label>Location *</Form.Label>
-              <Form.Control
-                type="text"
-                required
+              <LocationAutocomplete
                 value={eventForm.location}
-                onChange={(e) => setEventForm({ ...eventForm, location: e.target.value })}
-                placeholder="e.g., BCB Community Center, Frisco"
+                onChange={(value) => setEventForm({ ...eventForm, location: value })}
+                required={true}
               />
+              <Form.Text className="text-muted">
+                Start typing to search for addresses. Google Maps autocomplete available if API key is configured.
+              </Form.Text>
             </Form.Group>
 
             <Form.Group className="mb-3">
@@ -368,7 +519,7 @@ function Admin() {
               />
             </Form.Group>
 
-            <Form.Group className="mb-4">
+            <Form.Group className="mb-3">
               <Form.Label>Capacity *</Form.Label>
               <Form.Control
                 type="number"
@@ -378,6 +529,41 @@ function Admin() {
                 onChange={(e) => setEventForm({ ...eventForm, capacity: parseInt(e.target.value) })}
               />
             </Form.Group>
+
+            <hr className="my-4" />
+
+            <h5 className="mb-3">RSVP Settings</h5>
+
+            <Form.Group className="mb-3">
+              <Form.Check
+                type="checkbox"
+                id="requireRSVP"
+                label="Require RSVP for this event"
+                checked={eventForm.requireRSVP}
+                onChange={(e) => setEventForm({ ...eventForm, requireRSVP: e.target.checked })}
+              />
+              <Form.Text className="text-muted">
+                Uncheck if this is an open event without RSVP requirements
+              </Form.Text>
+            </Form.Group>
+
+            {eventForm.requireRSVP && (
+              <Form.Group className="mb-4">
+                <Form.Label>RSVP Approval Mode *</Form.Label>
+                <Form.Select
+                  value={eventForm.rsvpApprovalMode}
+                  onChange={(e) => setEventForm({ ...eventForm, rsvpApprovalMode: e.target.value })}
+                >
+                  <option value="immediate">Immediate - Auto-approve all RSVPs</option>
+                  <option value="approval">Approval Required - Manually approve each RSVP</option>
+                </Form.Select>
+                <Form.Text className="text-muted">
+                  {eventForm.rsvpApprovalMode === 'immediate'
+                    ? 'RSVPs will be automatically confirmed. Users over capacity will be added to a waitlist.'
+                    : 'All RSVPs will require your manual approval before confirmation.'}
+                </Form.Text>
+              </Form.Group>
+            )}
 
             <div className="d-flex gap-2">
               <Button variant="primary" type="submit" size="lg">

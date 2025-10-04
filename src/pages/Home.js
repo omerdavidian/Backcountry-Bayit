@@ -1,9 +1,60 @@
-import React from 'react';
-import { Container, Row, Col, Card, Button } from 'react-bootstrap';
+import React, { useState, useEffect } from 'react';
+import { Container, Row, Col, Card, Button, Carousel } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { FaStar, FaCalendarAlt, FaHeart, FaUsers } from 'react-icons/fa';
+import { FaStar, FaCalendarAlt, FaHeart, FaUsers, FaMapMarkerAlt, FaClock } from 'react-icons/fa';
+import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 function Home() {
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadUpcomingEvents();
+  }, []);
+
+  const loadUpcomingEvents = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const eventsCollection = collection(db, 'events');
+      const q = query(
+        eventsCollection,
+        where('date', '>=', today),
+        orderBy('date', 'asc')
+      );
+      const querySnapshot = await getDocs(q);
+      const events = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setUpcomingEvents(events);
+    } catch (error) {
+      console.error('Error loading events:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatEventDateTime = (event) => {
+    const date = new Date(event.date);
+    const dateStr = date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    });
+    const timeStr = `${event.hour}:${event.minute} ${event.period}`;
+    return { dateStr, timeStr };
+  };
+
+  const chunkArray = (array, size) => {
+    const chunks = [];
+    for (let i = 0; i < array.length; i += size) {
+      chunks.push(array.slice(i, i + size));
+    }
+    return chunks;
+  };
+
   return (
     <div>
       {/* Hero Section */}
@@ -43,13 +94,88 @@ function Home() {
         </div>
       </section>
 
+      {/* Upcoming Events Carousel */}
+      {!loading && upcomingEvents.length > 0 && (
+        <section className="py-5">
+          <Container>
+            <h2 className="section-title text-center mb-5">
+              Upcoming Events
+            </h2>
+            <Carousel
+              indicators={upcomingEvents.length > 3}
+              controls={upcomingEvents.length > 3}
+              interval={5000}
+              className="events-carousel"
+            >
+              {chunkArray(upcomingEvents, 3).map((eventChunk, chunkIndex) => (
+                <Carousel.Item key={chunkIndex}>
+                  <Row className="g-4 justify-content-center">
+                    {eventChunk.map((event) => {
+                      const { dateStr, timeStr } = formatEventDateTime(event);
+                      return (
+                        <Col key={event.id} md={4}>
+                          <Card className="h-100 card-hover border-0 shadow">
+                            <Card.Body className="d-flex flex-column">
+                              <div className="text-center mb-3" style={{ fontSize: '2.5rem', color: 'var(--bcb-blue)' }}>
+                                <FaCalendarAlt />
+                              </div>
+                              <Card.Title as="h4" className="text-center mb-3">
+                                {event.title}
+                              </Card.Title>
+                              <Card.Text className="mb-2">
+                                <FaClock className="me-2" style={{ color: 'var(--bcb-blue)' }} />
+                                <strong>{dateStr}</strong>
+                              </Card.Text>
+                              <Card.Text className="mb-2">
+                                <FaClock className="me-2" style={{ color: 'var(--bcb-blue)' }} />
+                                {timeStr}
+                              </Card.Text>
+                              {event.location && (
+                                <Card.Text className="mb-3">
+                                  <FaMapMarkerAlt className="me-2" style={{ color: 'var(--bcb-blue)' }} />
+                                  {event.location}
+                                </Card.Text>
+                              )}
+                              <div className="mt-auto text-center">
+                                <Button
+                                  as={Link}
+                                  to="/events"
+                                  variant="primary"
+                                  className="w-100"
+                                >
+                                  View Details & RSVP
+                                </Button>
+                              </div>
+                            </Card.Body>
+                          </Card>
+                        </Col>
+                      );
+                    })}
+                  </Row>
+                </Carousel.Item>
+              ))}
+            </Carousel>
+            <div className="text-center mt-4">
+              <Button
+                as={Link}
+                to="/events"
+                variant="outline-primary"
+                size="lg"
+              >
+                View All Events
+              </Button>
+            </div>
+          </Container>
+        </section>
+      )}
+
       {/* About Section */}
       <section className="py-5 bg-light">
         <Container>
           <Row className="align-items-center">
             <Col md={6} className="mb-4 mb-md-0">
               <img
-                src="/images/20241226_184527.webp"
+                src="/images/IMG-20240905-WA0003.webp"
                 alt="BCB Community"
                 className="img-fluid rounded shadow-lg"
               />
