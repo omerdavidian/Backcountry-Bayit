@@ -10,6 +10,7 @@ import Donate from './pages/Donate';
 import Contact from './pages/Contact';
 import Login from './pages/Login';
 import Admin from './pages/Admin';
+import Manager from './pages/Manager';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './styles/theme.css';
 
@@ -28,6 +29,7 @@ function App() {
               <Route path="/contact" element={<Contact />} />
               <Route path="/login" element={<Login />} />
               <Route path="/admin" element={<Admin />} />
+              <Route path="/manager" element={<Manager />} />
             </Routes>
           </main>
           <Footer />

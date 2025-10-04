@@ -9,15 +9,21 @@ function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, currentUser } = useAuth();
+  const { login, currentUser, userRole, isAdmin } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect if already logged in
+  // Redirect if already logged in based on role
   React.useEffect(() => {
-    if (currentUser) {
-      navigate('/admin');
+    if (currentUser && userRole) {
+      if (isAdmin) {
+        navigate('/admin');
+      } else if (userRole === 'manager') {
+        navigate('/manager');
+      } else {
+        navigate('/');
+      }
     }
-  }, [currentUser, navigate]);
+  }, [currentUser, userRole, isAdmin, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,7 +32,9 @@ function Login() {
       setError('');
       setLoading(true);
       await login(email, password);
-      navigate('/admin');
+
+      // Note: The redirect will happen automatically via useEffect
+      // when userRole is loaded
     } catch (error) {
       console.error('Login error:', error);
       setError('Failed to log in. Please check your credentials.');
