@@ -2,18 +2,18 @@
 
 :root {
   /* Primary Colors from BCB Logo */
-  --bcb-blue: #0066CC;
-  --bcb-white: #FFFFFF;
-  --bcb-red: #C8102E;
-  --bcb-gold: #FFD700;
+  --bcb-blue: #0066cc;
+  --bcb-white: #ffffff;
+  --bcb-red: #c8102e;
+  --bcb-gold: #ffd700;
 
   /* Complementary Colors */
   --bcb-dark-blue: #004080;
-  --bcb-light-blue: #3399FF;
-  --bcb-sky-blue: #87CEEB;
-  --bcb-snow-white: #F8F9FA;
+  --bcb-light-blue: #3399ff;
+  --bcb-sky-blue: #87ceeb;
+  --bcb-snow-white: #f8f9fa;
   --bcb-text-dark: #212529;
-  --bcb-text-light: #6C757D;
+  --bcb-text-light: #6c757d;
 
   /* Gradient */
   --bcb-gradient: linear-gradient(135deg, var(--bcb-blue) 0%, var(--bcb-dark-blue) 100%);
@@ -21,9 +21,7 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: var(--bcb-text-dark);
@@ -66,7 +64,7 @@ body {
 }
 
 .hero-section::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -226,7 +224,7 @@ body {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: var(--bcb-white);
+  background: var(--bs-light-rgb);
   color: var(--bcb-blue);
   margin: 0 0.5rem;
   transition: transform 0.3s ease, background-color 0.3s ease;
@@ -246,7 +244,7 @@ body {
 }
 
 .section-title::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 0;
   left: 50%;
@@ -419,8 +417,12 @@ body {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Responsive */
