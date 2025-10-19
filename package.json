@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@react-email/render": "^1.4.0"
+  }
+}
