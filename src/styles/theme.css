@@ -1,0 +1,437 @@
+/* BCB Custom Theme - Blue & White with Colorado/Israeli Colors */
+
+:root {
+  /* Primary Colors from BCB Logo */
+  --bcb-blue: #0066cc;
+  --bcb-white: #ffffff;
+  --bcb-red: #c8102e;
+  --bcb-gold: #ffd700;
+
+  /* Complementary Colors */
+  --bcb-dark-blue: #004080;
+  --bcb-light-blue: #3399ff;
+  --bcb-sky-blue: #87ceeb;
+  --bcb-snow-white: #f8f9fa;
+  --bcb-text-dark: #212529;
+  --bcb-text-light: #6c757d;
+
+  /* Gradient */
+  --bcb-gradient: linear-gradient(135deg, var(--bcb-blue) 0%, var(--bcb-dark-blue) 100%);
+  --bcb-gradient-reverse: linear-gradient(135deg, var(--bcb-dark-blue) 0%, var(--bcb-blue) 100%);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--bcb-text-dark);
+}
+
+/* Override Bootstrap primary color */
+.btn-primary {
+  background-color: var(--bcb-blue);
+  border-color: var(--bcb-blue);
+}
+
+.btn-primary:hover {
+  background-color: var(--bcb-dark-blue);
+  border-color: var(--bcb-dark-blue);
+}
+
+.bg-primary {
+  background-color: var(--bcb-blue) !important;
+}
+
+.text-primary {
+  color: var(--bcb-blue) !important;
+}
+
+/* Gradient backgrounds */
+.bg-gradient-primary {
+  background: var(--bcb-gradient);
+}
+
+/* Hero Section */
+.hero-section {
+  min-height: 60vh;
+  background: var(--bcb-gradient);
+  color: var(--bcb-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-section::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0.2;
+  z-index: 0;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+/* Card Styles */
+.card-hover {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 24px rgba(0, 102, 204, 0.15);
+}
+
+/* Navbar */
+.navbar-bcb {
+  background: var(--bcb-white);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  padding: 0.5rem 0;
+}
+
+.navbar-bcb.navbar-scrolled {
+  background: rgba(248, 249, 250, 0.7) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.15);
+  padding: 0.25rem 0;
+}
+
+.navbar-bcb .navbar-logo {
+  transition: height 0.3s ease;
+}
+
+/* Three Section Layout */
+.navbar-three-section {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  position: relative;
+}
+
+.navbar-left {
+  flex: 0 0 auto;
+}
+
+.navbar-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+}
+
+.navbar-right {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+/* Navbar Links */
+.navbar-bcb .nav-link {
+  color: var(--bcb-text-dark);
+  font-weight: 500;
+  transition: color 0.3s ease;
+  padding: 0.5rem 1.25rem;
+  white-space: nowrap;
+  font-size: 1.05rem;
+}
+
+.navbar-center .nav {
+  gap: 1rem;
+}
+
+.navbar-bcb .nav-link:hover,
+.navbar-bcb .nav-link.active {
+  color: var(--bcb-blue);
+}
+
+.navbar-bcb .social-link {
+  padding: 0.5rem 0.75rem;
+}
+
+.navbar-bcb .admin-link {
+  padding: 0.5rem 1rem;
+  margin-left: 0.5rem;
+}
+
+/* Mobile Responsive */
+@media (max-width: 991px) {
+  .navbar-center {
+    position: static;
+    transform: none;
+    width: 100%;
+    margin: 1rem 0;
+  }
+
+  .navbar-center .nav {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .navbar-right {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .navbar-right .nav {
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .navbar-three-section {
+    flex-direction: column;
+  }
+}
+
+/* Footer */
+.footer-bcb {
+  background: var(--bcb-gradient);
+  color: var(--bcb-white);
+  padding: 3rem 0 1rem;
+  margin-top: 4rem;
+}
+
+.footer-bcb a {
+  color: var(--bcb-white);
+  text-decoration: none;
+  transition: opacity 0.3s ease;
+}
+
+.footer-bcb a:hover {
+  opacity: 0.8;
+}
+
+.footer-bcb svg,
+.footer-bcb .social-icon svg {
+  color: var(--bcb-white) !important;
+}
+
+/* Social Icons */
+.social-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--bs-light-rgb);
+  color: var(--bcb-blue);
+  margin: 0 0.5rem;
+  transition: transform 0.3s ease, background-color 0.3s ease;
+}
+
+.social-icon:hover {
+  transform: scale(1.1);
+  background-color: var(--bcb-light-blue);
+  color: var(--bcb-white);
+}
+
+/* Section Titles */
+.section-title {
+  position: relative;
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
+}
+
+.section-title::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 3px;
+  background: var(--bcb-gradient);
+}
+
+.section-title.text-start::after {
+  left: 0;
+  transform: none;
+}
+
+/* Events Carousel with Drag */
+.events-scroll-container {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  padding: 1rem 0;
+  user-select: none;
+}
+
+.events-scroll-container::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.events-scroll-track {
+  display: flex;
+  gap: 1.5rem;
+  padding: 0 0.5rem;
+}
+
+.event-card-wrapper {
+  flex: 0 0 calc(33.333% - 1rem);
+  min-width: 300px;
+  max-width: 400px;
+  pointer-events: none;
+}
+
+.event-card-wrapper * {
+  pointer-events: auto;
+}
+
+/* Carousel Arrow Buttons */
+.carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bcb-blue);
+  color: var(--bcb-white);
+  border: none;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  font-size: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
+  line-height: 0.8;
+  padding: 0;
+  font-family: Arial, sans-serif;
+}
+
+.carousel-arrow:hover {
+  background: var(--bcb-dark-blue);
+  box-shadow: 0 6px 16px rgba(0, 102, 204, 0.4);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.carousel-arrow:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+.carousel-arrow-left {
+  left: -60px;
+  padding-right: 2px;
+}
+
+.carousel-arrow-right {
+  right: -60px;
+  padding-left: 2px;
+}
+
+@media (max-width: 992px) {
+  .event-card-wrapper {
+    flex: 0 0 calc(50% - 0.75rem);
+  }
+
+  .carousel-arrow {
+    width: 40px;
+    height: 40px;
+    font-size: 1.5rem;
+  }
+
+  .carousel-arrow-left {
+    left: 0;
+  }
+
+  .carousel-arrow-right {
+    right: 0;
+  }
+}
+
+@media (max-width: 576px) {
+  .event-card-wrapper {
+    flex: 0 0 calc(100% - 1rem);
+  }
+
+  .carousel-arrow {
+    display: none;
+  }
+}
+
+/* Calendar Styles */
+.fc {
+  --fc-border-color: #dee2e6;
+  --fc-button-bg-color: var(--bcb-blue);
+  --fc-button-border-color: var(--bcb-blue);
+  --fc-button-hover-bg-color: var(--bcb-dark-blue);
+  --fc-button-hover-border-color: var(--bcb-dark-blue);
+  --fc-button-active-bg-color: var(--bcb-dark-blue);
+  --fc-button-active-border-color: var(--bcb-dark-blue);
+  --fc-event-bg-color: var(--bcb-blue);
+  --fc-event-border-color: var(--bcb-blue);
+}
+
+/* Donate Button */
+.donate-btn {
+  background: var(--bcb-gradient);
+  color: var(--bcb-white);
+  border: none;
+  padding: 1rem 2rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border-radius: 50px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  display: inline-block;
+  text-decoration: none;
+}
+
+.donate-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(0, 102, 204, 0.3);
+  color: var(--bcb-white);
+}
+
+/* Star of David Decoration */
+.star-decoration {
+  color: var(--bcb-gold);
+  font-size: 2rem;
+  margin: 0 0.5rem;
+}
+
+/* Loading Spinner */
+.spinner-bcb {
+  border: 3px solid var(--bcb-snow-white);
+  border-top: 3px solid var(--bcb-blue);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .hero-section {
+    min-height: 50vh;
+  }
+
+  .hero-content h1 {
+    font-size: 2rem;
+  }
+}
