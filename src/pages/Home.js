@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import { FaStar, FaCalendarAlt, FaHeart, FaUsers, FaMapMarkerAlt, FaClock } from 'react-icons/fa';
 import { collection, getDocs, query, orderBy, where, addDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import HeroSlider from '../components/HeroSlider';
 
 function Home() {
   const [upcomingEvents, setUpcomingEvents] = useState([]);
@@ -14,14 +13,14 @@ function Home() {
   const [scrollLeft, setScrollLeft] = useState(0);
   const [showRSVPModal, setShowRSVPModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [rsvpData, setRSVPData] = useState({
+  const [rsvpData, setRsvpData] = useState({
     name: '',
     email: '',
     phone: '',
     guests: 1,
     dietaryRestrictions: ''
   });
-  const [rsvpStatus, setRsvpStatus] = useState({ show: false, message: '', type: '' });
+  const [rsvpStatus, setRsvpStatus] = useState({ type: '', message: '' });
   const carouselRef = useRef(null);
 
   useEffect(() => {
@@ -270,13 +269,13 @@ function Home() {
   return (
     <div>
       {/* Hero Section */}
-      <section className="hero-section">
-        <HeroSlider images={[
-          '/images/IMG-20240905-WA0003.webp',
-          '/images/IMG-20240905-WA0004.webp',
-          '/images/IMG-20240905-WA0005.webp',
-          '/images/IMG-20240905-WA0006.webp'
-        ]} interval={6000} />
+      <section className="hero-section" style={{
+        backgroundImage: 'url(/images/IMG-20240905-WA0003.webp)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        minHeight: '500px',
+        position: 'relative'
+      }}>
         <div className="hero-content">
           <h1 className="display-3 fw-bold mb-4">
             Welcome to Backcountry Bayit
