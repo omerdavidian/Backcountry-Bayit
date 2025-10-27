@@ -72,7 +72,7 @@ function Home() {
         type: 'success'
       });
 
-      setRSVPData({
+      setRsvpData({
         name: '',
         email: '',
         phone: '',
