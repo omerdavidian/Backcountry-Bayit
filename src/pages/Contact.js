@@ -89,7 +89,7 @@ function Contact() {
         </Container>
       </section>
 
-      {/* Contact Form and Info */}
+      {/* Contact Form and Info - split into two sections */}
       <section className="py-5">
         <Container>
           <Row className="g-4">
@@ -97,7 +97,6 @@ function Contact() {
               <Card className="border-0 shadow h-100">
                 <Card.Body className="p-4">
                   <h2 className="mb-4">Send Us a Message</h2>
-
                   {status.show && (
                     <Alert
                       variant={status.type}
@@ -107,7 +106,6 @@ function Contact() {
                       {status.message}
                     </Alert>
                   )}
-
                   <Form onSubmit={handleSubmit}>
                     <Form.Group className="mb-3">
                       <Form.Label>Name *</Form.Label>
@@ -119,7 +117,6 @@ function Contact() {
                         placeholder="Your name"
                       />
                     </Form.Group>
-
                     <Form.Group className="mb-3">
                       <Form.Label>Email *</Form.Label>
                       <Form.Control
@@ -130,7 +127,6 @@ function Contact() {
                         placeholder="your.email@example.com"
                       />
                     </Form.Group>
-
                     <Form.Group className="mb-3">
                       <Form.Label>Subject *</Form.Label>
                       <Form.Control
@@ -141,7 +137,6 @@ function Contact() {
                         placeholder="What is this regarding?"
                       />
                     </Form.Group>
-
                     <Form.Group className="mb-4">
                       <Form.Label>Message *</Form.Label>
                       <Form.Control
@@ -153,7 +148,6 @@ function Contact() {
                         placeholder="Your message..."
                       />
                     </Form.Group>
-
                     <Button
                       variant="primary"
                       type="submit"
@@ -166,12 +160,10 @@ function Contact() {
                 </Card.Body>
               </Card>
             </Col>
-
             <Col lg={6}>
-              <Card className="border-0 shadow mb-4">
+              <Card className="border-0 shadow h-100">
                 <Card.Body className="p-4">
                   <h3 className="mb-4">Contact Information</h3>
-
                   <div className="mb-4">
                     <h5 className="text-primary">
                       <FaEnvelope className="me-2" />
@@ -184,7 +176,6 @@ function Contact() {
                       <small>We typically respond within 24-48 hours</small>
                     </p>
                   </div>
-
                   <div className="mb-4">
                     <h5 className="text-primary">
                       <FaMapMarkerAlt className="me-2" />
@@ -195,7 +186,6 @@ function Contact() {
                       <small>Summit County, CO 80443</small>
                     </p>
                   </div>
-
                   <div className="mb-0">
                     <h5 className="text-primary mb-3">Follow Us</h5>
                     <div className="d-flex gap-2">
@@ -224,18 +214,25 @@ function Contact() {
                   </div>
                 </Card.Body>
               </Card>
+            </Col>
+          </Row>
+        </Container>
+      </section>
 
+      {/* FAQ Section - moved below */}
+      <section className="py-5 bg-light">
+        <Container>
+          <Row className="justify-content-center">
+            <Col lg={8}>
               <Card className="border-0 shadow">
                 <Card.Body className="p-4">
                   <h4 className="mb-3">Frequently Asked Questions</h4>
-
                   <div className="mb-3">
                     <h6 className="text-primary">Do I need to be Jewish to attend?</h6>
                     <p className="mb-0">
                       Everyone is welcome! We welcome Jews and non-Jews alike to our events.
                     </p>
                   </div>
-
                   <div className="mb-3">
                     <h6 className="text-primary">Is there a cost to attend events?</h6>
                     <p className="mb-0">
@@ -243,14 +240,12 @@ function Contact() {
                       one is turned away for inability to pay.
                     </p>
                   </div>
-
                   <div className="mb-3">
                     <h6 className="text-primary">When is the season?</h6>
                     <p className="mb-0">
                       We host events during the winter season, from November through April.
                     </p>
                   </div>
-
                   <div className="mb-0">
                     <h6 className="text-primary">How do I RSVP?</h6>
                     <p className="mb-0">
