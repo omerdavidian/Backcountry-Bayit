@@ -585,27 +585,24 @@ function Home() {
             <div className="mb-4 p-3 bg-light rounded">
               <h5 className="mb-3">{selectedEvent.title}</h5>
               <p className="mb-1">
-                <strong>Date:</strong> {selectedEvent.date}
+                <strong>Date:</strong> {formatEventDateTime(selectedEvent).dateStr}
               </p>
-              <p className="mb-1"><strong>Time:</strong> {selectedEvent.time}</p>
+              <p className="mb-1"><strong>Time:</strong> {formatEventDateTime(selectedEvent).timeStr}</p>
               <p className="mb-0"><strong>Location:</strong> {selectedEvent.location}</p>
-              {selectedEvent.description && (
-                <p className="mb-0"><strong>Description:</strong> {selectedEvent.description}</p>
-              )}
             </div>
           )}
 
           <Form onSubmit={handleRSVPSubmit}>
-            <Form.Group className="mb-3">
-              <Form.Label>Full Name *</Form.Label>
-              <Form.Control
-                type="text"
-                required
-                value={rsvpData.name}
-                onChange={(e) => setRsvpData({ ...rsvpData, name: e.target.value })}
-                placeholder="John Doe"
-              />
-            </Form.Group>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Full Name *</Form.Label>
+                        <Form.Control
+                          type="text"
+                          required
+                          value={rsvpData.name}
+                          onChange={(e) => setRsvpData({ ...rsvpData, name: e.target.value })}
+                          placeholder="John Doe"
+                        />
+                      </Form.Group>
 
             <Form.Group className="mb-3">
               <Form.Label>Email *</Form.Label>
