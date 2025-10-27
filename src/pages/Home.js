@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Container, Row, Col, Card, Button } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Modal, Form, Alert } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { FaStar, FaCalendarAlt, FaHeart, FaUsers, FaMapMarkerAlt, FaClock } from 'react-icons/fa';
-import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, where, addDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import HeroSlider from '../components/HeroSlider';
 
 function Home() {
   const [upcomingEvents, setUpcomingEvents] = useState([]);
@@ -11,11 +12,89 @@ function Home() {
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
+  const [showRSVPModal, setShowRSVPModal] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [rsvpData, setRSVPData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    guests: 1,
+    dietaryRestrictions: ''
+  });
+  const [rsvpStatus, setRsvpStatus] = useState({ show: false, message: '', type: '' });
   const carouselRef = useRef(null);
 
   useEffect(() => {
     loadUpcomingEvents();
   }, []);
+
+  const handleRSVPSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const rsvpsCollection = collection(db, 'rsvps');
+
+      if (selectedEvent.requireRSVP === false) {
+        setRsvpStatus({
+          show: true,
+          message: 'This event does not require RSVP. Just show up!',
+          type: 'info'
+        });
+        return;
+      }
+
+      const q = query(
+        rsvpsCollection,
+        where('eventId', '==', selectedEvent.id),
+        where('email', '==', rsvpData.email)
+      );
+      const existingRSVPs = await getDocs(q);
+
+      if (!existingRSVPs.empty) {
+        setRsvpStatus({
+          show: true,
+          message: 'You have already RSVP\'d for this event!',
+          type: 'warning'
+        });
+        return;
+      }
+
+      await addDoc(rsvpsCollection, {
+        eventId: selectedEvent.id,
+        eventTitle: selectedEvent.title,
+        eventDate: selectedEvent.date,
+        ...rsvpData,
+        status: 'approved',
+        timestamp: new Date()
+      });
+
+      setRsvpStatus({
+        show: true,
+        message: 'Thank you for your RSVP! We look forward to seeing you.',
+        type: 'success'
+      });
+
+      setRSVPData({
+        name: '',
+        email: '',
+        phone: '',
+        guests: 1,
+        dietaryRestrictions: ''
+      });
+
+      setTimeout(() => {
+        setShowRSVPModal(false);
+        setRsvpStatus({ show: false, message: '', type: '' });
+      }, 2000);
+    } catch (error) {
+      console.error('Error submitting RSVP:', error);
+      setRsvpStatus({
+        show: true,
+        message: 'There was an error submitting your RSVP. Please try again.',
+        type: 'danger'
+      });
+    }
+  };
+
 
   // Mouse/Touch drag handlers
   const handleMouseDown = (e) => {
@@ -78,7 +157,24 @@ function Home() {
   };
 
   const formatEventDateTime = (event) => {
-    const date = new Date(event.date);
+    // Parse date as local date to avoid UTC timezone shift
+    let date;
+    if (typeof event.date === 'string') {
+      const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.test(event.date);
+      if (dateOnlyMatch) {
+        const [y, m, day] = event.date.split('-').map(Number);
+        date = new Date(y, m - 1, day);
+      } else {
+        date = new Date(event.date);
+      }
+    } else if (event.date?.toDate) {
+      date = event.date.toDate();
+    } else if (event.date instanceof Date) {
+      date = event.date;
+    } else {
+      date = new Date(event.date);
+    }
+    
     const dateStr = date.toLocaleDateString('en-US', {
       weekday: 'long',
       month: 'long',
@@ -97,10 +193,90 @@ function Home() {
     return chunks;
   };
 
+  const toMountainTime = (date) => {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Denver',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+    });
+    const parts = formatter.formatToParts(date);
+    const year = parts.find((p) => p.type === 'year').value;
+    const month = parts.find((p) => p.type === 'month').value - 1;
+    const day = parts.find((p) => p.type === 'day').value;
+    return new Date(year, month, day);
+  };
+
+  // helper to normalize various date formats and check if an event date is today (local timezone)
+  const isEventToday = (eventDate) => {
+    if (!eventDate) return false;
+
+    const toDate = (d) => {
+      if (!d) return null;
+      if (d instanceof Date) return d;
+      if (typeof d === 'string') {
+        const dateOnlyMatch = /^\d{4}-\d{2}-\d{2}$/.test(d);
+        if (dateOnlyMatch) {
+          const [y, m, day] = d.split('-').map(Number);
+          return new Date(y, m - 1, day);
+        }
+        return new Date(d);
+      }
+      if (typeof d.toDate === 'function') return d.toDate();
+      if (typeof d.seconds === 'number') return new Date(d.seconds * 1000);
+      return new Date(d);
+    };
+
+    const today = toMountainTime(new Date());
+    const d = toMountainTime(toDate(eventDate));
+    if (!d || Number.isNaN(d.getTime())) return false;
+
+    return d.getFullYear() === today.getFullYear() &&
+      d.getMonth() === today.getMonth() &&
+      d.getDate() === today.getDate();
+  };
+
+  const isEventTomorrow = (eventDate) => {
+    if (!eventDate) return false;
+
+    const toDate = (d) => {
+      if (!d) return null;
+      if (d instanceof Date) return d;
+      if (typeof d === 'string') {
+        const dateOnlyMatch = /^\d{4}-\d{2}-\d{2}$/.test(d);
+        if (dateOnlyMatch) {
+          const [y, m, day] = d.split('-').map(Number);
+          return new Date(y, m - 1, day);
+        }
+        return new Date(d);
+      }
+      if (typeof d.toDate === 'function') return d.toDate();
+      if (typeof d.seconds === 'number') return new Date(d.seconds * 1000);
+      return new Date(d);
+    };
+
+    const today = toMountainTime(new Date());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const d = toMountainTime(toDate(eventDate));
+    if (!d || Number.isNaN(d.getTime())) return false;
+
+    return d.getFullYear() === tomorrow.getFullYear() &&
+      d.getMonth() === tomorrow.getMonth() &&
+      d.getDate() === tomorrow.getDate();
+  };
+
   return (
     <div>
       {/* Hero Section */}
       <section className="hero-section">
+        <HeroSlider images={[
+          '/images/IMG-20240905-WA0003.webp',
+          '/images/IMG-20240905-WA0004.webp',
+          '/images/IMG-20240905-WA0005.webp',
+          '/images/IMG-20240905-WA0006.webp'
+        ]} interval={6000} />
         <div className="hero-content">
           <h1 className="display-3 fw-bold mb-4">
             Welcome to Backcountry Bayit
@@ -118,8 +294,8 @@ function Home() {
               as={Link}
               to="/events"
               variant="light"
-              size="lg"
-              className="px-4 py-3"
+              size="md" /* Reduced size */
+              className="px-3 py-2" /* Reduced padding */
             >
               <FaCalendarAlt className="me-2" />
               View Events
@@ -127,7 +303,7 @@ function Home() {
             <Button
               as={Link}
               to="/donate"
-              className="donate-btn"
+              className="donate-btn px-3 py-2" /* Reduced padding */
             >
               <FaHeart className="me-2" />
               Support Our Community
@@ -178,6 +354,20 @@ function Home() {
                     <div key={event.id} className="event-card-wrapper">
                       <Card className="h-100 card-hover border-0 shadow">
                         <Card.Body className="d-flex flex-column">
+                          {isEventToday(event.date) && (
+                            <div className="mb-3 text-center">
+                              <span className="badge bg-success" style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}>
+                                Today
+                              </span>
+                            </div>
+                          )}
+                          {!isEventToday(event.date) && isEventTomorrow(event.date) && (
+                            <div className="mb-3 text-center">
+                              <span className="badge bg-info" style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}>
+                                Tomorrow
+                              </span>
+                            </div>
+                          )}
                           <div className="text-center mb-3" style={{ fontSize: '2.5rem', color: 'var(--bcb-blue)' }}>
                             <FaCalendarAlt />
                           </div>
@@ -200,10 +390,12 @@ function Home() {
                           )}
                           <div className="mt-auto text-center">
                             <Button
-                              as={Link}
-                              to="/events"
                               variant="primary"
                               className="w-100"
+                              onClick={() => {
+                                setSelectedEvent(event);
+                                setShowRSVPModal(true);
+                              }}
                             >
                               View Details & RSVP
                             </Button>
@@ -377,6 +569,95 @@ function Home() {
           </Button>
         </Container>
       </section>
+
+      {/* RSVP Modal */}
+      <Modal show={showRSVPModal} onHide={() => setShowRSVPModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>RSVP for {selectedEvent?.title}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {selectedEvent && (
+            <>
+              <div className="mb-4">
+                <h5>Event Details</h5>
+                <p><strong>Date:</strong> {selectedEvent.date}</p>
+                <p><strong>Time:</strong> {selectedEvent.time}</p>
+                <p><strong>Location:</strong> {selectedEvent.location}</p>
+                {selectedEvent.description && (
+                  <p><strong>Description:</strong> {selectedEvent.description}</p>
+                )}
+              </div>
+
+              {rsvpStatus.type && (
+                <Alert variant={rsvpStatus.type}>
+                  {rsvpStatus.message}
+                </Alert>
+              )}
+
+              <Form onSubmit={handleRSVPSubmit}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Name *</Form.Label>
+                  <Form.Control
+                    type="text"
+                    required
+                    value={rsvpData.name}
+                    onChange={(e) => setRsvpData({ ...rsvpData, name: e.target.value })}
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Email *</Form.Label>
+                  <Form.Control
+                    type="email"
+                    required
+                    value={rsvpData.email}
+                    onChange={(e) => setRsvpData({ ...rsvpData, email: e.target.value })}
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Phone</Form.Label>
+                  <Form.Control
+                    type="tel"
+                    value={rsvpData.phone}
+                    onChange={(e) => setRsvpData({ ...rsvpData, phone: e.target.value })}
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Number of Guests *</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="1"
+                    required
+                    value={rsvpData.guests}
+                    onChange={(e) => setRsvpData({ ...rsvpData, guests: e.target.value })}
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Dietary Restrictions</Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={3}
+                    value={rsvpData.dietaryRestrictions}
+                    onChange={(e) => setRsvpData({ ...rsvpData, dietaryRestrictions: e.target.value })}
+                  />
+                </Form.Group>
+
+                <div className="d-flex justify-content-end gap-2">
+                  <Button variant="secondary" onClick={() => setShowRSVPModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="primary" type="submit">
+                    Submit RSVP
+                  </Button>
+                </div>
+              </Form>
+            </>
+          )}
+        </Modal.Body>
+      </Modal>
     </div>
   );
 }

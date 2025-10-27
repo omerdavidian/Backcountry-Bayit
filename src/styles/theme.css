@@ -53,8 +53,9 @@ body {
 
 /* Hero Section */
 .hero-section {
-  min-height: 60vh;
-  background: var(--bcb-gradient);
+  min-height: 80vh;
+  height: 80vh;
+  background: transparent; /* Remove blue background - slider covers it */
   color: var(--bcb-white);
   display: flex;
   align-items: center;
@@ -63,22 +64,257 @@ body {
   overflow: hidden;
 }
 
+.hero-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 2rem 1rem;
+  max-width: 100%;
+}
+
+/* Hero Slider - Clean Professional Design */
+.hero-slider {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.hero-slide {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transform: scale(1.15);
+  transition: opacity 1.2s ease-in-out, transform 8s ease-out;
+  pointer-events: none;
+}
+
+/* Alternating zoom effects */
+.hero-slide.zoom-in {
+  transform: scale(1.15);
+}
+
+.hero-slide.zoom-out {
+  transform: scale(1);
+}
+
+.hero-slide.active.zoom-in {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+  z-index: 1;
+}
+
+.hero-slide.active.zoom-out {
+  opacity: 1;
+  transform: scale(1.15);
+  pointer-events: auto;
+  z-index: 1;
+}
+
+/* Navigation Arrows */
+.hero-slider-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  width: 40px; /* Reduced size */
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: var(--bcb-blue);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.hero-slider-arrow:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.hero-slider-prev { 
+  left: 2rem; 
+}
+
+.hero-slider-next { 
+  right: 2rem; 
+}
+
+/* Adjusted Dots Navigation */
+.hero-slider-dots {
+  position: absolute;
+  bottom: 0.5rem; /* Lowered further */
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.75rem;
+  z-index: 10;
+  padding: 0.75rem 1.5rem;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 50px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.hero-slider-dot {
+  width: 12px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0;
+}
+
+.hero-slider-dot:hover {
+  background: rgba(255, 255, 255, 0.8);
+  transform: scale(1.2);
+}
+
+.hero-slider-dot.active {
+  background: var(--bcb-blue);
+  border-color: var(--bcb-blue);
+  width: 32px;
+  border-radius: 10px;
+}
+
+/* Dark overlay for text readability */
 .hero-section::before {
   content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  opacity: 0.2;
-  z-index: 0;
+  inset: 0;
+  background: linear-gradient(
+    180deg, 
+    rgba(0, 0, 0, 0.3) 0%, 
+    rgba(0, 0, 0, 0.4) 50%, 
+    rgba(0, 0, 0, 0.5) 100%
+  );
+  z-index: 1;
 }
 
+/* Ensure content is above overlay */
 .hero-content {
   position: relative;
-  z-index: 1;
-  text-align: center;
-  padding: 3rem 1rem;
+  z-index: 2;
+}
+
+/* Responsive adjustments */
+@media (max-width: 992px) {
+  .hero-section {
+    min-height: 80vh;
+    height: 80vh;
+  }
+  
+  .hero-content {
+    padding: 1.5rem 1rem;
+  }
+  
+  .hero-content h1 {
+    font-size: 2.5rem !important;
+  }
+  
+  .hero-content p {
+    font-size: 1.1rem !important;
+  }
+  
+  .hero-slider-dots {
+    bottom: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero-section {
+    min-height: 85vh;
+    height: 85vh;
+  }
+  
+  .hero-content {
+    padding: 1rem 0.75rem;
+  }
+  
+  .hero-content h1 {
+    font-size: 2rem !important;
+    margin-bottom: 1rem !important;
+  }
+  
+  .hero-content p {
+    font-size: 1rem !important;
+    margin-bottom: 0.75rem !important;
+  }
+  
+  .hero-content .star-decoration {
+    font-size: 2rem;
+    margin: 0.5rem 0;
+  }
+  
+  .hero-slider-arrow {
+    width: 35px;
+    height: 35px;
+    font-size: 1.3rem;
+  }
+  
+  .hero-slider-prev { 
+    left: 0.5rem; 
+  }
+  
+  .hero-slider-next { 
+    right: 0.5rem; 
+  }
+  
+  .hero-slider-dots {
+    bottom: 0.75rem;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+  }
+  
+  .hero-slider-dot {
+    width: 10px;
+    height: 10px;
+  }
+  
+  .hero-slider-dot.active {
+    width: 24px;
+  }
+  
+  .hero-content .d-flex {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem !important;
+  }
+  
+  .hero-content .btn {
+    font-size: 0.9rem;
+    padding: 0.5rem 1.5rem !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .hero-section {
+    min-height: 90vh;
+    height: 90vh;
+  }
+  
+  .hero-content h1 {
+    font-size: 1.75rem !important;
+  }
+  
+  .hero-content p {
+    font-size: 0.95rem !important;
+  }
 }
 
 /* Card Styles */
@@ -141,13 +377,15 @@ body {
   color: var(--bcb-text-dark);
   font-weight: 500;
   transition: color 0.3s ease;
-  padding: 0.5rem 1.25rem;
+  /* a bit more horizontal padding for breathing room */
+  padding: 0.6rem 2rem;
   white-space: nowrap;
-  font-size: 1.05rem;
+  font-size: 1.15rem;
 }
 
 .navbar-center .nav {
-  gap: 1rem;
+  /* increase spacing between nav items on desktop */
+  gap: 2.5rem;
 }
 
 .navbar-bcb .nav-link:hover,
@@ -164,6 +402,15 @@ body {
   margin-left: 0.5rem;
 }
 
+/* Navigation Links */
+.nav-link {
+  margin-right: 1.5rem; /* Increased gap */
+}
+
+.nav-link:last-child {
+  margin-right: 0; /* Ensure no extra margin on the last link */
+}
+
 /* Mobile Responsive */
 @media (max-width: 991px) {
   .navbar-center {
@@ -176,6 +423,9 @@ body {
   .navbar-center .nav {
     flex-direction: column;
     width: 100%;
+    /* on mobile, reduce gap so items don't feel too spaced when stacked */
+    gap: 0.6rem;
+    font-size: 1rem;
   }
 
   .navbar-right {
