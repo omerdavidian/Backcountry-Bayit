@@ -575,86 +575,91 @@ function Home() {
           <Modal.Title>RSVP for {selectedEvent?.title}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {selectedEvent && (
-            <>
-              <div className="mb-4">
-                <h5>Event Details</h5>
-                <p><strong>Date:</strong> {selectedEvent.date}</p>
-                <p><strong>Time:</strong> {selectedEvent.time}</p>
-                <p><strong>Location:</strong> {selectedEvent.location}</p>
-                {selectedEvent.description && (
-                  <p><strong>Description:</strong> {selectedEvent.description}</p>
-                )}
-              </div>
-
-              {rsvpStatus.type && (
-                <Alert variant={rsvpStatus.type}>
-                  {rsvpStatus.message}
-                </Alert>
-              )}
-
-              <Form onSubmit={handleRSVPSubmit}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Name *</Form.Label>
-                  <Form.Control
-                    type="text"
-                    required
-                    value={rsvpData.name}
-                    onChange={(e) => setRsvpData({ ...rsvpData, name: e.target.value })}
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Email *</Form.Label>
-                  <Form.Control
-                    type="email"
-                    required
-                    value={rsvpData.email}
-                    onChange={(e) => setRsvpData({ ...rsvpData, email: e.target.value })}
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Phone</Form.Label>
-                  <Form.Control
-                    type="tel"
-                    value={rsvpData.phone}
-                    onChange={(e) => setRsvpData({ ...rsvpData, phone: e.target.value })}
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Number of Guests *</Form.Label>
-                  <Form.Control
-                    type="number"
-                    min="1"
-                    required
-                    value={rsvpData.guests}
-                    onChange={(e) => setRsvpData({ ...rsvpData, guests: e.target.value })}
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Dietary Restrictions</Form.Label>
-                  <Form.Control
-                    as="textarea"
-                    rows={3}
-                    value={rsvpData.dietaryRestrictions}
-                    onChange={(e) => setRsvpData({ ...rsvpData, dietaryRestrictions: e.target.value })}
-                  />
-                </Form.Group>
-
-                <div className="d-flex justify-content-end gap-2">
-                  <Button variant="secondary" onClick={() => setShowRSVPModal(false)}>
-                    Cancel
-                  </Button>
-                  <Button variant="primary" type="submit">
-                    Submit RSVP
-                  </Button>
-                </div>
-              </Form>
-            </>
+          {rsvpStatus.type && (
+            <Alert variant={rsvpStatus.type} className="mb-4">
+              {rsvpStatus.message}
+            </Alert>
           )}
+
+          {selectedEvent && (
+            <div className="mb-4 p-3 bg-light rounded">
+              <h5 className="mb-3">{selectedEvent.title}</h5>
+              <p className="mb-1">
+                <strong>Date:</strong> {selectedEvent.date}
+              </p>
+              <p className="mb-1"><strong>Time:</strong> {selectedEvent.time}</p>
+              <p className="mb-0"><strong>Location:</strong> {selectedEvent.location}</p>
+              {selectedEvent.description && (
+                <p className="mb-0"><strong>Description:</strong> {selectedEvent.description}</p>
+              )}
+            </div>
+          )}
+
+          <Form onSubmit={handleRSVPSubmit}>
+            <Form.Group className="mb-3">
+              <Form.Label>Full Name *</Form.Label>
+              <Form.Control
+                type="text"
+                required
+                value={rsvpData.name}
+                onChange={(e) => setRsvpData({ ...rsvpData, name: e.target.value })}
+                placeholder="John Doe"
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Email *</Form.Label>
+              <Form.Control
+                type="email"
+                required
+                value={rsvpData.email}
+                onChange={(e) => setRsvpData({ ...rsvpData, email: e.target.value })}
+                placeholder="john@example.com"
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Phone Number</Form.Label>
+              <Form.Control
+                type="tel"
+                value={rsvpData.phone}
+                onChange={(e) => setRsvpData({ ...rsvpData, phone: e.target.value })}
+                placeholder="(123) 456-7890"
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Number of Guests (including yourself) *</Form.Label>
+              <Form.Control
+                type="number"
+                required
+                min="1"
+                max="10"
+                value={rsvpData.guests}
+                onChange={(e) => setRsvpData({ ...rsvpData, guests: parseInt(e.target.value) })}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-4">
+              <Form.Label>Dietary Restrictions or Allergies</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                value={rsvpData.dietaryRestrictions}
+                onChange={(e) => setRsvpData({ ...rsvpData, dietaryRestrictions: e.target.value })}
+                placeholder="Please let us know about any dietary restrictions or allergies..."
+              />
+            </Form.Group>
+
+            <div className="d-flex gap-2">
+              <Button variant="primary" type="submit" size="lg">
+                Submit RSVP
+              </Button>
+              <Button variant="secondary" onClick={() => setShowRSVPModal(false)} size="lg">
+                Cancel
+              </Button>
+            </div>
+          </Form>
         </Modal.Body>
       </Modal>
     </div>
