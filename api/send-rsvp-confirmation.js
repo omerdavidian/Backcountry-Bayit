@@ -1,15 +1,29 @@
 // Vercel Serverless Function to send RSVP confirmation emails using Resend
-import { Resend } from 'resend';
+const { Resend } = require('resend');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle preflight request
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
+    // Log for debugging
+    console.log('Received request body:', req.body);
+    console.log('RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
+
     const { rsvpData, eventData, status } = req.body;
 
     // Validate required fields
