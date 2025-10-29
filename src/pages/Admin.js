@@ -260,6 +260,35 @@ function Admin() {
     setSearchParams({ tab: key });
   };
 
+  const handleCleanupOrphanedRSVPs = async () => {
+    const orphanedRSVPs = rsvps.filter(rsvp => !getEventForRSVP(rsvp));
+    
+    if (orphanedRSVPs.length === 0) {
+      setAlert({ show: true, message: 'No orphaned RSVPs found.', type: 'info' });
+      setTimeout(() => setAlert({ show: false, message: '', type: '' }), 3000);
+      return;
+    }
+
+    if (window.confirm(`Found ${orphanedRSVPs.length} orphaned RSVP(s) for deleted events. Delete them?`)) {
+      try {
+        const deletePromises = orphanedRSVPs.map(rsvp => 
+          deleteDoc(doc(db, 'rsvps', rsvp.id))
+        );
+        await Promise.all(deletePromises);
+        
+        setAlert({ show: true, message: `Successfully deleted ${orphanedRSVPs.length} orphaned RSVP(s).`, type: 'success' });
+        loadRSVPs();
+        
+        setTimeout(() => {
+          setAlert({ show: false, message: '', type: '' });
+        }, 3000);
+      } catch (error) {
+        console.error('Error cleaning up orphaned RSVPs:', error);
+        setAlert({ show: true, message: 'Error cleaning up orphaned RSVPs. Please try again.', type: 'danger' });
+      }
+    }
+  };
+
   if (!currentUser || !isManager) {
     return null;
   }
@@ -366,7 +395,17 @@ function Admin() {
           <Tab eventKey="rsvps" title={<><FaUsers className="me-2" />RSVPs</>}>
             <Card className="border-0 shadow">
               <Card.Body className="p-4">
-                <h3 className="mb-4">All RSVPs</h3>
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                  <h3 className="mb-0">All RSVPs</h3>
+                  <Button
+                    variant="outline-secondary"
+                    size="sm"
+                    onClick={handleCleanupOrphanedRSVPs}
+                  >
+                    <FaTrash className="me-2" />
+                    Clean Up Orphaned RSVPs
+                  </Button>
+                </div>
 
                 <Table responsive hover>
                   <thead className="bg-light">
