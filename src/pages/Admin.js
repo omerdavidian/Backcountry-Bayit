@@ -206,6 +206,14 @@ function Admin() {
     return events.find(event => event.id === rsvp.eventId);
   };
 
+  const isEventPast = (eventDate) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const eventD = new Date(eventDate);
+    eventD.setHours(0, 0, 0, 0);
+    return eventD < today;
+  };
+
   const handleApproveRSVP = async (rsvpId) => {
     try {
       const rsvpRef = doc(db, 'rsvps', rsvpId);
@@ -447,18 +455,20 @@ function Admin() {
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedEvents.map(event => (
-                      <tr key={event.id}>
-                        <td><strong>{event.title}</strong></td>
-                        <td>{new Date(event.date).toLocaleDateString()}</td>
-                        <td>{event.time}</td>
-                        <td>{event.location}</td>
-                        <td>
-                          {getTotalGuestsForEvent(event.id)} guests
-                          {' '}({getRSVPsForEvent(event.id).length} RSVPs)
-                        </td>
-                        <td>{event.capacity}</td>
-                        <td>
+                    {sortedEvents.map(event => {
+                      const isPast = isEventPast(event.date);
+                      return (
+                        <tr key={event.id} style={{ opacity: isPast ? 0.5 : 1 }}>
+                          <td><strong>{event.title}</strong></td>
+                          <td>{new Date(event.date).toLocaleDateString()}</td>
+                          <td>{event.time}</td>
+                          <td>{event.location}</td>
+                          <td>
+                            {getTotalGuestsForEvent(event.id)} guests
+                            {' '}({getRSVPsForEvent(event.id).length} RSVPs)
+                          </td>
+                          <td>{event.capacity}</td>
+                          <td>
                           <Button
                             variant="outline-primary"
                             size="sm"
@@ -476,7 +486,8 @@ function Admin() {
                           </Button>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </Table>
 
