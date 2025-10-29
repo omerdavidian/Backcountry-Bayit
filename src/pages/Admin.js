@@ -4,7 +4,7 @@ import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaUsers, FaSignOutAlt, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaUsers, FaSignOutAlt, FaCheck, FaTimes, FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 
 function Admin() {
@@ -18,6 +18,8 @@ function Admin() {
   const [editingEvent, setEditingEvent] = useState(null);
   const [alert, setAlert] = useState({ show: false, message: '', type: '' });
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'events');
+  const [eventSortConfig, setEventSortConfig] = useState({ key: 'date', direction: 'asc' });
+  const [rsvpSortConfig, setRsvpSortConfig] = useState({ key: 'timestamp', direction: 'desc' });
   const [eventForm, setEventForm] = useState({
     title: '',
     date: '',
@@ -289,6 +291,90 @@ function Admin() {
     }
   };
 
+  const handleEventSort = (key) => {
+    let direction = 'asc';
+    if (eventSortConfig.key === key && eventSortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setEventSortConfig({ key, direction });
+  };
+
+  const handleRsvpSort = (key) => {
+    let direction = 'asc';
+    if (rsvpSortConfig.key === key && rsvpSortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setRsvpSortConfig({ key, direction });
+  };
+
+  const getSortIcon = (columnKey, sortConfig) => {
+    if (sortConfig.key !== columnKey) {
+      return <FaSort className="ms-1" style={{ opacity: 0.3 }} />;
+    }
+    return sortConfig.direction === 'asc' ? 
+      <FaSortUp className="ms-1" /> : 
+      <FaSortDown className="ms-1" />;
+  };
+
+  const sortedEvents = [...events].sort((a, b) => {
+    const { key, direction } = eventSortConfig;
+    let aVal = a[key];
+    let bVal = b[key];
+
+    if (key === 'date') {
+      aVal = new Date(aVal);
+      bVal = new Date(bVal);
+    } else if (key === 'capacity') {
+      aVal = parseInt(aVal) || 0;
+      bVal = parseInt(bVal) || 0;
+    } else if (key === 'rsvpCount') {
+      aVal = getRSVPsForEvent(a.id).length;
+      bVal = getRSVPsForEvent(b.id).length;
+    } else {
+      aVal = String(aVal || '').toLowerCase();
+      bVal = String(bVal || '').toLowerCase();
+    }
+
+    if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+    if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const sortedRsvps = rsvps
+    .filter(rsvp => getEventForRSVP(rsvp) !== undefined)
+    .sort((a, b) => {
+      const { key, direction } = rsvpSortConfig;
+      let aVal, bVal;
+
+      if (key === 'eventTitle') {
+        const eventA = getEventForRSVP(a);
+        const eventB = getEventForRSVP(b);
+        aVal = String(eventA?.title || '').toLowerCase();
+        bVal = String(eventB?.title || '').toLowerCase();
+      } else if (key === 'eventDate') {
+        const eventA = getEventForRSVP(a);
+        const eventB = getEventForRSVP(b);
+        aVal = eventA?.date ? new Date(eventA.date) : new Date(0);
+        bVal = eventB?.date ? new Date(eventB.date) : new Date(0);
+      } else if (key === 'guests') {
+        aVal = parseInt(a.guests) || 0;
+        bVal = parseInt(b.guests) || 0;
+      } else if (key === 'timestamp') {
+        aVal = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(0);
+        bVal = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(0);
+      } else if (key === 'status') {
+        aVal = String(a[key] || '').toLowerCase();
+        bVal = String(b[key] || '').toLowerCase();
+      } else {
+        aVal = String(a[key] || '').toLowerCase();
+        bVal = String(b[key] || '').toLowerCase();
+      }
+
+      if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+
   if (!currentUser || !isManager) {
     return null;
   }
@@ -339,17 +425,29 @@ function Admin() {
                 <Table responsive hover>
                   <thead className="bg-light">
                     <tr>
-                      <th>Title</th>
-                      <th>Date</th>
-                      <th>Time</th>
-                      <th>Location</th>
-                      <th>RSVPs</th>
-                      <th>Capacity</th>
+                      <th onClick={() => handleEventSort('title')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                        Title {getSortIcon('title', eventSortConfig)}
+                      </th>
+                      <th onClick={() => handleEventSort('date')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                        Date {getSortIcon('date', eventSortConfig)}
+                      </th>
+                      <th onClick={() => handleEventSort('time')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                        Time {getSortIcon('time', eventSortConfig)}
+                      </th>
+                      <th onClick={() => handleEventSort('location')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                        Location {getSortIcon('location', eventSortConfig)}
+                      </th>
+                      <th onClick={() => handleEventSort('rsvpCount')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                        RSVPs {getSortIcon('rsvpCount', eventSortConfig)}
+                      </th>
+                      <th onClick={() => handleEventSort('capacity')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                        Capacity {getSortIcon('capacity', eventSortConfig)}
+                      </th>
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {events.map(event => (
+                    {sortedEvents.map(event => (
                       <tr key={event.id}>
                         <td><strong>{event.title}</strong></td>
                         <td>{new Date(event.date).toLocaleDateString()}</td>
@@ -410,26 +508,38 @@ function Admin() {
                 <Table responsive hover>
                   <thead className="bg-light">
                     <tr>
-                      <th>Event</th>
-                      <th>Event Date</th>
-                      <th>Name</th>
-                      <th>Email</th>
-                      <th>Phone</th>
-                      <th>Guests</th>
-                      <th>Status</th>
-                      <th>Dietary Restrictions</th>
-                      <th>Date</th>
+                      <th onClick={() => handleRsvpSort('eventTitle')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                        Event {getSortIcon('eventTitle', rsvpSortConfig)}
+                      </th>
+                      <th onClick={() => handleRsvpSort('eventDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                        Event Date {getSortIcon('eventDate', rsvpSortConfig)}
+                      </th>
+                      <th onClick={() => handleRsvpSort('name')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                        Name {getSortIcon('name', rsvpSortConfig)}
+                      </th>
+                      <th onClick={() => handleRsvpSort('email')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                        Email {getSortIcon('email', rsvpSortConfig)}
+                      </th>
+                      <th onClick={() => handleRsvpSort('phone')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                        Phone {getSortIcon('phone', rsvpSortConfig)}
+                      </th>
+                      <th onClick={() => handleRsvpSort('guests')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                        Guests {getSortIcon('guests', rsvpSortConfig)}
+                      </th>
+                      <th onClick={() => handleRsvpSort('status')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                        Status {getSortIcon('status', rsvpSortConfig)}
+                      </th>
+                      <th onClick={() => handleRsvpSort('dietaryRestrictions')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                        Dietary Restrictions {getSortIcon('dietaryRestrictions', rsvpSortConfig)}
+                      </th>
+                      <th onClick={() => handleRsvpSort('timestamp')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                        Date {getSortIcon('timestamp', rsvpSortConfig)}
+                      </th>
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {rsvps
-                      .filter(rsvp => {
-                        // Only show RSVPs that have a corresponding event
-                        const event = getEventForRSVP(rsvp);
-                        return event !== undefined;
-                      })
-                      .map(rsvp => {
+                    {sortedRsvps.map(rsvp => {
                         const event = getEventForRSVP(rsvp);
                         return (
                           <tr key={rsvp.id}>
@@ -498,7 +608,7 @@ function Admin() {
                   </tbody>
                 </Table>
 
-                {rsvps.filter(rsvp => getEventForRSVP(rsvp) !== undefined).length === 0 && (
+                {sortedRsvps.length === 0 && (
                   <div className="text-center text-muted py-5">
                     <FaUsers size={50} className="mb-3" />
                     <p>No RSVPs yet.</p>
