@@ -381,34 +381,7 @@ function Events() {
     <div>
       {/* Hero Section */}
       <section className="bg-gradient-primary text-white py-5">
-        {/* Debug Table: Event Date Classification */}
-        <Container className="my-4">
-          <h5>Event Date Debug Info</h5>
-          <table className="table table-bordered table-sm">
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Raw Date</th>
-                <th>Parsed Date</th>
-                <th>Is Past?</th>
-              </tr>
-            </thead>
-            <tbody>
-              {events.map(ev => {
-                const parsed = parseEventDate(ev.date);
-                const isPast = isEventPast(ev.date);
-                return (
-                  <tr key={ev.id}>
-                    <td>{ev.title}</td>
-                    <td>{String(ev.date)}</td>
-                    <td>{parsed ? parsed.toLocaleDateString() : 'Invalid'}</td>
-                    <td>{isPast ? 'Past' : 'Upcoming'}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </Container>
+        
         <Container>
           <div className="text-center py-4">
             <FaCalendarAlt size={60} className="mb-3" />
@@ -461,9 +434,9 @@ function Events() {
                     events={events}
                     eventClick={handleEventClick}
                     headerToolbar={{
-                      left: 'prev,next today',
+                      left: 'today',
                       center: 'title',
-                      right: 'dayGridMonth'
+                      right: 'prev,next dayGridMonth'
                     }}
                     height="auto"
                   />
