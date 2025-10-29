@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Navbar, Nav, Container } from 'react-bootstrap';
-import { FaFacebook, FaInstagram, FaUserShield } from 'react-icons/fa';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Navbar, Nav, Container, Button } from 'react-bootstrap';
+import { FaFacebook, FaInstagram, FaUserShield, FaSignOutAlt } from 'react-icons/fa';
 import { useAuth } from '../utils/AuthContext';
 
 function Navigation() {
   const [expanded, setExpanded] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
-  const { currentUser, isAdmin, userRole } = useAuth();
+  const navigate = useNavigate();
+  const { currentUser, isAdmin, userRole, logout } = useAuth();
 
   const isActive = (path) => location.pathname === path;
 
@@ -35,6 +36,16 @@ function Navigation() {
     if (isAdmin) return '/admin';
     if (userRole === 'manager') return '/manager';
     return '/login';
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setExpanded(false);
+      navigate('/');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
   };
 
   return (
@@ -132,15 +143,26 @@ function Navigation() {
                 </Nav.Link>
 
                 {currentUser && (
-                  <Nav.Link
-                    as={Link}
-                    to={getAdminPath()}
-                    className={`admin-link ${isActive('/admin') || isActive('/manager') ? 'active' : ''}`}
-                    onClick={() => setExpanded(false)}
-                  >
-                    <FaUserShield size={20} className="me-1" />
-                    Admin
-                  </Nav.Link>
+                  <>
+                    <Nav.Link
+                      as={Link}
+                      to={getAdminPath()}
+                      className={`admin-link ${isActive('/admin') || isActive('/manager') ? 'active' : ''}`}
+                      onClick={() => setExpanded(false)}
+                    >
+                      <FaUserShield size={20} className="me-1" />
+                      Admin
+                    </Nav.Link>
+                    <Button
+                      variant="outline-danger"
+                      size="sm"
+                      onClick={handleLogout}
+                      className="ms-2"
+                    >
+                      <FaSignOutAlt size={16} className="me-1" />
+                      Logout
+                    </Button>
+                  </>
                 )}
               </Nav>
             </div>
