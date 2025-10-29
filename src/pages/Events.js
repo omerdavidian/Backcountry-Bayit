@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Container, Row, Col, Card, Button, Modal, Form, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Modal, Form, Alert, Table } from 'react-bootstrap';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
@@ -714,69 +714,83 @@ function Events() {
       </section>
 
       {/* Past Events List */}
-      <section className="py-5">
+      <section className="py-5 bg-light">
         <Container>
           <h2 className="section-title text-center mb-5">Past Events</h2>
-          <Row className="g-4">
-            {events.filter((e) => isEventPast(e.date)).length === 0 ? (
-              <Col>
-                <p className="text-center text-muted">No past events to display.</p>
-              </Col>
-            ) : (
-              events
-                .filter((e) => isEventPast(e.date))
-                .sort((a, b) => parseEventDate(b.date) - parseEventDate(a.date))
-                .map((event) => (
-                  <Col key={event.id} md={6}>
-                    <Card className="h-100 border-0 shadow-sm" style={{ opacity: 0.6 }}>
-                      <Card.Body className="p-4">
-                        <h4 className="text-secondary mb-3">{event.title}</h4>
-                        <div className="mb-2">
-                          <FaCalendarAlt className="me-2 text-secondary" />
-                          <strong>Date:</strong> {formatEventDate(event.date)}
-                        </div>
-                        <div className="mb-2">
-                          <FaClock className="me-2 text-secondary" />
-                          <strong>Time:</strong> {event.time}
-                        </div>
-                        <div className="mb-3">
-                          <FaMapMarkerAlt className="me-2 text-secondary" />
-                          <strong>Location:</strong> {event.location}
-                        </div>
-                        <p className="mb-3">{event.description}</p>
-                        <div className="mb-3">
-                          <FaUsers className="me-2 text-secondary" />
-                          <strong>Capacity:</strong> {event.capacity} guests
-                        </div>
-                        <div className="d-flex gap-2">
-                          <Button variant="secondary" disabled>
-                            Event Ended
-                          </Button>
+          {events.filter((e) => isEventPast(e.date)).length === 0 ? (
+            <p className="text-center text-muted">No past events to display.</p>
+          ) : (
+            <Card className="border-0 shadow-sm">
+              <Card.Body className="p-0">
+                <Table responsive hover className="mb-0">
+                  <thead className="bg-light">
+                    <tr>
+                      <th>Event</th>
+                      <th>Date</th>
+                      <th>Time</th>
+                      <th>Location</th>
+                      <th>Description</th>
+                      <th>Capacity</th>
+                      {(isAdmin || isManager) && <th>Actions</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {events
+                      .filter((e) => isEventPast(e.date))
+                      .sort((a, b) => parseEventDate(b.date) - parseEventDate(a.date))
+                      .map((event) => (
+                        <tr key={event.id} style={{ opacity: 0.7 }}>
+                          <td>
+                            <strong className="text-secondary">{event.title}</strong>
+                          </td>
+                          <td>
+                            <FaCalendarAlt className="me-2 text-secondary" />
+                            {formatEventDate(event.date)}
+                          </td>
+                          <td>
+                            <FaClock className="me-2 text-secondary" />
+                            {event.time}
+                          </td>
+                          <td>
+                            <FaMapMarkerAlt className="me-2 text-secondary" />
+                            {event.location}
+                          </td>
+                          <td style={{ maxWidth: '300px' }}>
+                            {event.description}
+                          </td>
+                          <td>
+                            <FaUsers className="me-2 text-secondary" />
+                            {event.capacity}
+                          </td>
                           {(isAdmin || isManager) && (
-                            <>
-                              <Button
-                                variant="outline-primary"
-                                size="sm"
-                                onClick={() => handleEditEvent(event)}
-                              >
-                                <FaEdit />
-                              </Button>
-                              <Button
-                                variant="outline-danger"
-                                size="sm"
-                                onClick={() => handleDeleteEvent(event.id)}
-                              >
-                                <FaTrash />
-                              </Button>
-                            </>
+                            <td>
+                              <div className="d-flex gap-1">
+                                <Button
+                                  variant="outline-primary"
+                                  size="sm"
+                                  onClick={() => handleEditEvent(event)}
+                                  title="Edit Event"
+                                >
+                                  <FaEdit />
+                                </Button>
+                                <Button
+                                  variant="outline-danger"
+                                  size="sm"
+                                  onClick={() => handleDeleteEvent(event.id)}
+                                  title="Delete Event"
+                                >
+                                  <FaTrash />
+                                </Button>
+                              </div>
+                            </td>
                           )}
-                        </div>
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                ))
-            )}
-          </Row>
+                        </tr>
+                      ))}
+                  </tbody>
+                </Table>
+              </Card.Body>
+            </Card>
+          )}
         </Container>
       </section>
 
