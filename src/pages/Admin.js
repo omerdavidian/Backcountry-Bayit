@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Table, Modal, Form, Alert, Tabs, Tab } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -10,11 +10,14 @@ import LocationAutocomplete from '../components/LocationAutocomplete';
 function Admin() {
   const { currentUser, logout, isManager } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [events, setEvents] = useState([]);
   const [rsvps, setRSVPs] = useState([]);
   const [showEventModal, setShowEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [alert, setAlert] = useState({ show: false, message: '', type: '' });
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'events');
   const [eventForm, setEventForm] = useState({
     title: '',
     date: '',
@@ -108,11 +111,25 @@ function Admin() {
   };
 
   const handleDeleteEvent = async (eventId) => {
-    if (window.confirm('Are you sure you want to delete this event?')) {
+    if (window.confirm('Are you sure you want to delete this event? This will also delete all associated RSVPs.')) {
       try {
+        // Delete the event
         await deleteDoc(doc(db, 'events', eventId));
-        setAlert({ show: true, message: 'Event deleted successfully!', type: 'success' });
+        
+        // Delete all RSVPs for this event
+        const eventRSVPs = rsvps.filter(rsvp => rsvp.eventId === eventId);
+        const deletePromises = eventRSVPs.map(rsvp => 
+          deleteDoc(doc(db, 'rsvps', rsvp.id))
+        );
+        await Promise.all(deletePromises);
+        
+        setAlert({ show: true, message: 'Event and associated RSVPs deleted successfully!', type: 'success' });
         loadEvents();
+        loadRSVPs();
+        
+        setTimeout(() => {
+          setAlert({ show: false, message: '', type: '' });
+        }, 3000);
       } catch (error) {
         console.error('Error deleting event:', error);
         setAlert({ show: true, message: 'Error deleting event. Please try again.', type: 'danger' });
@@ -183,13 +200,22 @@ function Admin() {
     return eventRSVPs.reduce((total, rsvp) => total + (rsvp.guests || 1), 0);
   };
 
+  const getEventForRSVP = (rsvp) => {
+    return events.find(event => event.id === rsvp.eventId);
+  };
+
   const handleApproveRSVP = async (rsvpId) => {
     try {
-      await updateDoc(doc(db, 'rsvps', rsvpId), {
+      const rsvpRef = doc(db, 'rsvps', rsvpId);
+      await updateDoc(rsvpRef, {
         status: 'approved'
       });
       setAlert({ show: true, message: 'RSVP approved successfully!', type: 'success' });
       loadRSVPs();
+      // Auto-dismiss success message
+      setTimeout(() => {
+        setAlert({ show: false, message: '', type: '' });
+      }, 3000);
     } catch (error) {
       console.error('Error approving RSVP:', error);
       setAlert({ show: true, message: 'Error approving RSVP. Please try again.', type: 'danger' });
@@ -199,11 +225,16 @@ function Admin() {
   const handleRejectRSVP = async (rsvpId) => {
     if (window.confirm('Are you sure you want to reject this RSVP?')) {
       try {
-        await updateDoc(doc(db, 'rsvps', rsvpId), {
+        const rsvpRef = doc(db, 'rsvps', rsvpId);
+        await updateDoc(rsvpRef, {
           status: 'rejected'
         });
         setAlert({ show: true, message: 'RSVP rejected.', type: 'info' });
         loadRSVPs();
+        // Auto-dismiss info message
+        setTimeout(() => {
+          setAlert({ show: false, message: '', type: '' });
+        }, 3000);
       } catch (error) {
         console.error('Error rejecting RSVP:', error);
         setAlert({ show: true, message: 'Error rejecting RSVP. Please try again.', type: 'danger' });
@@ -222,6 +253,11 @@ function Admin() {
       return <span className="badge bg-danger">Rejected</span>;
     }
     return null;
+  };
+
+  const handleTabSelect = (key) => {
+    setActiveTab(key);
+    setSearchParams({ tab: key });
   };
 
   if (!currentUser || !isManager) {
@@ -253,7 +289,7 @@ function Admin() {
           </Alert>
         )}
 
-        <Tabs defaultActiveKey="events" className="mb-4">
+        <Tabs activeKey={activeTab} onSelect={handleTabSelect} className="mb-4">
           <Tab eventKey="events" title={<><FaCalendarAlt className="me-2" />Events</>}>
             <Card className="border-0 shadow">
               <Card.Body className="p-4">
@@ -336,6 +372,7 @@ function Admin() {
                   <thead className="bg-light">
                     <tr>
                       <th>Event</th>
+                      <th>Event Date</th>
                       <th>Name</th>
                       <th>Email</th>
                       <th>Phone</th>
@@ -347,64 +384,82 @@ function Admin() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rsvps.map(rsvp => (
-                      <tr key={rsvp.id}>
-                        <td><strong>{rsvp.eventTitle}</strong></td>
-                        <td>{rsvp.name}</td>
-                        <td>{rsvp.email}</td>
-                        <td>{rsvp.phone || '-'}</td>
-                        <td className="text-center">{rsvp.guests}</td>
-                        <td>{getStatusBadge(rsvp.status)}</td>
-                        <td>{rsvp.dietaryRestrictions || '-'}</td>
-                        <td>
-                          {rsvp.timestamp?.toDate
-                            ? rsvp.timestamp.toDate().toLocaleDateString()
-                            : '-'}
-                        </td>
-                        <td>
-                          {(rsvp.status === 'pending' || rsvp.status === 'waitlist') && (
-                            <>
-                              <Button
-                                variant="success"
-                                size="sm"
-                                className="me-1"
-                                onClick={() => handleApproveRSVP(rsvp.id)}
-                                title="Approve RSVP"
-                              >
-                                <FaCheck />
-                              </Button>
-                              <Button
-                                variant="danger"
-                                size="sm"
-                                onClick={() => handleRejectRSVP(rsvp.id)}
-                                title="Reject RSVP"
-                              >
-                                <FaTimes />
-                              </Button>
-                            </>
-                          )}
-                          {rsvp.status === 'approved' && (
-                            <span className="text-muted small">
-                              <FaCheck className="text-success" /> Confirmed
-                            </span>
-                          )}
-                          {rsvp.status === 'rejected' && (
-                            <Button
-                              variant="outline-success"
-                              size="sm"
-                              onClick={() => handleApproveRSVP(rsvp.id)}
-                              title="Re-approve RSVP"
-                            >
-                              <FaCheck /> Approve
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                    {rsvps
+                      .filter(rsvp => {
+                        // Only show RSVPs that have a corresponding event
+                        const event = getEventForRSVP(rsvp);
+                        return event !== undefined;
+                      })
+                      .map(rsvp => {
+                        const event = getEventForRSVP(rsvp);
+                        return (
+                          <tr key={rsvp.id}>
+                            <td><strong>{event?.title || rsvp.eventTitle}</strong></td>
+                            <td>
+                              {event?.date 
+                                ? new Date(event.date).toLocaleDateString('en-US', { 
+                                    month: '2-digit', 
+                                    day: '2-digit', 
+                                    year: 'numeric' 
+                                  })
+                                : '-'}
+                            </td>
+                            <td>{rsvp.name}</td>
+                            <td>{rsvp.email}</td>
+                            <td>{rsvp.phone || '-'}</td>
+                            <td className="text-center">{rsvp.guests}</td>
+                            <td>{getStatusBadge(rsvp.status)}</td>
+                            <td>{rsvp.dietaryRestrictions || '-'}</td>
+                            <td>
+                              {rsvp.timestamp?.toDate
+                                ? rsvp.timestamp.toDate().toLocaleDateString()
+                                : '-'}
+                            </td>
+                            <td>
+                              {(rsvp.status === 'pending' || rsvp.status === 'waitlist') && (
+                                <>
+                                  <Button
+                                    variant="success"
+                                    size="sm"
+                                    className="me-1"
+                                    onClick={() => handleApproveRSVP(rsvp.id)}
+                                    title="Approve RSVP"
+                                  >
+                                    <FaCheck />
+                                  </Button>
+                                  <Button
+                                    variant="danger"
+                                    size="sm"
+                                    onClick={() => handleRejectRSVP(rsvp.id)}
+                                    title="Reject RSVP"
+                                  >
+                                    <FaTimes />
+                                  </Button>
+                                </>
+                              )}
+                              {rsvp.status === 'approved' && (
+                                <span className="text-muted small">
+                                  <FaCheck className="text-success" /> Confirmed
+                                </span>
+                              )}
+                              {rsvp.status === 'rejected' && (
+                                <Button
+                                  variant="outline-success"
+                                  size="sm"
+                                  onClick={() => handleApproveRSVP(rsvp.id)}
+                                  title="Re-approve RSVP"
+                                >
+                                  <FaCheck /> Approve
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                   </tbody>
                 </Table>
 
-                {rsvps.length === 0 && (
+                {rsvps.filter(rsvp => getEventForRSVP(rsvp) !== undefined).length === 0 && (
                   <div className="text-center text-muted py-5">
                     <FaUsers size={50} className="mb-3" />
                     <p>No RSVPs yet.</p>
