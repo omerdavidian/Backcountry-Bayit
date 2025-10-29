@@ -5,7 +5,101 @@ import { FaStar, FaCalendarAlt, FaHeart, FaUsers, FaMapMarkerAlt, FaClock } from
 import { collection, getDocs, query, orderBy, where, addDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
+// ScrollingGallery component for continuous leftward movement with infinite loop
+const ScrollingGallery = () => {
+  const images = [
+    '/images/20241227_183542.webp',
+    '/images/20241227_183548.webp',
+    '/images/20241226_213824.webp',
+    '/images/IMG-20240905-WA0003.webp',
+    '/images/24_-25_ Photos/1316b9d3-ed59-4451-980a-3922b731fa00.jpg',
+    '/images/24_-25_ Photos/3484d020-59ea-4bc1-98ee-7a57ecce7840.jpg',
+    '/images/24_-25_ Photos/3aab03dc-8518-4c6b-925a-0a1c512f76c1.jpg',
+    '/images/24_-25_ Photos/75583FE6-C880-47E2-A23B-AB561CC979BC.jpg',
+    '/images/24_-25_ Photos/c22077c8-e9b8-4265-a5f9-175a5e5ba9a5.jpg',
+  ];
+  const [offset, setOffset] = useState(0);
+  const speed = 0.5; // Increased speed for smoother appearance
+  const galleryRef = useRef();
+
+  useEffect(() => {
+    let animationFrame;
+    function animate() {
+      setOffset((prev) => {
+        const gallery = galleryRef.current;
+        if (!gallery) return prev;
+        
+        // Calculate single set width (9 images + gaps)
+        const singleSetWidth = gallery.scrollWidth / 3; // Divided by 3 because we repeat 3 times
+        
+        // Reset when we've scrolled past one full set
+        if (Math.abs(prev) >= singleSetWidth) {
+          return prev + singleSetWidth;
+        }
+        
+        return prev - speed;
+      });
+      animationFrame = requestAnimationFrame(animate);
+    }
+    animationFrame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationFrame);
+  }, []);
+
+  // Triple the images for seamless infinite scroll
+  const allImages = [...images, ...images, ...images];
+
+  return (
+    <div style={{ width: '100vw', overflow: 'hidden', position: 'relative', height: 220, margin: 0, padding: 0 }}>
+      <div
+        ref={galleryRef}
+        style={{
+          display: 'flex',
+          flexDirection: 'row',
+          gap: '2rem',
+          transform: `translateX(${offset}px)`,
+          willChange: 'transform',
+          paddingLeft: '2rem',
+          paddingRight: '2rem',
+        }}
+      >
+        {allImages.map((src, idx) => (
+          <img
+            key={idx}
+            src={src}
+            alt={`Community Moment ${(idx % images.length) + 1}`}
+            style={{
+              height: 200,
+              width: 'auto',
+              borderRadius: 16,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+              objectFit: 'cover',
+              background: '#eee',
+              minWidth: 320,
+              flexShrink: 0,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
 function Home() {
+  // Hero slider state
+  const heroImages = [
+    '/images/IMG-20240905-WA0003.webp',
+    '/images/20241227_183542.webp',
+    '/images/20241227_183548.webp',
+    '/images/20241226_213824.webp',
+  ];
+  const [heroIndex, setHeroIndex] = useState(0);
+  // Auto-slide every 10 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setHeroIndex((prev) => (prev + 1) % heroImages.length);
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, [heroIndex, heroImages.length]);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
@@ -268,33 +362,64 @@ function Home() {
 
   return (
     <div>
-      {/* Hero Section */}
+      {/* Hero Section Slider */}
       <section className="hero-section" style={{
-        backgroundImage: 'url(/images/IMG-20240905-WA0003.webp)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
+        position: 'relative',
         minHeight: '500px',
-        position: 'relative'
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
       }}>
-        <div className="hero-content">
-          <h1 className="display-3 fw-bold mb-4">
-            Welcome to Backcountry Bayit
+        {/* Blurred background image for current slide with zoom and fade effect */}
+        <div
+          key={heroIndex}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundImage: `url(${heroImages[heroIndex]})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            filter: 'blur(4px)',
+            zIndex: 1,
+            animation: `${heroIndex % 2 === 0 ? 'zoomInFade' : 'zoomOutFade'} 10s ease-in-out`,
+          }}
+        />
+        {/* Semi-transparent overlay for extra contrast */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'rgba(0, 0, 32, 0.45)',
+            zIndex: 2,
+          }}
+        />
+        {/* Main hero content */}
+        <div className="hero-content" style={{ position: 'relative', zIndex: 3, width: '100%' }}>
+          <h1 className="display-3 fw-bold mb-4 text-center">
+            Welcome to the Backcountry Bayit
           </h1>
-          <p className="lead mb-4" style={{ fontSize: '1.5rem' }}>
+          <p className="lead mb-4 text-center" style={{ fontSize: '1.5rem' }}>
             A vibrant Jewish community in the heart of Frisco, Colorado
           </p>
-          <div className="star-decoration">✡</div>
-          <p className="mt-4 mb-4" style={{ fontSize: '1.2rem' }}>
+          <div className="star-decoration text-center">✡</div>
+          <p className="mt-4 mb-4 text-center" style={{ fontSize: '1.2rem' }}>
             Join us for Shabbat dinners and holiday celebrations<br />
             November through April
           </p>
-          <div className="d-flex gap-3 justify-content-center flex-wrap">
+          <div className="d-flex gap-3 justify-content-center flex-wrap mb-4">
             <Button
               as={Link}
               to="/events"
               variant="light"
-              size="md" /* Reduced size */
-              className="px-3 py-2" /* Reduced padding */
+              size="md"
+              className="px-3 py-2"
             >
               <FaCalendarAlt className="me-2" />
               View Events
@@ -302,16 +427,138 @@ function Home() {
             <Button
               as={Link}
               to="/donate"
-              className="donate-btn px-3 py-2" /* Reduced padding */
+              className="donate-btn px-3 py-2"
             >
               <FaHeart className="me-2" />
               Support Our Community
             </Button>
           </div>
+          {/* Modern Navigation dots */}
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            gap: '0.75rem', 
+            marginTop: '2rem',
+            alignItems: 'center',
+          }}>
+            {heroImages.map((img, idx) => (
+              <button
+                key={img}
+                onClick={() => setHeroIndex(idx)}
+                style={{
+                  position: 'relative',
+                  width: idx === heroIndex ? '40px' : '12px',
+                  height: '12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: idx === heroIndex 
+                    ? 'linear-gradient(90deg, #0074d9, #00a8ff)' 
+                    : 'rgba(255,255,255,0.5)',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                  transform: idx === heroIndex ? 'scale(1.1)' : 'scale(1)',
+                  boxShadow: idx === heroIndex 
+                    ? '0 4px 12px rgba(0, 116, 217, 0.4)' 
+                    : 'none',
+                }}
+                onMouseEnter={(e) => {
+                  if (idx !== heroIndex) {
+                    e.target.style.background = 'rgba(255,255,255,0.8)';
+                    e.target.style.transform = 'scale(1.2)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (idx !== heroIndex) {
+                    e.target.style.background = 'rgba(255,255,255,0.5)';
+                    e.target.style.transform = 'scale(1)';
+                  }
+                }}
+                aria-label={`Go to slide ${idx + 1}`}
+              />
+            ))}
+          </div>
         </div>
+        
+        {/* CSS Animation Keyframes */}
+        <style>{`
+          @keyframes zoomInFade {
+            0% {
+              opacity: 0;
+              transform: scale(1.1);
+            }
+            3% {
+              opacity: 1;
+            }
+            97% {
+              opacity: 1;
+              transform: scale(1.25);
+            }
+            100% {
+              opacity: 0;
+              transform: scale(1.25);
+            }
+          }
+          
+          @keyframes zoomOutFade {
+            0% {
+              opacity: 0;
+              transform: scale(1.25);
+            }
+            3% {
+              opacity: 1;
+            }
+            97% {
+              opacity: 1;
+              transform: scale(1.1);
+            }
+            100% {
+              opacity: 0;
+              transform: scale(1.1);
+            }
+          }
+        `}</style>
       </section>
 
-      {/* Upcoming Events Carousel */}
+
+      {/* About Section - moved above Upcoming Events */}
+      <section className="py-5 bg-light">
+        <Container>
+          <Row className="align-items-center">
+            <Col md={6} className="mb-4 mb-md-0">
+              <img
+                src="/images/IMG-20240905-WA0003.webp"
+                alt="BCB Community"
+                className="img-fluid rounded shadow-lg"
+              />
+            </Col>
+            <Col md={6}>
+              <h2 className="section-title text-start">About Backcountry Bayit</h2>
+              <p className="lead">
+                Since 2016, the Backcountry Bayit has been bringing the warmth of Jewish
+                tradition to the Colorado mountains.
+              </p>
+              <p>
+                We create meaningful connections through shared meals, holiday
+                celebrations, and community gatherings. Whether you're a local
+                resident or visiting for the ski season, you'll find a welcoming
+                home away from home.
+              </p>
+              <Button
+                as={Link}
+                to="/about"
+                variant="primary"
+                size="lg"
+                className="mt-3"
+              >
+                Learn More About Us
+              </Button>
+            </Col>
+          </Row>
+        </Container>
+      </section>
+
+      {/* Upcoming Events Carousel - moved below About Section */}
       {!loading && upcomingEvents.length > 0 && (
         <section className="py-5">
           <Container>
@@ -421,43 +668,6 @@ function Home() {
         </section>
       )}
 
-      {/* About Section */}
-      <section className="py-5 bg-light">
-        <Container>
-          <Row className="align-items-center">
-            <Col md={6} className="mb-4 mb-md-0">
-              <img
-                src="/images/IMG-20240905-WA0003.webp"
-                alt="BCB Community"
-                className="img-fluid rounded shadow-lg"
-              />
-            </Col>
-            <Col md={6}>
-              <h2 className="section-title text-start">About Backcountry Bayit</h2>
-              <p className="lead">
-                Since 2016, Backcountry Bayit has been bringing the warmth of Jewish
-                tradition to the Colorado mountains.
-              </p>
-              <p>
-                We create meaningful connections through shared meals, holiday
-                celebrations, and community gatherings. Whether you're a local
-                resident or visiting for the ski season, you'll find a welcoming
-                home away from home.
-              </p>
-              <Button
-                as={Link}
-                to="/about"
-                variant="primary"
-                size="lg"
-                className="mt-3"
-              >
-                Learn More About Us
-              </Button>
-            </Col>
-          </Row>
-        </Container>
-      </section>
-
       {/* Features Section */}
       <section className="py-5">
         <Container>
@@ -514,36 +724,10 @@ function Home() {
         </Container>
       </section>
 
-      {/* Photo Gallery Preview */}
-      <section className="py-5 bg-light">
-        <Container>
-          <h2 className="section-title text-center mb-5">
-            Community Moments
-          </h2>
-          <Row className="g-3">
-            <Col md={4}>
-              <img
-                src="/images/20241227_183542.webp"
-                alt="BCB Event"
-                className="img-fluid rounded shadow"
-              />
-            </Col>
-            <Col md={4}>
-              <img
-                src="/images/20241227_183548.webp"
-                alt="BCB Event"
-                className="img-fluid rounded shadow"
-              />
-            </Col>
-            <Col md={4}>
-              <img
-                src="/images/20241226_213824.webp"
-                alt="BCB Event"
-                className="img-fluid rounded shadow"
-              />
-            </Col>
-          </Row>
-        </Container>
+      {/* Photo Gallery Preview - Scrolling */}
+      <section className="py-5 bg-light" style={{ overflow: 'hidden' }}>
+        <h2 className="section-title text-center mb-5">Community Moments</h2>
+        <ScrollingGallery />
       </section>
 
       {/* Call to Action */}

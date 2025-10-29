@@ -3,17 +3,18 @@ import { Container, Row, Col, Card, Button, Modal, Form, Alert } from 'react-boo
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { collection, getDocs, addDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../utils/AuthContext';
-import { FaCalendarAlt, FaUsers, FaClock, FaMapMarkerAlt, FaPlus } from 'react-icons/fa';
+import { FaCalendarAlt, FaUsers, FaClock, FaMapMarkerAlt, FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
 
 function Events() {
   const { isAdmin, isManager } = useAuth();
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showRSVPModal, setShowRSVPModal] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
   const [rsvpData, setRSVPData] = useState({
     name: '',
     email: '',
@@ -25,20 +26,87 @@ function Events() {
     title: '',
     date: '',
     hour: '6',
-    minute: '00',
+    minute: '30',
     period: 'PM',
-    location: '',
+    location: 'BCB Community Center, Frisco',
     description: '',
     capacity: 40,
     requireRSVP: true,
     rsvpApprovalMode: 'immediate'
   });
   const [rsvpStatus, setRsvpStatus] = useState({ show: false, message: '', type: '' });
-  const [createStatus, setCreateStatus] = useState({ show: false, message: '', type: '' });
+  const [eventStatus, setEventStatus] = useState({ show: false, message: '', type: '' });
+
+  // Parse event dates consistently without timezone shifts
+  const parseEventDate = (dateValue) => {
+    if (!dateValue) return null;
+    if (dateValue instanceof Date) return dateValue;
+    if (dateValue?.toDate && typeof dateValue.toDate === 'function') {
+      return dateValue.toDate();
+    }
+    if (typeof dateValue === 'string') {
+      // Always treat as local date (not UTC)
+      const match = dateValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (match) {
+        const [_, y, m, d] = match;
+        return new Date(Number(y), Number(m) - 1, Number(d));
+      }
+    }
+    // Fallback: try to parse as local date
+    const d = new Date(dateValue);
+    if (!isNaN(d.getTime())) return d;
+    return null;
+  };
+
+  // Format date for display
+  const formatEventDate = (dateValue, options = {}) => {
+    const date = parseEventDate(dateValue);
+    if (!date || isNaN(date.getTime())) return 'Invalid Date';
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      ...options
+    });
+  };
+
+  const isEventToday = (eventDate) => {
+    const date = parseEventDate(eventDate);
+    if (!date || isNaN(date.getTime())) return false;
+    
+    const today = new Date();
+    return date.getFullYear() === today.getFullYear() &&
+      date.getMonth() === today.getMonth() &&
+      date.getDate() === today.getDate();
+  };
+
+  const isEventTomorrow = (eventDate) => {
+    const date = parseEventDate(eventDate);
+    if (!date || isNaN(date.getTime())) return false;
+    
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    return date.getFullYear() === tomorrow.getFullYear() &&
+      date.getMonth() === tomorrow.getMonth() &&
+      date.getDate() === tomorrow.getDate();
+  };
+
+  // Determine if an event date is in the past (compares date parts only)
+  const isEventPast = (eventDate) => {
+    const d = parseEventDate(eventDate);
+    if (!d || isNaN(d.getTime())) return false;
+    const today = new Date();
+    // Compare only Y/M/D to avoid timezone/time issues
+    const a = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const b = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    return a < b;
+  };
 
   useEffect(() => {
     loadEvents();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadEvents = async () => {
@@ -51,64 +119,163 @@ function Events() {
         start: doc.data().date,
         title: doc.data().title
       }));
-      setEvents(eventsList);
+      
+      console.log('All events loaded:', eventsList);
+      
+      setEvents(eventsList.sort((a, b) => {
+        const dateA = parseEventDate(a.date);
+        const dateB = parseEventDate(b.date);
+        return dateA - dateB;
+      }));
     } catch (error) {
       console.error('Error loading events:', error);
-      // Use sample events if Firebase is not configured yet
-      loadSampleEvents();
     }
-  };
-
-  const loadSampleEvents = () => {
-    const sampleEvents = [
-      {
-        id: '1',
-        title: 'Shabbat Dinner',
-        date: '2025-11-15',
-        start: '2025-11-15',
-        time: '6:30 PM',
-        location: 'BCB Community Center, Frisco',
-        description: 'Join us for our weekly Shabbat dinner with traditional blessings, delicious food, and warm community.',
-        capacity: 40
-      },
-      {
-        id: '2',
-        title: 'Chanukah Celebration',
-        date: '2025-12-20',
-        start: '2025-12-20',
-        time: '5:00 PM',
-        location: 'BCB Community Center, Frisco',
-        description: 'Light the menorah, play dreidel, enjoy latkes and sufganiyot, and celebrate the Festival of Lights!',
-        capacity: 60
-      },
-      {
-        id: '3',
-        title: 'Shabbat Dinner',
-        date: '2025-11-22',
-        start: '2025-11-22',
-        time: '6:30 PM',
-        location: 'BCB Community Center, Frisco',
-        description: 'Join us for our weekly Shabbat dinner with traditional blessings, delicious food, and warm community.',
-        capacity: 40
-      },
-      {
-        id: '4',
-        title: 'Purim Party',
-        date: '2026-03-14',
-        start: '2026-03-14',
-        time: '6:00 PM',
-        location: 'BCB Community Center, Frisco',
-        description: 'Costumes, Megillah reading, hamantaschen, and fun! Celebrate the story of Queen Esther.',
-        capacity: 50
-      }
-    ];
-    setEvents(sampleEvents);
   };
 
   const handleEventClick = (clickInfo) => {
     const event = events.find(e => e.id === clickInfo.event.id);
-    setSelectedEvent(event);
-    setShowRSVPModal(true);
+    if (event) {
+      setSelectedEvent(event);
+      setShowRSVPModal(true);
+    }
+  };
+
+  const handleEditEvent = (event) => {
+    setEditingEvent(event);
+
+    // Parse existing time
+    let hour = '6', minute = '30', period = 'PM';
+    if (event.time) {
+      const timeMatch = event.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+      if (timeMatch) {
+        hour = timeMatch[1];
+        minute = timeMatch[2];
+        period = timeMatch[3].toUpperCase();
+      }
+    }
+
+    // Ensure date is in YYYY-MM-DD format
+    let dateStr = event.date;
+    if (typeof event.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(event.date)) {
+      dateStr = event.date;
+    } else {
+      const parsedDate = parseEventDate(event.date);
+      if (parsedDate && !isNaN(parsedDate.getTime())) {
+        const year = parsedDate.getFullYear();
+        const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+        const day = String(parsedDate.getDate()).padStart(2, '0');
+        dateStr = `${year}-${month}-${day}`;
+      }
+    }
+
+    setEventForm({
+      title: event.title,
+      date: dateStr,
+      hour: hour,
+      minute: minute,
+      period: period,
+      location: event.location,
+      description: event.description,
+      capacity: event.capacity,
+      requireRSVP: event.requireRSVP !== undefined ? event.requireRSVP : true,
+      rsvpApprovalMode: event.rsvpApprovalMode || 'immediate'
+    });
+    setShowEventModal(true);
+  };
+
+  const handleEventSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const timeStr = `${eventForm.hour}:${eventForm.minute} ${eventForm.period}`;
+
+      const eventData = {
+        title: eventForm.title,
+        date: eventForm.date,
+        time: timeStr,
+        hour: eventForm.hour,
+        minute: eventForm.minute,
+        period: eventForm.period,
+        location: eventForm.location,
+        description: eventForm.description,
+        capacity: parseInt(eventForm.capacity),
+        requireRSVP: eventForm.requireRSVP,
+        rsvpApprovalMode: eventForm.rsvpApprovalMode
+      };
+
+      if (editingEvent) {
+        await updateDoc(doc(db, 'events', editingEvent.id), eventData);
+        setEventStatus({
+          show: true,
+          message: 'Event updated successfully!',
+          type: 'success'
+        });
+      } else {
+        await addDoc(collection(db, 'events'), {
+          ...eventData,
+          createdAt: new Date()
+        });
+        setEventStatus({
+          show: true,
+          message: 'Event created successfully!',
+          type: 'success'
+        });
+      }
+
+      resetEventForm();
+      loadEvents();
+
+      setTimeout(() => {
+        setShowEventModal(false);
+        setEventStatus({ show: false, message: '', type: '' });
+      }, 2000);
+    } catch (error) {
+      console.error('Error saving event:', error);
+      setEventStatus({
+        show: true,
+        message: 'Error saving event. Please try again.',
+        type: 'danger'
+      });
+    }
+  };
+
+  const handleDeleteEvent = async (eventId) => {
+    if (window.confirm('Are you sure you want to delete this event?')) {
+      try {
+        await deleteDoc(doc(db, 'events', eventId));
+        setEventStatus({
+          show: true,
+          message: 'Event deleted successfully!',
+          type: 'success'
+        });
+        loadEvents();
+        setTimeout(() => {
+          setEventStatus({ show: false, message: '', type: '' });
+        }, 2000);
+      } catch (error) {
+        console.error('Error deleting event:', error);
+        setEventStatus({
+          show: true,
+          message: 'Error deleting event. Please try again.',
+          type: 'danger'
+        });
+      }
+    }
+  };
+
+  const resetEventForm = () => {
+    setEditingEvent(null);
+    setEventForm({
+      title: '',
+      date: '',
+      hour: '6',
+      minute: '30',
+      period: 'PM',
+      location: 'BCB Community Center, Frisco',
+      description: '',
+      capacity: 40,
+      requireRSVP: true,
+      rsvpApprovalMode: 'immediate'
+    });
   };
 
   const handleRSVPSubmit = async (e) => {
@@ -116,7 +283,6 @@ function Events() {
     try {
       const rsvpsCollection = collection(db, 'rsvps');
 
-      // Check if event requires RSVP
       if (selectedEvent.requireRSVP === false) {
         setRsvpStatus({
           show: true,
@@ -126,7 +292,6 @@ function Events() {
         return;
       }
 
-      // Check if already RSVP'd
       const q = query(
         rsvpsCollection,
         where('eventId', '==', selectedEvent.id),
@@ -143,14 +308,12 @@ function Events() {
         return;
       }
 
-      // Get all approved RSVPs for this event to check capacity
       const allRSVPsQuery = query(
         rsvpsCollection,
         where('eventId', '==', selectedEvent.id)
       );
       const allRSVPsSnapshot = await getDocs(allRSVPsQuery);
 
-      // Calculate total approved guests
       let totalApprovedGuests = 0;
       allRSVPsSnapshot.forEach((doc) => {
         const rsvp = doc.data();
@@ -163,7 +326,6 @@ function Events() {
       const capacity = selectedEvent.capacity || 40;
       const isOverCapacity = totalApprovedGuests + requestedGuests > capacity;
 
-      // Determine RSVP status
       let rsvpStatus = 'approved';
       let statusMessage = 'Thank you for your RSVP! We look forward to seeing you.';
       let statusType = 'success';
@@ -174,11 +336,10 @@ function Events() {
         statusType = 'info';
       } else if (isOverCapacity) {
         rsvpStatus = 'waitlist';
-        statusMessage = `We're sorry, but this event has reached capacity (${capacity} guests). Your RSVP has been added to the waitlist, and you'll be notified if space becomes available. An admin notification has been sent.`;
+        statusMessage = `We're sorry, but this event has reached capacity (${capacity} guests). Your RSVP has been added to the waitlist, and you'll be notified if space becomes available.`;
         statusType = 'warning';
       }
 
-      // Add RSVP to database
       await addDoc(rsvpsCollection, {
         eventId: selectedEvent.id,
         eventTitle: selectedEvent.title,
@@ -194,7 +355,6 @@ function Events() {
         type: statusType
       });
 
-      // Reset form
       setRSVPData({
         name: '',
         email: '',
@@ -217,68 +377,38 @@ function Events() {
     }
   };
 
-  const handleCreateEvent = async (e) => {
-    e.preventDefault();
-    try {
-      const eventsCollection = collection(db, 'events');
-      const timeStr = `${eventForm.hour}:${eventForm.minute} ${eventForm.period}`;
-
-      await addDoc(eventsCollection, {
-        title: eventForm.title,
-        date: eventForm.date,
-        time: timeStr,
-        hour: eventForm.hour,
-        minute: eventForm.minute,
-        period: eventForm.period,
-        location: eventForm.location,
-        description: eventForm.description,
-        capacity: parseInt(eventForm.capacity),
-        requireRSVP: eventForm.requireRSVP,
-        rsvpApprovalMode: eventForm.rsvpApprovalMode,
-        createdAt: new Date()
-      });
-
-      setCreateStatus({
-        show: true,
-        message: 'Event created successfully!',
-        type: 'success'
-      });
-
-      // Reset form
-      setEventForm({
-        title: '',
-        date: '',
-        hour: '6',
-        minute: '00',
-        period: 'PM',
-        location: '',
-        description: '',
-        capacity: 40,
-        requireRSVP: true,
-        rsvpApprovalMode: 'immediate'
-      });
-
-      // Reload events
-      loadEvents();
-
-      setTimeout(() => {
-        setShowCreateModal(false);
-        setCreateStatus({ show: false, message: '', type: '' });
-      }, 2000);
-    } catch (error) {
-      console.error('Error creating event:', error);
-      setCreateStatus({
-        show: true,
-        message: 'Error creating event. Please try again.',
-        type: 'danger'
-      });
-    }
-  };
-
   return (
     <div>
       {/* Hero Section */}
       <section className="bg-gradient-primary text-white py-5">
+        {/* Debug Table: Event Date Classification */}
+        <Container className="my-4">
+          <h5>Event Date Debug Info</h5>
+          <table className="table table-bordered table-sm">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Raw Date</th>
+                <th>Parsed Date</th>
+                <th>Is Past?</th>
+              </tr>
+            </thead>
+            <tbody>
+              {events.map(ev => {
+                const parsed = parseEventDate(ev.date);
+                const isPast = isEventPast(ev.date);
+                return (
+                  <tr key={ev.id}>
+                    <td>{ev.title}</td>
+                    <td>{String(ev.date)}</td>
+                    <td>{parsed ? parsed.toLocaleDateString() : 'Invalid'}</td>
+                    <td>{isPast ? 'Past' : 'Upcoming'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </Container>
         <Container>
           <div className="text-center py-4">
             <FaCalendarAlt size={60} className="mb-3" />
@@ -293,7 +423,10 @@ function Events() {
                 variant="light"
                 size="lg"
                 className="mt-4"
-                onClick={() => setShowCreateModal(true)}
+                onClick={() => {
+                  resetEventForm();
+                  setShowEventModal(true);
+                }}
               >
                 <FaPlus className="me-2" />
                 Create New Event
@@ -302,6 +435,18 @@ function Events() {
           </div>
         </Container>
       </section>
+
+      {eventStatus.show && (
+        <Container className="mt-3">
+          <Alert
+            variant={eventStatus.type}
+            onClose={() => setEventStatus({ show: false, message: '', type: '' })}
+            dismissible
+          >
+            {eventStatus.message}
+          </Alert>
+        </Container>
+      )}
 
       {/* Calendar Section */}
       <section className="py-5">
@@ -334,19 +479,31 @@ function Events() {
         <Container>
           <h2 className="section-title text-center mb-5">Upcoming Events</h2>
           <Row className="g-4">
-            {events.slice(0, 4).map((event) => (
+            {events
+              .filter((e) => !isEventPast(e.date))
+              .sort((a, b) => parseEventDate(a.date) - parseEventDate(b.date))
+              .map((event) => (
               <Col key={event.id} md={6}>
                 <Card className="h-100 border-0 shadow-sm card-hover">
                   <Card.Body className="p-4">
+                    {isEventToday(event.date) && (
+                      <div className="mb-3 text-center">
+                        <span className="badge bg-success" style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}>
+                          Today
+                        </span>
+                      </div>
+                    )}
+                    {!isEventToday(event.date) && isEventTomorrow(event.date) && (
+                      <div className="mb-3 text-center">
+                        <span className="badge bg-info" style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}>
+                          Tomorrow
+                        </span>
+                      </div>
+                    )}
                     <h4 className="text-primary mb-3">{event.title}</h4>
                     <div className="mb-2">
                       <FaCalendarAlt className="me-2 text-primary" />
-                      <strong>Date:</strong> {new Date(event.date).toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
+                      <strong>Date:</strong> {formatEventDate(event.date)}
                     </div>
                     <div className="mb-2">
                       <FaClock className="me-2 text-primary" />
@@ -361,19 +518,106 @@ function Events() {
                       <FaUsers className="me-2 text-primary" />
                       <strong>Capacity:</strong> {event.capacity} guests
                     </div>
-                    <Button
-                      variant="primary"
-                      onClick={() => {
-                        setSelectedEvent(event);
-                        setShowRSVPModal(true);
-                      }}
-                    >
-                      RSVP Now
-                    </Button>
+                    <div className="d-flex gap-2">
+                      <Button
+                        variant="primary"
+                        onClick={() => {
+                          setSelectedEvent(event);
+                          setShowRSVPModal(true);
+                        }}
+                      >
+                        RSVP Now
+                      </Button>
+                      {(isAdmin || isManager) && (
+                        <>
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            onClick={() => handleEditEvent(event)}
+                          >
+                            <FaEdit />
+                          </Button>
+                          <Button
+                            variant="outline-danger"
+                            size="sm"
+                            onClick={() => handleDeleteEvent(event.id)}
+                          >
+                            <FaTrash />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </Card.Body>
                 </Card>
               </Col>
             ))}
+          </Row>
+        </Container>
+      </section>
+
+      {/* Past Events List */}
+      <section className="py-5">
+        <Container>
+          <h2 className="section-title text-center mb-5">Past Events</h2>
+          <Row className="g-4">
+            {events.filter((e) => isEventPast(e.date)).length === 0 ? (
+              <Col>
+                <p className="text-center text-muted">No past events to display.</p>
+              </Col>
+            ) : (
+              events
+                .filter((e) => isEventPast(e.date))
+                .sort((a, b) => parseEventDate(b.date) - parseEventDate(a.date))
+                .map((event) => (
+                  <Col key={event.id} md={6}>
+                    <Card className="h-100 border-0 shadow-sm" style={{ opacity: 0.6 }}>
+                      <Card.Body className="p-4">
+                        <h4 className="text-secondary mb-3">{event.title}</h4>
+                        <div className="mb-2">
+                          <FaCalendarAlt className="me-2 text-secondary" />
+                          <strong>Date:</strong> {formatEventDate(event.date)}
+                        </div>
+                        <div className="mb-2">
+                          <FaClock className="me-2 text-secondary" />
+                          <strong>Time:</strong> {event.time}
+                        </div>
+                        <div className="mb-3">
+                          <FaMapMarkerAlt className="me-2 text-secondary" />
+                          <strong>Location:</strong> {event.location}
+                        </div>
+                        <p className="mb-3">{event.description}</p>
+                        <div className="mb-3">
+                          <FaUsers className="me-2 text-secondary" />
+                          <strong>Capacity:</strong> {event.capacity} guests
+                        </div>
+                        <div className="d-flex gap-2">
+                          <Button variant="secondary" disabled>
+                            Event Ended
+                          </Button>
+                          {(isAdmin || isManager) && (
+                            <>
+                              <Button
+                                variant="outline-primary"
+                                size="sm"
+                                onClick={() => handleEditEvent(event)}
+                              >
+                                <FaEdit />
+                              </Button>
+                              <Button
+                                variant="outline-danger"
+                                size="sm"
+                                onClick={() => handleDeleteEvent(event.id)}
+                              >
+                                <FaTrash />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                ))
+            )}
           </Row>
         </Container>
       </section>
@@ -394,12 +638,7 @@ function Events() {
             <div className="mb-4 p-3 bg-light rounded">
               <h5 className="mb-3">{selectedEvent.title}</h5>
               <p className="mb-1">
-                <strong>Date:</strong> {new Date(selectedEvent.date).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
+                <strong>Date:</strong> {formatEventDate(selectedEvent.date)}
               </p>
               <p className="mb-1"><strong>Time:</strong> {selectedEvent.time}</p>
               <p className="mb-0"><strong>Location:</strong> {selectedEvent.location}</p>
@@ -474,19 +713,19 @@ function Events() {
         </Modal.Body>
       </Modal>
 
-      {/* Create Event Modal (Admin/Manager Only) */}
-      <Modal show={showCreateModal} onHide={() => setShowCreateModal(false)} size="lg">
+      {/* Event Form Modal (Create/Edit) */}
+      <Modal show={showEventModal} onHide={() => setShowEventModal(false)} size="lg">
         <Modal.Header closeButton>
-          <Modal.Title>Create New Event</Modal.Title>
+          <Modal.Title>{editingEvent ? 'Edit Event' : 'Create New Event'}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {createStatus.show && (
-            <Alert variant={createStatus.type} className="mb-4">
-              {createStatus.message}
+          {eventStatus.show && (
+            <Alert variant={eventStatus.type} className="mb-4">
+              {eventStatus.message}
             </Alert>
           )}
 
-          <Form onSubmit={handleCreateEvent}>
+          <Form onSubmit={handleEventSubmit}>
             <Form.Group className="mb-3">
               <Form.Label>Event Title *</Form.Label>
               <Form.Control
@@ -609,9 +848,9 @@ function Events() {
 
             <div className="d-flex gap-2">
               <Button variant="primary" type="submit" size="lg">
-                Create Event
+                {editingEvent ? 'Update Event' : 'Create Event'}
               </Button>
-              <Button variant="secondary" onClick={() => setShowCreateModal(false)} size="lg">
+              <Button variant="secondary" onClick={() => setShowEventModal(false)} size="lg">
                 Cancel
               </Button>
             </div>
