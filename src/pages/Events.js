@@ -204,7 +204,42 @@ function Events() {
     const event = events.find(e => e.id === clickInfo.event.id);
     if (event) {
       setSelectedEvent(event);
+      // Load saved user info from localStorage
+      loadSavedUserInfo();
       setShowRSVPModal(true);
+    }
+  };
+
+  // Load saved user information from localStorage
+  const loadSavedUserInfo = () => {
+    try {
+      const savedInfo = localStorage.getItem('bcb_user_info');
+      if (savedInfo) {
+        const userInfo = JSON.parse(savedInfo);
+        setRSVPData({
+          name: userInfo.name || '',
+          email: userInfo.email || '',
+          phone: userInfo.phone || '',
+          guests: 1,
+          dietaryRestrictions: ''
+        });
+      }
+    } catch (error) {
+      console.error('Error loading saved user info:', error);
+    }
+  };
+
+  // Save user information to localStorage
+  const saveUserInfo = (data) => {
+    try {
+      const userInfo = {
+        name: data.name,
+        email: data.email,
+        phone: data.phone
+      };
+      localStorage.setItem('bcb_user_info', JSON.stringify(userInfo));
+    } catch (error) {
+      console.error('Error saving user info:', error);
     }
   };
 
@@ -416,6 +451,9 @@ function Events() {
         status: rsvpStatus,
         timestamp: new Date()
       });
+
+      // Save user info to localStorage for future RSVPs
+      saveUserInfo(rsvpData);
 
       // Send confirmation email
       try {
@@ -642,6 +680,7 @@ function Events() {
                         variant="primary"
                         onClick={() => {
                           setSelectedEvent(event);
+                          loadSavedUserInfo();
                           setShowRSVPModal(true);
                         }}
                       >
@@ -758,7 +797,7 @@ function Events() {
             </div>
           )}
 
-          <Form onSubmit={handleRSVPSubmit}>
+          <Form onSubmit={handleRSVPSubmit} autoComplete="on">
             <Form.Group className="mb-3">
               <Form.Label>Full Name *</Form.Label>
               <Form.Control
@@ -767,6 +806,8 @@ function Events() {
                 value={rsvpData.name}
                 onChange={(e) => setRSVPData({ ...rsvpData, name: e.target.value })}
                 placeholder="John Doe"
+                autoComplete="name"
+                name="name"
               />
             </Form.Group>
 
@@ -778,6 +819,8 @@ function Events() {
                 value={rsvpData.email}
                 onChange={(e) => setRSVPData({ ...rsvpData, email: e.target.value })}
                 placeholder="john@example.com"
+                autoComplete="email"
+                name="email"
               />
             </Form.Group>
 
@@ -788,6 +831,8 @@ function Events() {
                 value={rsvpData.phone}
                 onChange={(e) => setRSVPData({ ...rsvpData, phone: e.target.value })}
                 placeholder="(123) 456-7890"
+                autoComplete="tel"
+                name="phone"
               />
             </Form.Group>
 
@@ -800,6 +845,8 @@ function Events() {
                 max="10"
                 value={rsvpData.guests}
                 onChange={(e) => setRSVPData({ ...rsvpData, guests: parseInt(e.target.value) })}
+                autoComplete="off"
+                name="guests"
               />
             </Form.Group>
 
@@ -811,7 +858,26 @@ function Events() {
                 value={rsvpData.dietaryRestrictions}
                 onChange={(e) => setRSVPData({ ...rsvpData, dietaryRestrictions: e.target.value })}
                 placeholder="Please let us know about any dietary restrictions or allergies..."
+                autoComplete="off"
+                name="dietaryRestrictions"
               />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Check 
+                type="checkbox"
+                id="remember-info"
+                label="Remember my information for future RSVPs"
+                defaultChecked={!!localStorage.getItem('bcb_user_info')}
+                onChange={(e) => {
+                  if (!e.target.checked) {
+                    localStorage.removeItem('bcb_user_info');
+                  }
+                }}
+              />
+              <Form.Text className="text-muted">
+                Your information is saved locally on your device
+              </Form.Text>
             </Form.Group>
 
             <div className="d-flex gap-2">
