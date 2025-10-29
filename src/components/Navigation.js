@@ -131,7 +131,7 @@ function Navigation() {
                   <FaInstagram size={24} color="#0066CC" />
                 </Nav.Link>
 
-                {currentUser ? (
+                {currentUser && (
                   <Nav.Link
                     as={Link}
                     to={getAdminPath()}
@@ -140,15 +140,6 @@ function Navigation() {
                   >
                     <FaUserShield size={20} className="me-1" />
                     Admin
-                  </Nav.Link>
-                ) : (
-                  <Nav.Link
-                    as={Link}
-                    to="/login"
-                    className={`${isActive('/login') ? 'active' : ''}`}
-                    onClick={() => setExpanded(false)}
-                  >
-                    Login
                   </Nav.Link>
                 )}
               </Nav>

@@ -2,9 +2,11 @@ import React from 'react';
 import { Container, Row, Col } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { FaFacebook, FaInstagram, FaEnvelope } from 'react-icons/fa';
+import { useAuth } from '../utils/AuthContext';
 
 function Footer() {
   const currentYear = new Date().getFullYear();
+  const { currentUser } = useAuth();
 
   return (
     <footer className="footer-bcb">
@@ -73,6 +75,18 @@ function Footer() {
           <Col className="text-center">
             <p className="mb-0">
               &copy; {currentYear} Backcountry Bayit. All rights reserved. | 501(c)(3) Non-Profit Organization
+              {!currentUser && (
+                <>
+                  {' | '}
+                  <Link 
+                    to="/login" 
+                    style={{ color: 'inherit', textDecoration: 'none', opacity: 0.7 }}
+                    onClick={() => window.scrollTo(0, 0)}
+                  >
+                    Staff Login
+                  </Link>
+                </>
+              )}
             </p>
           </Col>
         </Row>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row, Col, Card, Button, Modal, Form, Alert } from 'react-bootstrap';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -36,6 +36,11 @@ function Events() {
   });
   const [rsvpStatus, setRsvpStatus] = useState({ show: false, message: '', type: '' });
   const [eventStatus, setEventStatus] = useState({ show: false, message: '', type: '' });
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
+  const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
+  const calendarRef = useRef(null);
+  const monthPickerRef = useRef(null);
 
   // Parse event dates consistently without timezone shifts
   const parseEventDate = (dateValue) => {
@@ -131,6 +136,68 @@ function Events() {
       console.error('Error loading events:', error);
     }
   };
+
+  const handleMonthsButtonClick = () => {
+    const api = calendarRef.current?.getApi();
+    if (api) {
+      const currentDate = api.getDate();
+      setPickerYear(currentDate.getFullYear());
+      setCurrentCalendarDate(currentDate);
+    } else {
+      setPickerYear(currentCalendarDate.getFullYear());
+    }
+    setShowMonthPicker((prev) => !prev);
+  };
+
+  const handleSelectMonth = (monthIndex) => {
+    const api = calendarRef.current?.getApi();
+    if (api) {
+      api.gotoDate(new Date(pickerYear, monthIndex, 1));
+    }
+    setCurrentCalendarDate(new Date(pickerYear, monthIndex, 1));
+    setShowMonthPicker(false);
+  };
+
+  const handleYearChange = (offset) => {
+    setPickerYear((prev) => prev + offset);
+  };
+
+  useEffect(() => {
+    if (!showMonthPicker) return;
+
+    const handleClickOutside = (event) => {
+      if (monthPickerRef.current && monthPickerRef.current.contains(event.target)) {
+        return;
+      }
+      const monthsButton = document.querySelector('.fc-monthsLabel-button');
+      if (monthsButton && monthsButton.contains(event.target)) {
+        return;
+      }
+      setShowMonthPicker(false);
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMonthPicker]);
+
+  const monthNames = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December'
+  ];
+
+  const calendarApi = calendarRef.current?.getApi();
+  const activeMonth = currentCalendarDate.getMonth();
+  const activeYear = currentCalendarDate.getFullYear();
 
   const handleEventClick = (clickInfo) => {
     const event = events.find(e => e.id === clickInfo.event.id);
@@ -427,8 +494,62 @@ function Events() {
           <Row>
             <Col lg={12}>
               <Card className="border-0 shadow">
-                <Card.Body className="p-4">
+                <Card.Body className="p-4 position-relative">
+                  {showMonthPicker && (
+                    <div
+                      ref={monthPickerRef}
+                      style={{
+                        position: 'absolute',
+                        top: '3.25rem',
+                        right: '1.5rem',
+                        zIndex: 20,
+                        width: '320px',
+                        backgroundColor: '#ffffff',
+                        borderRadius: '12px',
+                        boxShadow: '0 16px 40px rgba(15, 23, 42, 0.18)',
+                        padding: '16px'
+                      }}
+                    >
+                      <div className="d-flex justify-content-between align-items-center mb-3">
+                        <Button
+                          variant="outline-secondary"
+                          size="sm"
+                          onClick={() => handleYearChange(-1)}
+                          type="button"
+                        >
+                          &lt;
+                        </Button>
+                        <span className="fw-semibold text-primary">{pickerYear}</span>
+                        <Button
+                          variant="outline-secondary"
+                          size="sm"
+                          onClick={() => handleYearChange(1)}
+                          type="button"
+                        >
+                          &gt;
+                        </Button>
+                      </div>
+                      <div className="d-flex flex-wrap gap-2">
+                        {monthNames.map((month, index) => {
+                          const isActive = activeYear === pickerYear && activeMonth === index;
+                          return (
+                            <Button
+                              key={month}
+                              variant={isActive ? 'primary' : 'outline-primary'}
+                              size="sm"
+                              type="button"
+                              onClick={() => handleSelectMonth(index)}
+                              style={{ flex: '0 0 48%' }}
+                            >
+                              {month}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                   <FullCalendar
+                    ref={calendarRef}
                     plugins={[dayGridPlugin, interactionPlugin]}
                     initialView="dayGridMonth"
                     events={events}
@@ -436,7 +557,23 @@ function Events() {
                     headerToolbar={{
                       left: 'today',
                       center: 'title',
-                      right: 'prev,next dayGridMonth'
+                      right: 'monthsLabel,separator,prev,next'
+                    }}
+                    customButtons={{
+                      monthsLabel: {
+                        text: 'Months',
+                        click: handleMonthsButtonClick
+                      },
+                      separator: {
+                        text: '|',
+                        click: () => {}
+                      }
+                    }}
+                    datesSet={() => {
+                      const apiInstance = calendarRef.current?.getApi();
+                      if (apiInstance) {
+                        setCurrentCalendarDate(apiInstance.getDate());
+                      }
                     }}
                     height="auto"
                   />
