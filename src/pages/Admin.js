@@ -6,6 +6,7 @@ import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase
 import { db } from '../config/firebase';
 import { FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaUsers, FaSignOutAlt, FaCheck, FaTimes, FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
 import LocationAutocomplete from '../components/LocationAutocomplete';
+import { sendRSVPConfirmationEmail } from '../utils/emailService';
 
 function Admin() {
   const { currentUser, logout, isManager } = useAuth();
@@ -246,7 +247,22 @@ function Admin() {
       await updateDoc(rsvpRef, {
         status: 'approved'
       });
-      setAlert({ show: true, message: 'RSVP approved successfully!', type: 'success' });
+
+      // Get RSVP and event data for email
+      const rsvp = rsvps.find(r => r.id === rsvpId);
+      const event = getEventForRSVP(rsvp);
+
+      // Send confirmation email
+      if (rsvp && event) {
+        try {
+          await sendRSVPConfirmationEmail(rsvp, event, 'approved');
+        } catch (emailError) {
+          console.error('Error sending confirmation email:', emailError);
+          // Don't fail the approval if email fails
+        }
+      }
+
+      setAlert({ show: true, message: 'RSVP approved successfully! Confirmation email sent.', type: 'success' });
       loadRSVPs();
       // Auto-dismiss success message
       setTimeout(() => {
@@ -254,7 +270,9 @@ function Admin() {
       }, 3000);
     } catch (error) {
       console.error('Error approving RSVP:', error);
-      setAlert({ show: true, message: 'Error approving RSVP. Please try again.', type: 'danger' });
+      const errorMessage = error?.message || 'Unknown error';
+      const errorCode = error?.code ? ` (${error.code})` : '';
+      setAlert({ show: true, message: `Error approving RSVP${errorCode}. ${errorMessage}`, type: 'danger' });
     }
   };
 
@@ -273,7 +291,9 @@ function Admin() {
         }, 3000);
       } catch (error) {
         console.error('Error rejecting RSVP:', error);
-        setAlert({ show: true, message: 'Error rejecting RSVP. Please try again.', type: 'danger' });
+        const errorMessage = error?.message || 'Unknown error';
+        const errorCode = error?.code ? ` (${error.code})` : '';
+        setAlert({ show: true, message: `Error rejecting RSVP${errorCode}. ${errorMessage}`, type: 'danger' });
       }
     }
   };

@@ -7,6 +7,7 @@ import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } 
 import { db } from '../config/firebase';
 import { useAuth } from '../utils/AuthContext';
 import { FaCalendarAlt, FaUsers, FaClock, FaMapMarkerAlt, FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
+import { sendRSVPConfirmationEmail } from '../utils/emailService';
 
 function Events() {
   const { isAdmin, isManager } = useAuth();
@@ -369,7 +370,7 @@ function Events() {
       if (!existingRSVPs.empty) {
         setRsvpStatus({
           show: true,
-          message: 'You have already RSVP\'d for this event!',
+          message: `This email address (${rsvpData.email}) is already registered for this event. If you need to make changes, please contact us directly.`,
           type: 'warning'
         });
         return;
@@ -415,6 +416,14 @@ function Events() {
         status: rsvpStatus,
         timestamp: new Date()
       });
+
+      // Send confirmation email
+      try {
+        await sendRSVPConfirmationEmail(rsvpData, selectedEvent, rsvpStatus);
+      } catch (emailError) {
+        console.error('Error sending confirmation email:', emailError);
+        // Don't fail the RSVP if email fails
+      }
 
       setRsvpStatus({
         show: true,
@@ -738,12 +747,6 @@ function Events() {
           <Modal.Title>RSVP for {selectedEvent?.title}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {rsvpStatus.show && (
-            <Alert variant={rsvpStatus.type} className="mb-4">
-              {rsvpStatus.message}
-            </Alert>
-          )}
-
           {selectedEvent && (
             <div className="mb-4 p-3 bg-light rounded">
               <h5 className="mb-3">{selectedEvent.title}</h5>
@@ -819,6 +822,12 @@ function Events() {
                 Cancel
               </Button>
             </div>
+
+            {rsvpStatus.show && (
+              <Alert variant={rsvpStatus.type} className="mt-4 mb-0">
+                {rsvpStatus.message}
+              </Alert>
+            )}
           </Form>
         </Modal.Body>
       </Modal>

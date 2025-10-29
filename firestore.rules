@@ -1,28 +1,27 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Users collection - authenticated users can read their own document
-    // For now, allow authenticated users to create their own user document
-    // In production, this should be restricted to admin-only writes
-    match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Events collection - anyone can read, authenticated users can create/update/delete
-    // In production, you should restrict this to specific roles
+    // Events: public read, managers can write
     match /events/{eventId} {
       allow read: if true;
-      allow create, update, delete: if request.auth != null;
+      allow write: if request.auth != null &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager');
     }
 
-    // RSVPs collection - anyone can read and create
-    // Authenticated users can update/delete (should be restricted to managers in production)
+    // RSVPs: public create, managers can read/update/delete
     match /rsvps/{rsvpId} {
-      allow read: if true;
       allow create: if true;
-      allow update, delete: if request.auth != null;
+      allow read, update, delete: if request.auth != null &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager');
+    }
+
+    // Users: only admins can read/write
+    match /users/{userId} {
+      allow read, write: if request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
   }
 }
