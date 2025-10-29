@@ -209,9 +209,35 @@ function Admin() {
   const isEventPast = (eventDate) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const eventD = new Date(eventDate);
+    
+    // Parse date as local time to avoid timezone shifts
+    let eventD;
+    if (typeof eventDate === 'string' && eventDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = eventDate.split('-').map(Number);
+      eventD = new Date(year, month - 1, day);
+    } else {
+      eventD = new Date(eventDate);
+    }
     eventD.setHours(0, 0, 0, 0);
     return eventD < today;
+  };
+
+  const formatEventDate = (dateString) => {
+    // Parse date as local time to avoid timezone shifts
+    if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateString.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+    }
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
   };
 
   const handleApproveRSVP = async (rsvpId) => {
@@ -460,7 +486,7 @@ function Admin() {
                       return (
                         <tr key={event.id} style={{ opacity: isPast ? 0.5 : 1 }}>
                           <td><strong>{event.title}</strong></td>
-                          <td>{new Date(event.date).toLocaleDateString()}</td>
+                          <td>{formatEventDate(event.date)}</td>
                           <td>{event.time}</td>
                           <td>{event.location}</td>
                           <td>
@@ -557,11 +583,7 @@ function Admin() {
                             <td><strong>{event?.title || rsvp.eventTitle}</strong></td>
                             <td>
                               {event?.date 
-                                ? new Date(event.date).toLocaleDateString('en-US', { 
-                                    month: '2-digit', 
-                                    day: '2-digit', 
-                                    year: 'numeric' 
-                                  })
+                                ? formatEventDate(event.date)
                                 : '-'}
                             </td>
                             <td>{rsvp.name}</td>
