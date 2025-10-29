@@ -2,42 +2,46 @@ const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
 
-const inputDirs = ['../Logo', '../Photos'];
-const outputDir = './public/images';
+const imagesDir = './public/images';
 
-// Ensure output directory exists
-if (!fs.existsSync(outputDir)) {
-  fs.mkdirSync(outputDir, { recursive: true });
-}
+async function convertImagesToWebP(directory) {
+  const files = fs.readdirSync(directory, { withFileTypes: true });
 
-async function convertImages() {
-  for (const inputDir of inputDirs) {
-    const files = fs.readdirSync(inputDir);
+  for (const file of files) {
+    const fullPath = path.join(directory, file.name);
 
-    for (const file of files) {
-      const inputPath = path.join(inputDir, file);
-      const ext = path.extname(file).toLowerCase();
+    if (file.isDirectory()) {
+      // Recursively process subdirectories
+      await convertImagesToWebP(fullPath);
+    } else {
+      const ext = path.extname(file.name).toLowerCase();
 
-      // Skip if not an image
-      if (!['.jpg', '.jpeg', '.png', '.heic'].includes(ext)) {
-        continue;
-      }
+      // Check if it's an image that needs conversion (not already WebP)
+      if (['.jpg', '.jpeg', '.png', '.heic'].includes(ext)) {
+        const outputFileName = path.basename(file.name, ext) + '.webp';
+        const outputPath = path.join(directory, outputFileName);
 
-      const outputFileName = path.basename(file, ext) + '.webp';
-      const outputPath = path.join(outputDir, outputFileName);
-
-      try {
-        await sharp(inputPath)
-          .webp({ quality: 85 })
-          .toFile(outputPath);
-        console.log(`✓ Converted ${file} to ${outputFileName}`);
-      } catch (error) {
-        console.error(`✗ Error converting ${file}:`, error.message);
+        try {
+          await sharp(fullPath)
+            .webp({ quality: 85 })
+            .toFile(outputPath);
+          console.log(`✓ Converted ${file.name} to ${outputFileName}`);
+          
+          // Delete the original file after successful conversion
+          fs.unlinkSync(fullPath);
+          console.log(`  Deleted original: ${file.name}`);
+        } catch (error) {
+          console.error(`✗ Error converting ${file.name}:`, error.message);
+        }
       }
     }
   }
-
-  console.log('\n✓ Image conversion complete!');
 }
 
-convertImages();
+async function main() {
+  console.log('Starting image conversion to WebP...\n');
+  await convertImagesToWebP(imagesDir);
+  console.log('\n✓ Image conversion and cleanup complete!');
+}
+
+main();

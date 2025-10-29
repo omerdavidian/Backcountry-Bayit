@@ -12,11 +12,11 @@ const ScrollingGallery = () => {
     '/images/20241227_183548.webp',
     '/images/20241226_213824.webp',
     '/images/IMG-20240905-WA0003.webp',
-    '/images/24_-25_ Photos/1316b9d3-ed59-4451-980a-3922b731fa00.jpg',
-    '/images/24_-25_ Photos/3484d020-59ea-4bc1-98ee-7a57ecce7840.jpg',
-    '/images/24_-25_ Photos/3aab03dc-8518-4c6b-925a-0a1c512f76c1.jpg',
-    '/images/24_-25_ Photos/75583FE6-C880-47E2-A23B-AB561CC979BC.jpg',
-    '/images/24_-25_ Photos/c22077c8-e9b8-4265-a5f9-175a5e5ba9a5.jpg',
+    '/images/24_-25_ Photos/1316b9d3-ed59-4451-980a-3922b731fa00.webp',
+    '/images/24_-25_ Photos/3484d020-59ea-4bc1-98ee-7a57ecce7840.webp',
+    '/images/24_-25_ Photos/3aab03dc-8518-4c6b-925a-0a1c512f76c1.webp',
+    '/images/24_-25_ Photos/75583FE6-C880-47E2-A23B-AB561CC979BC.webp',
+    '/images/24_-25_ Photos/c22077c8-e9b8-4265-a5f9-175a5e5ba9a5.webp',
   ];
   const [offset, setOffset] = useState(0);
   const speed = 0.5; // Increased speed for smoother appearance
