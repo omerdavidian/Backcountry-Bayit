@@ -80,7 +80,7 @@ function Events() {
   const isEventToday = (eventDate) => {
     const date = parseEventDate(eventDate);
     if (!date || isNaN(date.getTime())) return false;
-    
+
     const today = new Date();
     return date.getFullYear() === today.getFullYear() &&
       date.getMonth() === today.getMonth() &&
@@ -90,11 +90,11 @@ function Events() {
   const isEventTomorrow = (eventDate) => {
     const date = parseEventDate(eventDate);
     if (!date || isNaN(date.getTime())) return false;
-    
+
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    
+
     return date.getFullYear() === tomorrow.getFullYear() &&
       date.getMonth() === tomorrow.getMonth() &&
       date.getDate() === tomorrow.getDate();
@@ -125,9 +125,9 @@ function Events() {
         start: doc.data().date,
         title: doc.data().title
       }));
-      
+
       console.log('All events loaded:', eventsList);
-      
+
       setEvents(eventsList.sort((a, b) => {
         const dateA = parseEventDate(a.date);
         const dateB = parseEventDate(b.date);
@@ -495,7 +495,7 @@ function Events() {
     <div>
       {/* Hero Section */}
       <section className="bg-gradient-primary text-white py-5">
-        
+
         <Container>
           <div className="text-center py-4">
             <FaCalendarAlt size={60} className="mb-3" />
@@ -613,7 +613,7 @@ function Events() {
                       },
                       separator: {
                         text: '|',
-                        click: () => {}
+                        click: () => { }
                       }
                     }}
                     datesSet={() => {
@@ -640,75 +640,75 @@ function Events() {
               .filter((e) => !isEventPast(e.date))
               .sort((a, b) => parseEventDate(a.date) - parseEventDate(b.date))
               .map((event) => (
-              <Col key={event.id} md={6}>
-                <Card className="h-100 border-0 shadow-sm card-hover">
-                  <Card.Body className="p-4">
-                    {isEventToday(event.date) && (
-                      <div className="mb-3 text-center">
-                        <span className="badge bg-success" style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}>
-                          Today
-                        </span>
-                      </div>
-                    )}
-                    {!isEventToday(event.date) && isEventTomorrow(event.date) && (
-                      <div className="mb-3 text-center">
-                        <span className="badge bg-info" style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}>
-                          Tomorrow
-                        </span>
-                      </div>
-                    )}
-                    <h4 className="text-primary mb-3">{event.title}</h4>
-                    <div className="mb-2">
-                      <FaCalendarAlt className="me-2 text-primary" />
-                      <strong>Date:</strong> {formatEventDate(event.date)}
-                    </div>
-                    <div className="mb-2">
-                      <FaClock className="me-2 text-primary" />
-                      <strong>Time:</strong> {event.time}
-                    </div>
-                    <div className="mb-3">
-                      <FaMapMarkerAlt className="me-2 text-primary" />
-                      <strong>Location:</strong> {event.location}
-                    </div>
-                    <p className="mb-3">{event.description}</p>
-                    <div className="mb-3">
-                      <FaUsers className="me-2 text-primary" />
-                      <strong>Capacity:</strong> {event.capacity} guests
-                    </div>
-                    <div className="d-flex gap-2">
-                      <Button
-                        variant="primary"
-                        onClick={() => {
-                          setSelectedEvent(event);
-                          loadSavedUserInfo();
-                          setShowRSVPModal(true);
-                        }}
-                      >
-                        RSVP Now
-                      </Button>
-                      {(isAdmin || isManager) && (
-                        <>
-                          <Button
-                            variant="outline-primary"
-                            size="sm"
-                            onClick={() => handleEditEvent(event)}
-                          >
-                            <FaEdit />
-                          </Button>
-                          <Button
-                            variant="outline-danger"
-                            size="sm"
-                            onClick={() => handleDeleteEvent(event.id)}
-                          >
-                            <FaTrash />
-                          </Button>
-                        </>
+                <Col key={event.id} md={6}>
+                  <Card className="h-100 border-0 shadow-sm card-hover">
+                    <Card.Body className="p-4">
+                      {isEventToday(event.date) && (
+                        <div className="mb-3 text-center">
+                          <span className="badge bg-success" style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}>
+                            Today
+                          </span>
+                        </div>
                       )}
-                    </div>
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))}
+                      {!isEventToday(event.date) && isEventTomorrow(event.date) && (
+                        <div className="mb-3 text-center">
+                          <span className="badge bg-info" style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}>
+                            Tomorrow
+                          </span>
+                        </div>
+                      )}
+                      <h4 className="text-primary mb-3">{event.title}</h4>
+                      <div className="mb-2">
+                        <FaCalendarAlt className="me-2 text-primary" />
+                        <strong>Date:</strong> {formatEventDate(event.date)}
+                      </div>
+                      <div className="mb-2">
+                        <FaClock className="me-2 text-primary" />
+                        <strong>Time:</strong> {event.time}
+                      </div>
+                      <div className="mb-3">
+                        <FaMapMarkerAlt className="me-2 text-primary" />
+                        <strong>Location:</strong> {event.location}
+                      </div>
+                      <p className="mb-3">{event.description}</p>
+                      <div className="mb-3">
+                        <FaUsers className="me-2 text-primary" />
+                        <strong>Capacity:</strong> {event.capacity} guests
+                      </div>
+                      <div className="d-flex gap-2">
+                        <Button
+                          variant="primary"
+                          onClick={() => {
+                            setSelectedEvent(event);
+                            loadSavedUserInfo();
+                            setShowRSVPModal(true);
+                          }}
+                        >
+                          RSVP Now
+                        </Button>
+                        {(isAdmin || isManager) && (
+                          <>
+                            <Button
+                              variant="outline-primary"
+                              size="sm"
+                              onClick={() => handleEditEvent(event)}
+                            >
+                              <FaEdit />
+                            </Button>
+                            <Button
+                              variant="outline-danger"
+                              size="sm"
+                              onClick={() => handleDeleteEvent(event.id)}
+                            >
+                              <FaTrash />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              ))}
           </Row>
         </Container>
       </section>
@@ -878,7 +878,7 @@ function Events() {
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Check 
+              <Form.Check
                 type="checkbox"
                 id="remember-info"
                 label="Remember my information for future RSVPs"
