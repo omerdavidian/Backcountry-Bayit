@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Container, Row, Col, Card, Button, Modal, Form, Alert, Table } from 'react-bootstrap';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -54,7 +54,7 @@ function Events() {
       // Always treat as local date (not UTC)
       const match = dateValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if (match) {
-        const [_, y, m, d] = match;
+        const [, y, m, d] = match;
         return new Date(Number(y), Number(m) - 1, Number(d));
       }
     }
@@ -111,11 +111,7 @@ function Events() {
     return a < b;
   };
 
-  useEffect(() => {
-    loadEvents();
-  }, []);
-
-  const loadEvents = async () => {
+  const loadEvents = useCallback(async () => {
     try {
       const eventsCollection = collection(db, 'events');
       const eventsSnapshot = await getDocs(eventsCollection);
@@ -136,7 +132,11 @@ function Events() {
     } catch (error) {
       console.error('Error loading events:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadEvents();
+  }, [loadEvents]);
 
   const handleMonthsButtonClick = () => {
     const api = calendarRef.current?.getApi();
@@ -196,7 +196,7 @@ function Events() {
     'December'
   ];
 
-  const calendarApi = calendarRef.current?.getApi();
+  // calendarRef.getApi() is accessed directly where needed; avoid unused var
   const activeMonth = currentCalendarDate.getMonth();
   const activeYear = currentCalendarDate.getFullYear();
 

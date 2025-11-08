@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Table, Modal, Form, Alert, Tabs, Tab } from 'react-bootstrap';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -11,7 +11,7 @@ import { sendRSVPConfirmationEmail } from '../utils/emailService';
 function Admin() {
   const { currentUser, logout, isManager } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
+  // location is unused in this component
   const [searchParams, setSearchParams] = useSearchParams();
   const [events, setEvents] = useState([]);
   const [rsvps, setRSVPs] = useState([]);

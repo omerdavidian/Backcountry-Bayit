@@ -278,13 +278,7 @@ function Home() {
     return { dateStr, timeStr };
   };
 
-  const chunkArray = (array, size) => {
-    const chunks = [];
-    for (let i = 0; i < array.length; i += size) {
-      chunks.push(array.slice(i, i + size));
-    }
-    return chunks;
-  };
+  // chunkArray removed (unused) to satisfy lint rules
 
   const toMountainTime = (date) => {
     const formatter = new Intl.DateTimeFormat('en-US', {
