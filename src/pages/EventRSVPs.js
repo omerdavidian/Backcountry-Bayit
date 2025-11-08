@@ -7,7 +7,7 @@ import { sendRSVPConfirmationEmail } from '../utils/emailService';
 import { FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
 
 function EventRSVPs() {
-  const { eventId, eventName } = useParams();
+  const { eventId } = useParams();
   const navigate = useNavigate();
   const [rsvps, setRSVPs] = useState([]);
   const [event, setEvent] = useState(null);

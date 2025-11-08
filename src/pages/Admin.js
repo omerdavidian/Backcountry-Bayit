@@ -1,26 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Table, Modal, Form, Alert } from 'react-bootstrap';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaUsers, FaSignOutAlt, FaCheck, FaTimes, FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
 import LocationAutocomplete from '../components/LocationAutocomplete';
-import { sendRSVPConfirmationEmail } from '../utils/emailService';
 
 function Admin() {
   const { currentUser, logout, isManager } = useAuth();
   const navigate = useNavigate();
   // location is unused in this component
-  const [searchParams, setSearchParams] = useSearchParams();
   const [events, setEvents] = useState([]);
   const [rsvps, setRSVPs] = useState([]);
   const [showEventModal, setShowEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [alert, setAlert] = useState({ show: false, message: '', type: '' });
-  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'events');
   const [eventSortConfig, setEventSortConfig] = useState({ key: 'date', direction: 'asc' });
-  const [rsvpSortConfig, setRsvpSortConfig] = useState({ key: 'timestamp', direction: 'desc' });
   const [eventForm, setEventForm] = useState({
     title: '',
     date: '',
@@ -244,124 +240,12 @@ function Admin() {
     });
   };
 
-  const handleApproveRSVP = async (rsvpId) => {
-    try {
-      const rsvpRef = doc(db, 'rsvps', rsvpId);
-      await updateDoc(rsvpRef, {
-        status: 'approved'
-      });
-
-      // Get RSVP and event data for email
-      const rsvp = rsvps.find(r => r.id === rsvpId);
-      const event = getEventForRSVP(rsvp);
-
-      // Send confirmation email
-      if (rsvp && event) {
-        try {
-          await sendRSVPConfirmationEmail(rsvp, event, 'approved');
-        } catch (emailError) {
-          console.error('Error sending confirmation email:', emailError);
-          // Don't fail the approval if email fails
-        }
-      }
-
-      setAlert({ show: true, message: 'RSVP approved successfully! Confirmation email sent.', type: 'success' });
-      loadRSVPs();
-      // Auto-dismiss success message
-      setTimeout(() => {
-        setAlert({ show: false, message: '', type: '' });
-      }, 3000);
-    } catch (error) {
-      console.error('Error approving RSVP:', error);
-      const errorMessage = error?.message || 'Unknown error';
-      const errorCode = error?.code ? ` (${error.code})` : '';
-      setAlert({ show: true, message: `Error approving RSVP${errorCode}. ${errorMessage}`, type: 'danger' });
-    }
-  };
-
-  const handleRejectRSVP = async (rsvpId) => {
-    if (window.confirm('Are you sure you want to reject this RSVP?')) {
-      try {
-        const rsvpRef = doc(db, 'rsvps', rsvpId);
-        await updateDoc(rsvpRef, {
-          status: 'rejected'
-        });
-        setAlert({ show: true, message: 'RSVP rejected.', type: 'info' });
-        loadRSVPs();
-        // Auto-dismiss info message
-        setTimeout(() => {
-          setAlert({ show: false, message: '', type: '' });
-        }, 3000);
-      } catch (error) {
-        console.error('Error rejecting RSVP:', error);
-        const errorMessage = error?.message || 'Unknown error';
-        const errorCode = error?.code ? ` (${error.code})` : '';
-        setAlert({ show: true, message: `Error rejecting RSVP${errorCode}. ${errorMessage}`, type: 'danger' });
-      }
-    }
-  };
-
-  const getStatusBadge = (status) => {
-    if (!status || status === 'approved') {
-      return <span className="badge bg-success">Approved</span>;
-    } else if (status === 'pending') {
-      return <span className="badge bg-warning text-dark">Pending</span>;
-    } else if (status === 'waitlist') {
-      return <span className="badge bg-info">Waitlist</span>;
-    } else if (status === 'rejected') {
-      return <span className="badge bg-danger">Rejected</span>;
-    }
-    return null;
-  };
-
-  const handleTabSelect = (key) => {
-    setActiveTab(key);
-    setSearchParams({ tab: key });
-  };
-
-  const handleCleanupOrphanedRSVPs = async () => {
-    const orphanedRSVPs = rsvps.filter(rsvp => !getEventForRSVP(rsvp));
-    
-    if (orphanedRSVPs.length === 0) {
-      setAlert({ show: true, message: 'No orphaned RSVPs found.', type: 'info' });
-      setTimeout(() => setAlert({ show: false, message: '', type: '' }), 3000);
-      return;
-    }
-
-    if (window.confirm(`Found ${orphanedRSVPs.length} orphaned RSVP(s) for deleted events. Delete them?`)) {
-      try {
-        const deletePromises = orphanedRSVPs.map(rsvp => 
-          deleteDoc(doc(db, 'rsvps', rsvp.id))
-        );
-        await Promise.all(deletePromises);
-        
-        setAlert({ show: true, message: `Successfully deleted ${orphanedRSVPs.length} orphaned RSVP(s).`, type: 'success' });
-        loadRSVPs();
-        
-        setTimeout(() => {
-          setAlert({ show: false, message: '', type: '' });
-        }, 3000);
-      } catch (error) {
-        console.error('Error cleaning up orphaned RSVPs:', error);
-        setAlert({ show: true, message: 'Error cleaning up orphaned RSVPs. Please try again.', type: 'danger' });
-      }
-    }
-  };
-
   const handleEventSort = (key) => {
     let direction = 'asc';
     if (eventSortConfig.key === key && eventSortConfig.direction === 'asc') {
       direction = 'desc';
     }
     setEventSortConfig({ key, direction });
-  };
-
-  const handleRsvpSort = (key) => {
-    let direction = 'asc';
-    if (rsvpSortConfig.key === key && rsvpSortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setRsvpSortConfig({ key, direction });
   };
 
   const getSortIcon = (columnKey, sortConfig) => {
@@ -396,41 +280,6 @@ function Admin() {
     if (aVal > bVal) return direction === 'asc' ? 1 : -1;
     return 0;
   });
-
-  const sortedRsvps = rsvps
-    .filter(rsvp => getEventForRSVP(rsvp) !== undefined)
-    .sort((a, b) => {
-      const { key, direction } = rsvpSortConfig;
-      let aVal, bVal;
-
-      if (key === 'eventTitle') {
-        const eventA = getEventForRSVP(a);
-        const eventB = getEventForRSVP(b);
-        aVal = String(eventA?.title || '').toLowerCase();
-        bVal = String(eventB?.title || '').toLowerCase();
-      } else if (key === 'eventDate') {
-        const eventA = getEventForRSVP(a);
-        const eventB = getEventForRSVP(b);
-        aVal = eventA?.date ? new Date(eventA.date) : new Date(0);
-        bVal = eventB?.date ? new Date(eventB.date) : new Date(0);
-      } else if (key === 'guests') {
-        aVal = parseInt(a.guests) || 0;
-        bVal = parseInt(b.guests) || 0;
-      } else if (key === 'timestamp') {
-        aVal = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(0);
-        bVal = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(0);
-      } else if (key === 'status') {
-        aVal = String(a[key] || '').toLowerCase();
-        bVal = String(b[key] || '').toLowerCase();
-      } else {
-        aVal = String(a[key] || '').toLowerCase();
-        bVal = String(b[key] || '').toLowerCase();
-      }
-
-      if (aVal < bVal) return direction === 'asc' ? -1 : 1;
-      if (aVal > bVal) return direction === 'asc' ? 1 : -1;
-      return 0;
-    });
 
   if (!currentUser || !isManager) {
     return null;
