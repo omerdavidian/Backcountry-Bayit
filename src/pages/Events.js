@@ -3,7 +3,7 @@ import { Container, Row, Col, Card, Button, Modal, Form, Alert, Table } from 're
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../utils/AuthContext';
 import { FaCalendarAlt, FaUsers, FaClock, FaMapMarkerAlt, FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
@@ -16,11 +16,13 @@ function Events() {
   const [showRSVPModal, setShowRSVPModal] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
+  const [existingRSVP, setExistingRSVP] = useState(null);
   const [rsvpData, setRSVPData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     phone: '',
-    guests: 1,
+    attendees: [],
     dietaryRestrictions: ''
   });
   const [eventForm, setEventForm] = useState({
@@ -33,7 +35,8 @@ function Events() {
     description: '',
     capacity: 40,
     requireRSVP: true,
-    rsvpApprovalMode: 'immediate'
+    rsvpApprovalMode: 'immediate',
+    limitCapacity: false // New state for capacity limit toggle
   });
   const [rsvpStatus, setRsvpStatus] = useState({ show: false, message: '', type: '' });
   const [eventStatus, setEventStatus] = useState({ show: false, message: '', type: '' });
@@ -204,6 +207,8 @@ function Events() {
     const event = events.find(e => e.id === clickInfo.event.id);
     if (event) {
       setSelectedEvent(event);
+      setExistingRSVP(null); // Reset existing RSVP when opening modal
+      setRsvpStatus({ show: false, message: '', type: '' }); // Reset status messages
       // Load saved user info from localStorage
       loadSavedUserInfo();
       setShowRSVPModal(true);
@@ -217,11 +222,11 @@ function Events() {
       if (savedInfo) {
         const userInfo = JSON.parse(savedInfo);
         setRSVPData({
-          name: userInfo.name || '',
+          firstName: userInfo.firstName || '',
+          lastName: userInfo.lastName || '',
           email: userInfo.email || '',
           phone: userInfo.phone || '',
-          guests: 1,
-          dietaryRestrictions: ''
+          attendees: []
         });
       }
     } catch (error) {
@@ -233,7 +238,8 @@ function Events() {
   const saveUserInfo = (data) => {
     try {
       const userInfo = {
-        name: data.name,
+        firstName: data.firstName,
+        lastName: data.lastName,
         email: data.email,
         phone: data.phone
       };
@@ -281,7 +287,8 @@ function Events() {
       description: event.description,
       capacity: event.capacity,
       requireRSVP: event.requireRSVP !== undefined ? event.requireRSVP : true,
-      rsvpApprovalMode: event.rsvpApprovalMode || 'immediate'
+      rsvpApprovalMode: event.rsvpApprovalMode || 'immediate',
+      limitCapacity: event.limitCapacity !== undefined ? event.limitCapacity : false // Ensure toggle state is set
     });
     setShowEventModal(true);
   };
@@ -302,7 +309,8 @@ function Events() {
         description: eventForm.description,
         capacity: parseInt(eventForm.capacity),
         requireRSVP: eventForm.requireRSVP,
-        rsvpApprovalMode: eventForm.rsvpApprovalMode
+        rsvpApprovalMode: eventForm.rsvpApprovalMode,
+        limitCapacity: eventForm.limitCapacity // Include capacity limit in event data
       };
 
       if (editingEvent) {
@@ -377,7 +385,8 @@ function Events() {
       description: '',
       capacity: 40,
       requireRSVP: true,
-      rsvpApprovalMode: 'immediate'
+      rsvpApprovalMode: 'immediate',
+      limitCapacity: false // Reset capacity limit toggle
     });
   };
 
@@ -395,6 +404,7 @@ function Events() {
         return;
       }
 
+      // Check if this email already has an RSVP for this event
       const q = query(
         rsvpsCollection,
         where('eventId', '==', selectedEvent.id),
@@ -402,11 +412,26 @@ function Events() {
       );
       const existingRSVPs = await getDocs(q);
 
-      if (!existingRSVPs.empty) {
+      if (!existingRSVPs.empty && !existingRSVP) {
+        // Found existing RSVP, load it and show update options
+        const existingDoc = existingRSVPs.docs[0];
+        const existingData = existingDoc.data();
+        setExistingRSVP({ id: existingDoc.id, ...existingData });
+        
+        // Pre-populate the form with existing data
+        setRSVPData({
+          firstName: existingData.firstName || '',
+          lastName: existingData.lastName || '',
+          email: existingData.email || '',
+          phone: existingData.phone || '',
+          attendees: existingData.attendees || [],
+          dietaryRestrictions: existingData.dietaryRestrictions || ''
+        });
+        
         setRsvpStatus({
           show: true,
-          message: `This email address (${rsvpData.email}) is already registered for this event. If you need to make changes, please contact us directly.`,
-          type: 'warning'
+          message: `You already have an RSVP for this event. You can update your information below or unregister.`,
+          type: 'info'
         });
         return;
       }
@@ -420,22 +445,30 @@ function Events() {
       let totalApprovedGuests = 0;
       allRSVPsSnapshot.forEach((doc) => {
         const rsvp = doc.data();
+        // Skip the current user's existing RSVP when calculating capacity
+        if (existingRSVP && doc.id === existingRSVP.id) return;
+        
         if (rsvp.status === 'approved' || (rsvp.status === undefined && selectedEvent.rsvpApprovalMode === 'immediate')) {
-          totalApprovedGuests += rsvp.guests || 1;
+          // Count primary guest + additional attendees
+          totalApprovedGuests += 1 + (rsvp.attendees?.length || 0);
         }
       });
 
-      const requestedGuests = parseInt(rsvpData.guests);
+      const requestedGuests = 1 + (rsvpData.attendees?.length || 0); // Primary + additional attendees
       const capacity = selectedEvent.capacity || 40;
-      const isOverCapacity = totalApprovedGuests + requestedGuests > capacity;
+      const isOverCapacity = selectedEvent.limitCapacity && (totalApprovedGuests + requestedGuests > capacity);
 
       let rsvpStatus = 'approved';
-      let statusMessage = 'Thank you for your RSVP! We look forward to seeing you.';
+      let statusMessage = existingRSVP 
+        ? 'Your RSVP has been updated successfully!' 
+        : 'Thank you for your RSVP! We look forward to seeing you.';
       let statusType = 'success';
 
       if (selectedEvent.rsvpApprovalMode === 'approval') {
-        rsvpStatus = 'pending';
-        statusMessage = 'Your RSVP has been submitted and is awaiting approval from our team. You will receive confirmation via email.';
+        rsvpStatus = existingRSVP?.status || 'pending';
+        statusMessage = existingRSVP
+          ? 'Your RSVP has been updated successfully!'
+          : 'Your RSVP has been submitted and is awaiting approval from our team. You will receive confirmation via email.';
         statusType = 'info';
       } else if (isOverCapacity) {
         rsvpStatus = 'waitlist';
@@ -443,14 +476,28 @@ function Events() {
         statusType = 'warning';
       }
 
-      await addDoc(rsvpsCollection, {
+      const rsvpDataToSave = {
         eventId: selectedEvent.id,
         eventTitle: selectedEvent.title,
         eventDate: selectedEvent.date,
-        ...rsvpData,
+        firstName: rsvpData.firstName,
+        lastName: rsvpData.lastName,
+        email: rsvpData.email,
+        phone: rsvpData.phone,
+        attendees: rsvpData.attendees,
+        dietaryRestrictions: rsvpData.dietaryRestrictions || '',
         status: rsvpStatus,
-        timestamp: new Date()
-      });
+        timestamp: existingRSVP ? existingRSVP.timestamp : serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+
+      if (existingRSVP) {
+        // Update existing RSVP
+        await updateDoc(doc(db, 'rsvps', existingRSVP.id), rsvpDataToSave);
+      } else {
+        // Create new RSVP
+        await addDoc(rsvpsCollection, rsvpDataToSave);
+      }
 
       // Save user info to localStorage for future RSVPs
       saveUserInfo(rsvpData);
@@ -470,12 +517,15 @@ function Events() {
       });
 
       setRSVPData({
-        name: '',
+        firstName: '',
+        lastName: '',
         email: '',
         phone: '',
-        guests: 1,
+        attendees: [],
         dietaryRestrictions: ''
       });
+      
+      setExistingRSVP(null);
 
       setTimeout(() => {
         setShowRSVPModal(false);
@@ -483,12 +533,103 @@ function Events() {
       }, 4000);
     } catch (error) {
       console.error('Error submitting RSVP:', error);
+
+      // If permission denied, store a pending RSVP locally so user doesn't lose data.
+      let shortMsg = error?.message ? `There was an error submitting your RSVP: ${error.message}` : 'There was an error submitting your RSVP. Please try again or contact us directly.';
+      if (error?.code === 'permission-denied') {
+        try {
+          const pendingKey = 'bcb_pending_rsvps';
+          const existing = JSON.parse(localStorage.getItem(pendingKey) || '[]');
+          existing.push({
+            savedAt: new Date().toISOString(),
+            eventId: selectedEvent?.id,
+            eventTitle: selectedEvent?.title,
+            eventDate: selectedEvent?.date,
+            ...rsvpData
+          });
+          localStorage.setItem(pendingKey, JSON.stringify(existing));
+          shortMsg = 'Permissions error: your RSVP was saved locally and will need to be resubmitted once our system permissions are updated. Please try again later or contact us directly.';
+        } catch (storageError) {
+          console.error('Failed to store pending RSVP locally:', storageError);
+        }
+      }
+
       setRsvpStatus({
         show: true,
-        message: 'There was an error submitting your RSVP. Please try again or contact us directly.',
+        message: shortMsg,
         type: 'danger'
       });
     }
+  };
+
+  const handleUnregister = async () => {
+    if (!existingRSVP) return;
+    
+    if (window.confirm('Are you sure you want to unregister from this event?')) {
+      try {
+        await deleteDoc(doc(db, 'rsvps', existingRSVP.id));
+        
+        setRsvpStatus({
+          show: true,
+          message: 'You have been successfully unregistered from this event.',
+          type: 'success'
+        });
+        
+        setRSVPData({
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: '',
+          attendees: [],
+          dietaryRestrictions: ''
+        });
+        
+        setExistingRSVP(null);
+        
+        setTimeout(() => {
+          setShowRSVPModal(false);
+          setRsvpStatus({ show: false, message: '', type: '' });
+        }, 2000);
+      } catch (error) {
+        console.error('Error unregistering:', error);
+        setRsvpStatus({
+          show: true,
+          message: 'Error unregistering. Please try again or contact us directly.',
+          type: 'danger'
+        });
+      }
+    }
+  };
+
+  // Add functionality to RSVP form for multiple attendees
+  const handleAddAttendee = () => {
+    setRSVPData((prevData) => ({
+      ...prevData,
+      attendees: [...prevData.attendees, { firstName: '', lastName: '', email: '', phone: '' }]
+    }));
+  };
+
+  const handleRemoveAttendee = (index) => {
+    setRSVPData((prevData) => ({
+      ...prevData,
+      attendees: prevData.attendees.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleAttendeeChange = (index, field, value) => {
+    setRSVPData((prevData) => {
+      const updatedAttendees = [...prevData.attendees];
+      updatedAttendees[index][field] = value;
+      return { ...prevData, attendees: updatedAttendees };
+    });
+  };
+
+  // Add functionality to toggle capacity limit
+  const handleToggleCapacityLimit = () => {
+    setEventForm((prevForm) => ({
+      ...prevForm,
+      limitCapacity: !prevForm.limitCapacity
+    }));
   };
 
   return (
@@ -680,6 +821,8 @@ function Events() {
                           variant="primary"
                           onClick={() => {
                             setSelectedEvent(event);
+                            setExistingRSVP(null);
+                            setRsvpStatus({ show: false, message: '', type: '' });
                             loadSavedUserInfo();
                             setShowRSVPModal(true);
                           }}
@@ -795,7 +938,11 @@ function Events() {
       </section>
 
       {/* RSVP Modal */}
-      <Modal show={showRSVPModal} onHide={() => setShowRSVPModal(false)} size="lg">
+      <Modal show={showRSVPModal} onHide={() => {
+        setShowRSVPModal(false);
+        setExistingRSVP(null);
+        setRsvpStatus({ show: false, message: '', type: '' });
+      }} size="lg">
         <Modal.Header closeButton>
           <Modal.Title>RSVP for {selectedEvent?.title}</Modal.Title>
         </Modal.Header>
@@ -813,15 +960,28 @@ function Events() {
 
           <Form onSubmit={handleRSVPSubmit} autoComplete="on">
             <Form.Group className="mb-3">
-              <Form.Label>Full Name *</Form.Label>
+              <Form.Label>First Name *</Form.Label>
               <Form.Control
                 type="text"
                 required
-                value={rsvpData.name}
-                onChange={(e) => setRSVPData({ ...rsvpData, name: e.target.value })}
-                placeholder="John Doe"
-                autoComplete="name"
-                name="name"
+                value={rsvpData.firstName}
+                onChange={(e) => setRSVPData({ ...rsvpData, firstName: e.target.value })}
+                placeholder="John"
+                autoComplete="given-name"
+                name="firstName"
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Last Name *</Form.Label>
+              <Form.Control
+                type="text"
+                required
+                value={rsvpData.lastName}
+                onChange={(e) => setRSVPData({ ...rsvpData, lastName: e.target.value })}
+                placeholder="Doe"
+                autoComplete="family-name"
+                name="lastName"
               />
             </Form.Group>
 
@@ -850,32 +1010,78 @@ function Events() {
               />
             </Form.Group>
 
-            <Form.Group className="mb-3">
-              <Form.Label>Number of Guests (including yourself) *</Form.Label>
-              <Form.Control
-                type="number"
-                required
-                min="1"
-                max="10"
-                value={rsvpData.guests}
-                onChange={(e) => setRSVPData({ ...rsvpData, guests: parseInt(e.target.value) })}
-                autoComplete="off"
-                name="guests"
-              />
-            </Form.Group>
+            {rsvpData.attendees.map((attendee, index) => (
+              <div key={index} className="mb-4 p-3 bg-light rounded position-relative">
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h5 className="mb-0">Additional Guest {index + 1}</h5>
+                  <Button
+                    variant="outline-danger"
+                    size="sm"
+                    onClick={() => handleRemoveAttendee(index)}
+                  >
+                    <FaTrash /> Remove
+                  </Button>
+                </div>
+                <Form.Group className="mb-3">
+                  <Form.Label>First Name *</Form.Label>
+                  <Form.Control
+                    type="text"
+                    required
+                    value={attendee.firstName}
+                    onChange={(e) => handleAttendeeChange(index, 'firstName', e.target.value)}
+                    placeholder="John"
+                    autoComplete="given-name"
+                    name={`attendee-${index}-firstName`}
+                  />
+                </Form.Group>
 
-            <Form.Group className="mb-4">
-              <Form.Label>Dietary Restrictions or Allergies</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                value={rsvpData.dietaryRestrictions}
-                onChange={(e) => setRSVPData({ ...rsvpData, dietaryRestrictions: e.target.value })}
-                placeholder="Please let us know about any dietary restrictions or allergies..."
-                autoComplete="off"
-                name="dietaryRestrictions"
-              />
-            </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Last Name *</Form.Label>
+                  <Form.Control
+                    type="text"
+                    required
+                    value={attendee.lastName}
+                    onChange={(e) => handleAttendeeChange(index, 'lastName', e.target.value)}
+                    placeholder="Doe"
+                    autoComplete="family-name"
+                    name={`attendee-${index}-lastName`}
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Email *</Form.Label>
+                  <Form.Control
+                    type="email"
+                    required
+                    value={attendee.email}
+                    onChange={(e) => handleAttendeeChange(index, 'email', e.target.value)}
+                    placeholder="john@example.com"
+                    autoComplete="email"
+                    name={`attendee-${index}-email`}
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Phone</Form.Label>
+                  <Form.Control
+                    type="tel"
+                    value={attendee.phone}
+                    onChange={(e) => handleAttendeeChange(index, 'phone', e.target.value)}
+                    placeholder="(123) 456-7890"
+                    autoComplete="tel"
+                    name={`attendee-${index}-phone`}
+                  />
+                </Form.Group>
+              </div>
+            ))}
+
+            <Button
+              variant="outline-primary"
+              onClick={handleAddAttendee}
+              className="mt-3"
+            >
+              Add Another Person
+            </Button>
 
             <Form.Group className="mb-3">
               <Form.Check
@@ -896,9 +1102,18 @@ function Events() {
 
             <div className="d-flex gap-2">
               <Button variant="primary" type="submit" size="lg">
-                Submit RSVP
+                {existingRSVP ? 'Update RSVP' : 'Submit RSVP'}
               </Button>
-              <Button variant="secondary" onClick={() => setShowRSVPModal(false)} size="lg">
+              {existingRSVP && (
+                <Button variant="danger" onClick={handleUnregister} size="lg">
+                  Unregister
+                </Button>
+              )}
+              <Button variant="secondary" onClick={() => {
+                setShowRSVPModal(false);
+                setExistingRSVP(null);
+                setRsvpStatus({ show: false, message: '', type: '' });
+              }} size="lg">
                 Cancel
               </Button>
             </div>
@@ -1011,16 +1226,28 @@ function Events() {
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label>Capacity *</Form.Label>
-              <Form.Control
-                type="number"
-                required
-                min="1"
-                value={eventForm.capacity}
-                onChange={(e) => setEventForm({ ...eventForm, capacity: e.target.value })}
+              <Form.Check
+                type="checkbox"
+                id="limitCapacity"
+                label="Limit Capacity"
+                checked={eventForm.limitCapacity}
+                onChange={handleToggleCapacityLimit}
               />
-              <Form.Text className="text-muted">Maximum number of guests</Form.Text>
             </Form.Group>
+
+            {eventForm.limitCapacity && (
+              <Form.Group className="mb-3">
+                <Form.Label>Capacity *</Form.Label>
+                <Form.Control
+                  type="number"
+                  required
+                  min="1"
+                  value={eventForm.capacity}
+                  onChange={(e) => setEventForm({ ...eventForm, capacity: e.target.value })}
+                />
+                <Form.Text className="text-muted">Maximum number of guests</Form.Text>
+              </Form.Group>
+            )}
 
             <Form.Group className="mb-3">
               <Form.Check

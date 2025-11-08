@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Table, Modal, Form, Alert, Tabs, Tab } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Table, Modal, Form, Alert } from 'react-bootstrap';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
@@ -31,7 +31,8 @@ function Admin() {
     description: '',
     capacity: 40,
     requireRSVP: true,
-    rsvpApprovalMode: 'immediate' // 'immediate' or 'approval'
+    rsvpApprovalMode: 'immediate', // 'immediate' or 'approval'
+    limitCapacity: false // New state for capacity limit toggle
   });
 
   // Redirect if not logged in or not a manager
@@ -164,7 +165,8 @@ function Admin() {
       description: event.description,
       capacity: event.capacity,
       requireRSVP: event.requireRSVP !== undefined ? event.requireRSVP : true,
-      rsvpApprovalMode: event.rsvpApprovalMode || 'immediate'
+      rsvpApprovalMode: event.rsvpApprovalMode || 'immediate',
+      limitCapacity: event.limitCapacity !== undefined ? event.limitCapacity : false // Ensure limitCapacity is set
     });
     setShowEventModal(true);
   };
@@ -181,7 +183,8 @@ function Admin() {
       description: '',
       capacity: 40,
       requireRSVP: true,
-      rsvpApprovalMode: 'immediate'
+      rsvpApprovalMode: 'immediate',
+      limitCapacity: false // Reset limitCapacity to false
     });
   };
 
@@ -433,6 +436,12 @@ function Admin() {
     return null;
   }
 
+  // Add RSVP button with dynamic color based on pending RSVPs
+  const getRSVPButtonVariant = (eventId) => {
+    const pendingRSVPs = rsvps.filter(rsvp => rsvp.eventId === eventId && rsvp.status === 'pending');
+    return pendingRSVPs.length > 0 ? 'warning' : 'success';
+  };
+
   return (
     <div className="bg-light min-vh-100 py-5">
       <Container>
@@ -458,219 +467,101 @@ function Admin() {
           </Alert>
         )}
 
-        <Tabs activeKey={activeTab} onSelect={handleTabSelect} className="mb-4">
-          <Tab eventKey="events" title={<><FaCalendarAlt className="me-2" />Events</>}>
-            <Card className="border-0 shadow">
-              <Card.Body className="p-4">
-                <div className="d-flex justify-content-between align-items-center mb-4">
-                  <h3 className="mb-0">Manage Events</h3>
-                  <Button
-                    variant="primary"
-                    onClick={() => {
-                      resetEventForm();
-                      setShowEventModal(true);
-                    }}
-                  >
-                    <FaPlus className="me-2" />
-                    Add Event
-                  </Button>
-                </div>
+        <div className="mb-4">
+          <Button
+            variant="primary"
+            onClick={() => {
+              resetEventForm();
+              setShowEventModal(true);
+            }}
+          >
+            <FaPlus className="me-2" />
+            Add Event
+          </Button>
+        </div>
 
-                <Table responsive hover>
-                  <thead className="bg-light">
-                    <tr>
-                      <th onClick={() => handleEventSort('title')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                        Title {getSortIcon('title', eventSortConfig)}
-                      </th>
-                      <th onClick={() => handleEventSort('date')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                        Date {getSortIcon('date', eventSortConfig)}
-                      </th>
-                      <th onClick={() => handleEventSort('time')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                        Time {getSortIcon('time', eventSortConfig)}
-                      </th>
-                      <th onClick={() => handleEventSort('location')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                        Location {getSortIcon('location', eventSortConfig)}
-                      </th>
-                      <th onClick={() => handleEventSort('rsvpCount')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                        RSVPs {getSortIcon('rsvpCount', eventSortConfig)}
-                      </th>
-                      <th onClick={() => handleEventSort('capacity')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                        Capacity {getSortIcon('capacity', eventSortConfig)}
-                      </th>
-                      <th>Actions</th>
+        <Card className="border-0 shadow">
+          <Card.Body className="p-4">
+            <Table responsive hover>
+              <thead className="bg-light">
+                <tr>
+                  <th onClick={() => handleEventSort('title')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                    Title {getSortIcon('title', eventSortConfig)}
+                  </th>
+                  <th onClick={() => handleEventSort('date')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                    Date {getSortIcon('date', eventSortConfig)}
+                  </th>
+                  <th onClick={() => handleEventSort('time')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                    Time {getSortIcon('time', eventSortConfig)}
+                  </th>
+                  <th onClick={() => handleEventSort('location')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                    Location {getSortIcon('location', eventSortConfig)}
+                  </th>
+                  <th onClick={() => handleEventSort('rsvpCount')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                    RSVPs {getSortIcon('rsvpCount', eventSortConfig)}
+                  </th>
+                  <th onClick={() => handleEventSort('capacity')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                    Capacity {getSortIcon('capacity', eventSortConfig)}
+                  </th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedEvents.map(event => {
+                  const isPast = isEventPast(event.date);
+                  return (
+                    <tr key={event.id} style={{ opacity: isPast ? 0.5 : 1 }}>
+                      <td><strong>{event.title}</strong></td>
+                      <td>{formatEventDate(event.date)}</td>
+                      <td>{event.time}</td>
+                      <td>{event.location}</td>
+                      <td>
+                        {getTotalGuestsForEvent(event.id)} guests
+                        {' '}({getRSVPsForEvent(event.id).length} RSVPs)
+                      </td>
+                      <td>{event.capacity}</td>
+                      <td>
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          className="me-2"
+                          onClick={() => handleEditEvent(event)}
+                        >
+                          <FaEdit />
+                        </Button>
+                        <Button
+                          variant="outline-danger"
+                          size="sm"
+                          onClick={() => handleDeleteEvent(event.id)}
+                        >
+                          <FaTrash />
+                        </Button>
+                        <Button
+                          variant={getRSVPButtonVariant(event.id)}
+                          size="sm"
+                          onClick={() => {
+                            const eventNameSlug = event.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+                            navigate(`/admin/rsvps/${event.id}/${eventNameSlug}`);
+                          }}
+                          title="Manage RSVPs"
+                        >
+                          RSVPs
+                        </Button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {sortedEvents.map(event => {
-                      const isPast = isEventPast(event.date);
-                      return (
-                        <tr key={event.id} style={{ opacity: isPast ? 0.5 : 1 }}>
-                          <td><strong>{event.title}</strong></td>
-                          <td>{formatEventDate(event.date)}</td>
-                          <td>{event.time}</td>
-                          <td>{event.location}</td>
-                          <td>
-                            {getTotalGuestsForEvent(event.id)} guests
-                            {' '}({getRSVPsForEvent(event.id).length} RSVPs)
-                          </td>
-                          <td>{event.capacity}</td>
-                          <td>
-                          <Button
-                            variant="outline-primary"
-                            size="sm"
-                            className="me-2"
-                            onClick={() => handleEditEvent(event)}
-                          >
-                            <FaEdit />
-                          </Button>
-                          <Button
-                            variant="outline-danger"
-                            size="sm"
-                            onClick={() => handleDeleteEvent(event.id)}
-                          >
-                            <FaTrash />
-                          </Button>
-                        </td>
-                      </tr>
-                      );
-                    })}
-                  </tbody>
-                </Table>
+                  );
+                })}
+              </tbody>
+            </Table>
 
-                {events.length === 0 && (
-                  <div className="text-center text-muted py-5">
-                    <FaCalendarAlt size={50} className="mb-3" />
-                    <p>No events yet. Click "Add Event" to create your first event.</p>
-                  </div>
-                )}
-              </Card.Body>
-            </Card>
-          </Tab>
-
-          <Tab eventKey="rsvps" title={<><FaUsers className="me-2" />RSVPs</>}>
-            <Card className="border-0 shadow">
-              <Card.Body className="p-4">
-                <div className="d-flex justify-content-between align-items-center mb-4">
-                  <h3 className="mb-0">All RSVPs</h3>
-                  <Button
-                    variant="outline-secondary"
-                    size="sm"
-                    onClick={handleCleanupOrphanedRSVPs}
-                  >
-                    <FaTrash className="me-2" />
-                    Clean Up Orphaned RSVPs
-                  </Button>
-                </div>
-
-                <Table responsive hover>
-                  <thead className="bg-light">
-                    <tr>
-                      <th onClick={() => handleRsvpSort('eventTitle')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                        Event {getSortIcon('eventTitle', rsvpSortConfig)}
-                      </th>
-                      <th onClick={() => handleRsvpSort('eventDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                        Event Date {getSortIcon('eventDate', rsvpSortConfig)}
-                      </th>
-                      <th onClick={() => handleRsvpSort('name')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                        Name {getSortIcon('name', rsvpSortConfig)}
-                      </th>
-                      <th onClick={() => handleRsvpSort('email')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                        Email {getSortIcon('email', rsvpSortConfig)}
-                      </th>
-                      <th onClick={() => handleRsvpSort('phone')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                        Phone {getSortIcon('phone', rsvpSortConfig)}
-                      </th>
-                      <th onClick={() => handleRsvpSort('guests')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                        Guests {getSortIcon('guests', rsvpSortConfig)}
-                      </th>
-                      <th onClick={() => handleRsvpSort('status')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                        Status {getSortIcon('status', rsvpSortConfig)}
-                      </th>
-                      <th onClick={() => handleRsvpSort('dietaryRestrictions')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                        Dietary Restrictions {getSortIcon('dietaryRestrictions', rsvpSortConfig)}
-                      </th>
-                      <th onClick={() => handleRsvpSort('timestamp')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                        Date {getSortIcon('timestamp', rsvpSortConfig)}
-                      </th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedRsvps.map(rsvp => {
-                        const event = getEventForRSVP(rsvp);
-                        return (
-                          <tr key={rsvp.id}>
-                            <td><strong>{event?.title || rsvp.eventTitle}</strong></td>
-                            <td>
-                              {event?.date 
-                                ? formatEventDate(event.date)
-                                : '-'}
-                            </td>
-                            <td>{rsvp.name}</td>
-                            <td>{rsvp.email}</td>
-                            <td>{rsvp.phone || '-'}</td>
-                            <td className="text-center">{rsvp.guests}</td>
-                            <td>{getStatusBadge(rsvp.status)}</td>
-                            <td>{rsvp.dietaryRestrictions || '-'}</td>
-                            <td>
-                              {rsvp.timestamp?.toDate
-                                ? rsvp.timestamp.toDate().toLocaleDateString()
-                                : '-'}
-                            </td>
-                            <td>
-                              {(rsvp.status === 'pending' || rsvp.status === 'waitlist') && (
-                                <>
-                                  <Button
-                                    variant="success"
-                                    size="sm"
-                                    className="me-1"
-                                    onClick={() => handleApproveRSVP(rsvp.id)}
-                                    title="Approve RSVP"
-                                  >
-                                    <FaCheck />
-                                  </Button>
-                                  <Button
-                                    variant="danger"
-                                    size="sm"
-                                    onClick={() => handleRejectRSVP(rsvp.id)}
-                                    title="Reject RSVP"
-                                  >
-                                    <FaTimes />
-                                  </Button>
-                                </>
-                              )}
-                              {rsvp.status === 'approved' && (
-                                <span className="text-muted small">
-                                  <FaCheck className="text-success" /> Confirmed
-                                </span>
-                              )}
-                              {rsvp.status === 'rejected' && (
-                                <Button
-                                  variant="outline-success"
-                                  size="sm"
-                                  onClick={() => handleApproveRSVP(rsvp.id)}
-                                  title="Re-approve RSVP"
-                                >
-                                  <FaCheck /> Approve
-                                </Button>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </Table>
-
-                {sortedRsvps.length === 0 && (
-                  <div className="text-center text-muted py-5">
-                    <FaUsers size={50} className="mb-3" />
-                    <p>No RSVPs yet.</p>
-                  </div>
-                )}
-              </Card.Body>
-            </Card>
-          </Tab>
-        </Tabs>
+            {events.length === 0 && (
+              <div className="text-center text-muted py-5">
+                <FaCalendarAlt size={50} className="mb-3" />
+                <p>No events yet. Click "Add Event" to create your first event.</p>
+              </div>
+            )}
+          </Card.Body>
+        </Card>
       </Container>
 
       {/* Event Modal */}
@@ -777,19 +668,38 @@ function Admin() {
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label>Capacity *</Form.Label>
-              <Form.Control
-                type="number"
-                required
-                min="1"
-                value={eventForm.capacity}
-                onChange={(e) => setEventForm({ ...eventForm, capacity: parseInt(e.target.value) })}
+              <Form.Check
+                type="checkbox"
+                id="limitCapacity"
+                label="Limit Capacity"
+                checked={eventForm.limitCapacity}
+                onChange={() => setEventForm((prevForm) => ({
+                  ...prevForm,
+                  limitCapacity: !prevForm.limitCapacity
+                }))}
               />
             </Form.Group>
 
-            <hr className="my-4" />
+            {eventForm.limitCapacity && (
+              <Form.Group className="mb-3">
+                <Form.Label>Capacity *</Form.Label>
+                <Form.Control
+                  type="number"
+                  required
+                  min="1"
+                  value={eventForm.capacity}
+                  onChange={(e) => setEventForm({ ...eventForm, capacity: e.target.value })}
+                />
+                <Form.Text className="text-muted">Maximum number of guests</Form.Text>
+              </Form.Group>
+            )}
 
-            <h5 className="mb-3">RSVP Settings</h5>
+            <Form.Group className="mb-3">
+              <Form.Label>RSVP Settings</Form.Label>
+              <Form.Text className="text-muted">
+                Configure how RSVPs are handled for this event.
+              </Form.Text>
+            </Form.Group>
 
             <Form.Group className="mb-3">
               <Form.Check

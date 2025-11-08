@@ -10,9 +10,28 @@ service cloud.firestore {
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager');
     }
 
-    // RSVPs: public create, managers can read/update/delete
+    // RSVPs: public create and update (with validation), managers can read/update/delete
     match /rsvps/{rsvpId} {
-      allow create: if true;
+      // Anyone can create an RSVP as long as required fields are present and valid types
+      allow create: if
+        request.resource.data.keys().hasAll(['eventId','firstName','lastName','email','status','timestamp']) &&
+        request.resource.data.eventId is string &&
+        request.resource.data.firstName is string &&
+        request.resource.data.lastName is string &&
+        request.resource.data.email is string &&
+        request.resource.data.status in ['approved','pending','waitlist'] &&
+        request.resource.data.timestamp is timestamp;
+      
+      // Allow users to update their own RSVP by email match
+      allow update: if
+        request.resource.data.email == resource.data.email &&
+        request.resource.data.keys().hasAll(['eventId','firstName','lastName','email','status']) &&
+        request.resource.data.eventId == resource.data.eventId;
+      
+      // Allow users to delete their own RSVP by email match
+      allow delete: if resource.data.email == request.resource.data.email;
+      
+      // Managers and admins can read, update, delete all RSVPs
       allow read, update, delete: if request.auth != null &&
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager');
