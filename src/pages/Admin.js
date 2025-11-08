@@ -202,10 +202,6 @@ function Admin() {
     return eventRSVPs.reduce((total, rsvp) => total + (rsvp.guests || 1), 0);
   };
 
-  const getEventForRSVP = (rsvp) => {
-    return events.find(event => event.id === rsvp.eventId);
-  };
-
   const isEventPast = (eventDate) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
