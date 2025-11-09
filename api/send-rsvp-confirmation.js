@@ -143,9 +143,9 @@ module.exports = async function handler(req, res) {
     const resend = new Resend(process.env.RESEND_API_KEY);
 
     // Build from address. Prefer a verified single-sender email if provided.
-    const senderEmail = process.env.SENDER_EMAIL; // e.g. 'you@example.com'
+    const senderEmail = process.env.SENDER_EMAIL || 'info@bcbayit.org';
     const senderName = process.env.SENDER_NAME || 'Backcountry Bayit';
-    const fromAddress = senderEmail ? `${senderName} <${senderEmail}>` : 'Backcountry Bayit <noreply@bcbayit.org>';
+    const fromAddress = `${senderName} <${senderEmail}>`;
     console.log('Using from address:', fromAddress);
 
     // Send email using Resend
