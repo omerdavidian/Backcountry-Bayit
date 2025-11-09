@@ -215,7 +215,8 @@ function Admin() {
             time: '6:30 PM',
             location: 'BCB Community Center, Frisco'
           },
-          status: 'approved'
+          status: 'approved',
+          dryRun: true // don't send real email during local/live quick tests
         })
       });
 
