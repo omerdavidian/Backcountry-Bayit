@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row, Col, Card, Button, Modal, Form, Alert } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { FaStar, FaCalendarAlt, FaHeart, FaUsers, FaMapMarkerAlt, FaClock } from 'react-icons/fa';
-import { collection, getDocs, query, orderBy, where, addDoc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, where, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 // ScrollingGallery component for continuous leftward movement with infinite loop
@@ -107,6 +107,7 @@ function Home() {
   const [scrollLeft, setScrollLeft] = useState(0);
   const [showRSVPModal, setShowRSVPModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [existingRSVP, setExistingRSVP] = useState(null);
   const [rsvpData, setRSVPData] = useState({
     firstName: '',
     lastName: '',
@@ -144,10 +145,25 @@ function Home() {
       );
       const existingRSVPs = await getDocs(q);
 
-      if (!existingRSVPs.empty) {
+      if (!existingRSVPs.empty && !existingRSVP) {
+        // Found existing RSVP, load it and show update options
+        const existingDoc = existingRSVPs.docs[0];
+        const existingData = existingDoc.data();
+        setExistingRSVP({ id: existingDoc.id, ...existingData });
+        
+        // Pre-populate the form with existing data
+        setRSVPData({
+          firstName: existingData.firstName || '',
+          lastName: existingData.lastName || '',
+          email: existingData.email || '',
+          phone: existingData.phone || '',
+          attendees: existingData.attendees || [],
+          dietaryRestrictions: existingData.dietaryRestrictions || ''
+        });
+        
         setRsvpStatus({
           show: true,
-          message: 'You already have an RSVP for this event.',
+          message: `You already have an RSVP for this event. You can update your information below or unregister.`,
           type: 'info'
         });
         return;
@@ -176,7 +192,6 @@ function Home() {
         }
       }
 
-      // Capacity handling similar to Events page
       const allRSVPsQuery = query(
         rsvpsCollection,
         where('eventId', '==', selectedEvent.id)
@@ -185,9 +200,12 @@ function Home() {
 
       let totalApprovedGuests = 0;
       allRSVPsSnapshot.forEach((doc) => {
-        const r = doc.data();
-        if (r.status === 'approved' || (r.status === undefined && selectedEvent.rsvpApprovalMode === 'immediate')) {
-          totalApprovedGuests += 1 + (r.attendees?.length || 0);
+        const rsvp = doc.data();
+        // Skip the current user's existing RSVP when calculating capacity
+        if (existingRSVP && doc.id === existingRSVP.id) return;
+        
+        if (rsvp.status === 'approved' || (rsvp.status === undefined && selectedEvent.rsvpApprovalMode === 'immediate')) {
+          totalApprovedGuests += 1 + (rsvp.attendees?.length || 0);
         }
       });
 
@@ -195,17 +213,21 @@ function Home() {
       const capacity = selectedEvent.capacity || 40;
       const isOverCapacity = selectedEvent.limitCapacity && (totalApprovedGuests + requestedGuests > capacity);
 
-      let computedStatus = 'approved';
-      let statusMessage = 'Thank you for your RSVP! We look forward to seeing you.';
+      let rsvpStatus = 'approved';
+      let statusMessage = existingRSVP 
+        ? 'Your RSVP has been updated successfully!' 
+        : 'Thank you for your RSVP! We look forward to seeing you.';
       let statusType = 'success';
 
       if (selectedEvent.rsvpApprovalMode === 'approval') {
-        computedStatus = 'pending';
-        statusMessage = 'Your RSVP has been submitted and is awaiting approval. You\'ll receive an email once approved.';
+        rsvpStatus = existingRSVP?.status || 'pending';
+        statusMessage = existingRSVP
+          ? 'Your RSVP has been updated successfully!'
+          : 'Your RSVP has been submitted and is awaiting approval from our team. You will receive confirmation via email.';
         statusType = 'info';
       } else if (isOverCapacity) {
-        computedStatus = 'waitlist';
-        statusMessage = `This event has reached capacity (${capacity}). You're on the waitlist and will be notified if space opens.`;
+        rsvpStatus = 'waitlist';
+        statusMessage = `We're sorry, but this event has reached capacity (${capacity} guests). Your RSVP has been added to the waitlist, and you'll be notified if space becomes available.`;
         statusType = 'warning';
       }
 
@@ -219,19 +241,26 @@ function Home() {
         phone: rsvpData.phone,
         attendees: rsvpData.attendees,
         dietaryRestrictions: rsvpData.dietaryRestrictions || '',
-        status: computedStatus,
-        timestamp: new Date(),
+        status: rsvpStatus,
+        timestamp: existingRSVP ? existingRSVP.timestamp : new Date(),
         updatedAt: new Date()
       };
 
-      await addDoc(rsvpsCollection, rsvpDataToSave);
+      if (existingRSVP) {
+        // Update existing RSVP
+        await updateDoc(doc(db, 'rsvps', existingRSVP.id), rsvpDataToSave);
+      } else {
+        // Create new RSVP
+        await addDoc(rsvpsCollection, rsvpDataToSave);
+      }
 
       // Send confirmation email
       try {
         const { sendRSVPConfirmationEmail } = await import('../utils/emailService');
-        await sendRSVPConfirmationEmail(rsvpData, selectedEvent, computedStatus);
+        await sendRSVPConfirmationEmail(rsvpData, selectedEvent, rsvpStatus);
       } catch (emailError) {
         console.error('Error sending confirmation email:', emailError);
+        // Don't fail the RSVP if email fails
       }
 
       setRsvpStatus({
@@ -248,11 +277,13 @@ function Home() {
         attendees: [],
         dietaryRestrictions: ''
       });
+      
+      setExistingRSVP(null);
 
       setTimeout(() => {
         setShowRSVPModal(false);
         setRsvpStatus({ show: false, message: '', type: '' });
-      }, 3000);
+      }, 4000);
     } catch (error) {
       console.error('Error submitting RSVP:', error);
       setRsvpStatus({
@@ -263,6 +294,79 @@ function Home() {
     }
   };
 
+  const handleUnregister = async () => {
+    if (!existingRSVP) return;
+    
+    if (window.confirm('Are you sure you want to unregister from this event?')) {
+      try {
+        await deleteDoc(doc(db, 'rsvps', existingRSVP.id));
+        
+        setRsvpStatus({
+          show: true,
+          message: 'You have been successfully unregistered from this event.',
+          type: 'success'
+        });
+        
+        setRSVPData({
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: '',
+          attendees: [],
+          dietaryRestrictions: ''
+        });
+        
+        setExistingRSVP(null);
+        
+        setTimeout(() => {
+          setShowRSVPModal(false);
+          setRsvpStatus({ show: false, message: '', type: '' });
+        }, 2000);
+      } catch (error) {
+        console.error('Error unregistering:', error);
+        setRsvpStatus({
+          show: true,
+          message: 'Error unregistering. Please try again or contact us directly.',
+          type: 'danger'
+        });
+      }
+    }
+  };
+
+  // Load saved user information from localStorage
+  const loadSavedUserInfo = () => {
+    try {
+      const savedInfo = localStorage.getItem('bcb_user_info');
+      if (savedInfo) {
+        const userInfo = JSON.parse(savedInfo);
+        setRSVPData({
+          firstName: userInfo.firstName || '',
+          lastName: userInfo.lastName || '',
+          email: userInfo.email || '',
+          phone: userInfo.phone || '',
+          attendees: [],
+          dietaryRestrictions: ''
+        });
+      }
+    } catch (error) {
+      console.error('Error loading saved user info:', error);
+    }
+  };
+
+  // Save user information to localStorage
+  const saveUserInfo = (data) => {
+    try {
+      const userInfo = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone
+      };
+      localStorage.setItem('bcb_user_info', JSON.stringify(userInfo));
+    } catch (error) {
+      console.error('Error saving user info:', error);
+    }
+  };
 
   // Mouse/Touch drag handlers
   const handleMouseDown = (e) => {
@@ -709,6 +813,9 @@ function Home() {
                               className="w-100"
                               onClick={() => {
                                 setSelectedEvent(event);
+                                setExistingRSVP(null);
+                                setRsvpStatus({ show: false, message: '', type: '' });
+                                loadSavedUserInfo();
                                 setShowRSVPModal(true);
                               }}
                             >
@@ -823,17 +930,15 @@ function Home() {
       </section>
 
       {/* RSVP Modal */}
-      <Modal show={showRSVPModal} onHide={() => setShowRSVPModal(false)} size="lg">
+      <Modal show={showRSVPModal} onHide={() => {
+        setShowRSVPModal(false);
+        setExistingRSVP(null);
+        setRsvpStatus({ show: false, message: '', type: '' });
+      }} size="lg">
         <Modal.Header closeButton>
           <Modal.Title>RSVP for {selectedEvent?.title}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {rsvpStatus.type && (
-            <Alert variant={rsvpStatus.type} className="mb-4">
-              {rsvpStatus.message}
-            </Alert>
-          )}
-
           {selectedEvent && (
             <div className="mb-4 p-3 bg-light rounded">
               <h5 className="mb-3">{selectedEvent.title}</h5>
@@ -996,7 +1101,9 @@ function Home() {
                 label="Remember my information for future RSVPs"
                 defaultChecked={!!localStorage.getItem('bcb_user_info')}
                 onChange={(e) => {
-                  if (!e.target.checked) {
+                  if (e.target.checked) {
+                    saveUserInfo(rsvpData);
+                  } else {
                     localStorage.removeItem('bcb_user_info');
                   }
                 }}
@@ -1008,12 +1115,27 @@ function Home() {
 
             <div className="d-flex gap-2">
               <Button variant="primary" type="submit" size="lg">
-                Submit RSVP
+                {existingRSVP ? 'Update RSVP' : 'Submit RSVP'}
               </Button>
-              <Button variant="secondary" onClick={() => setShowRSVPModal(false)} size="lg">
+              {existingRSVP && (
+                <Button variant="danger" onClick={handleUnregister} size="lg">
+                  Unregister
+                </Button>
+              )}
+              <Button variant="secondary" onClick={() => {
+                setShowRSVPModal(false);
+                setExistingRSVP(null);
+                setRsvpStatus({ show: false, message: '', type: '' });
+              }} size="lg">
                 Cancel
               </Button>
             </div>
+
+            {rsvpStatus.show && (
+              <Alert variant={rsvpStatus.type} className="mt-4 mb-0">
+                {rsvpStatus.message}
+              </Alert>
+            )}
           </Form>
         </Modal.Body>
       </Modal>
