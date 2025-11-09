@@ -193,6 +193,52 @@ function Admin() {
     }
   };
 
+  const handleTestEmail = async () => {
+    try {
+      setAlert({ show: true, message: 'Sending test email...', type: 'info' });
+
+      const response = await fetch('/api/send-rsvp-confirmation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          rsvpData: {
+            firstName: 'Test',
+            lastName: 'User',
+            email: 'omer.davidian@bcbayit.org',
+            dietaryRestrictions: 'None'
+          },
+          eventData: {
+            title: 'Test Event',
+            date: 'December 31, 2023',
+            time: '6:30 PM',
+            location: 'BCB Community Center, Frisco'
+          },
+          status: 'approved'
+        })
+      });
+
+      const rawBody = await response.text();
+      let result;
+      try {
+        result = rawBody ? JSON.parse(rawBody) : {};
+      } catch (parseError) {
+        result = { error: rawBody || parseError.message };
+      }
+      console.log('API Response:', result);
+
+      if (response.ok) {
+        setAlert({ show: true, message: 'Test email sent successfully! Check your inbox.', type: 'success' });
+      } else {
+        setAlert({ show: true, message: `Failed to send test email: ${result.error || 'Unknown error'}`, type: 'danger' });
+      }
+    } catch (error) {
+      console.error('Error sending test email:', error);
+      setAlert({ show: true, message: `Error sending test email: ${error.message}`, type: 'danger' });
+    }
+  };
+
   const getRSVPsForEvent = (eventId) => {
     return rsvps.filter(rsvp => rsvp.eventId === eventId);
   };
@@ -295,10 +341,15 @@ function Admin() {
             <h1 className="fw-bold">Event Management</h1>
             <p className="text-muted mb-0">Welcome, {currentUser.email}</p>
           </div>
-          <Button variant="outline-danger" onClick={handleLogout}>
-            <FaSignOutAlt className="me-2" />
-            Logout
-          </Button>
+          <div>
+            <Button variant="outline-danger" onClick={handleLogout}>
+              <FaSignOutAlt className="me-2" />
+              Logout
+            </Button>
+            <Button variant="secondary" className="ms-2" onClick={handleTestEmail}>
+              Send Test Email
+            </Button>
+          </div>
         </div>
 
         {alert.show && (

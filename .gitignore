@@ -34,3 +34,4 @@ firebase-debug.log
 *.swp
 *.swo
 *~
+.vercel
