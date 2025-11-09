@@ -155,13 +155,19 @@ module.exports = async function handler(req, res) {
     }
     const resend = new Resend(process.env.RESEND_API_KEY);
 
+    // Build from address. Prefer a verified single-sender email if provided.
+    const senderEmail = process.env.SENDER_EMAIL; // e.g. 'you@example.com'
+    const senderName = process.env.SENDER_NAME || 'Backcountry Bayit';
+    const fromAddress = senderEmail ? `${senderName} <${senderEmail}>` : 'Backcountry Bayit <noreply@bcbayit.org>';
+    console.log('Using from address:', fromAddress);
+
     // Send email using Resend
     const data = await resend.emails.send({
-      from: 'Backcountry Bayit <noreply@bcbayit.org>',
+      from: fromAddress,
       to,
       subject: subject,
       html: htmlContent,
-      reply_to: 'info@bcbayit.org'
+      reply_to: process.env.REPLY_TO || 'info@bcbayit.org'
     });
 
     return res.status(200).json({ success: true, data });

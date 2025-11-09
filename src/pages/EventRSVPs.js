@@ -14,6 +14,14 @@ function EventRSVPs() {
   const [statusMessage, setStatusMessage] = useState({ show: false, message: '', type: '' });
   const [sortConfig, setSortConfig] = useState({ key: 'timestamp', direction: 'desc' });
 
+  // Count approved guests (primary + additional attendees)
+  const approvedGuestsCount = rsvps.reduce((sum, r) => {
+    if (r.status === 'approved') {
+      return sum + 1 + (Array.isArray(r.attendees) ? r.attendees.length : 0);
+    }
+    return sum;
+  }, 0);
+
   useEffect(() => {
     const fetchEventAndRSVPs = async () => {
       try {
@@ -141,9 +149,12 @@ function EventRSVPs() {
     <Container className="mt-5 py-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1 className="fw-bold">RSVPs for {event?.title || 'Loading...'}</h1>
-        <Button variant="outline-secondary" onClick={() => navigate('/admin')}>
-          Back to Admin
-        </Button>
+        <div className="d-flex align-items-center">
+          <div className="me-3 text-muted small">Approved guests: <strong>{approvedGuestsCount}</strong></div>
+          <Button variant="outline-secondary" onClick={() => navigate('/admin')}>
+            Back to Admin
+          </Button>
+        </div>
       </div>
 
       {statusMessage.show && (
