@@ -22,7 +22,7 @@ module.exports = async function handler(req, res) {
     console.log('Received request body:', req.body);
     console.log('RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
 
-  const { rsvpData, eventData, status, dryRun } = req.body;
+  const { rsvpData, eventData, status } = req.body;
 
     // Validate required fields
     if (!rsvpData || !eventData || !status) {
@@ -30,22 +30,7 @@ module.exports = async function handler(req, res) {
     }
 
 
-    // If dryRun is true, skip the actual send and return the prepared payload.
-    if (dryRun === true) {
-      console.log('Dry run requested - skipping actual email send.');
-      const simulatedPayload = {
-        to: Array.from(new Set([...(rsvpData.email ? [rsvpData.email] : []), ...(Array.isArray(rsvpData.attendees) ? rsvpData.attendees.map(a => a.email).filter(Boolean) : [])])),
-        subject: `RSVP (${status}): ${eventData.title}`,
-        htmlPreview: `Preview available in logs`,
-        totalGuests: 1 + (Array.isArray(rsvpData.attendees) ? rsvpData.attendees.length : 0)
-      };
-      return res.status(200).json({ success: true, dryRun: true, payload: simulatedPayload });
-    }
-
-    // Build primary registrant name
-    const primaryName = `${(rsvpData.firstName || rsvpData.name || '').trim()} ${(rsvpData.lastName || '').trim()}`.trim() || 'Guest';
-
-    // Build recipients list (primary + any additional attendee emails)
+    // Collect all recipient emails (primary + attendees)
     const recipients = new Set();
     if (rsvpData.email) recipients.add(rsvpData.email);
     if (Array.isArray(rsvpData.attendees)) {
@@ -53,7 +38,6 @@ module.exports = async function handler(req, res) {
         if (a && a.email) recipients.add(a.email);
       });
     }
-
     const to = Array.from(recipients);
 
     const totalGuests = 1 + (Array.isArray(rsvpData.attendees) ? rsvpData.attendees.length : 0);
