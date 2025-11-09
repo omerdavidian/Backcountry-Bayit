@@ -42,9 +42,12 @@ module.exports = async function handler(req, res) {
 
     const totalGuests = 1 + (Array.isArray(rsvpData.attendees) ? rsvpData.attendees.length : 0);
 
-    // Build attendees HTML block
-    const attendeeLines = [];
-    attendeeLines.push(`<p><strong>Primary registrant:</strong> ${primaryName}${rsvpData.email ? ` &nbsp;(${rsvpData.email})` : ''}</p>`);
+  // Get primary registrant name
+  const primaryName = `${(rsvpData.firstName || '').trim()} ${(rsvpData.lastName || '').trim()}`.trim() || 'Guest';
+
+  // Build attendees HTML block
+  const attendeeLines = [];
+  attendeeLines.push(`<p><strong>Primary registrant:</strong> ${primaryName}${rsvpData.email ? ` &nbsp;(${rsvpData.email})` : ''}</p>`);
     if (Array.isArray(rsvpData.attendees) && rsvpData.attendees.length > 0) {
       attendeeLines.push('<p><strong>Additional attendees:</strong></p>');
       attendeeLines.push('<ul>');
