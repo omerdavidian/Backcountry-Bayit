@@ -353,20 +353,7 @@ function Home() {
     }
   };
 
-  // Save user information to localStorage
-  const saveUserInfo = (data) => {
-    try {
-      const userInfo = {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
-        phone: data.phone
-      };
-      localStorage.setItem('bcb_user_info', JSON.stringify(userInfo));
-    } catch (error) {
-      console.error('Error saving user info:', error);
-    }
-  };
+  // Intentionally no saveUserInfo function; we no longer persist user info from this form.
 
   // Mouse/Touch drag handlers
   const handleMouseDown = (e) => {
