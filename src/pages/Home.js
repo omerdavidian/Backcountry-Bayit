@@ -136,7 +136,7 @@ function Home() {
         return;
       }
 
-      // Check if this email already has an RSVP for this event
+      // Check if this email already has an RSVP for this event (as primary)
       const q = query(
         rsvpsCollection,
         where('eventId', '==', selectedEvent.id),
@@ -151,6 +151,29 @@ function Home() {
           type: 'info'
         });
         return;
+      }
+
+      // Check if this email is registered as an attendee under someone else
+      const allEventRSVPsQuery = query(
+        rsvpsCollection,
+        where('eventId', '==', selectedEvent.id)
+      );
+      const allEventRSVPs = await getDocs(allEventRSVPsQuery);
+      
+      for (const doc of allEventRSVPs.docs) {
+        const rsvp = doc.data();
+        if (Array.isArray(rsvp.attendees)) {
+          const foundAsAttendee = rsvp.attendees.find(att => att.email === rsvpData.email);
+          if (foundAsAttendee) {
+            const primaryName = `${rsvp.firstName || ''} ${rsvp.lastName || ''}`.trim() || 'Unknown';
+            setRsvpStatus({
+              show: true,
+              message: `This email (${rsvpData.email}) is already registered for this event as an additional guest under ${primaryName} (${rsvp.email}). If you need to make changes, please contact the person who registered you.`,
+              type: 'warning'
+            });
+            return;
+          }
+        }
       }
 
       // Capacity handling similar to Events page
