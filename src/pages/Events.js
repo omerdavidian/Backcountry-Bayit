@@ -1020,9 +1020,6 @@ function Events() {
                 name="email"
               />
             </Form.Group>
-            <div className="text-warning small mb-3">
-              <strong>!</strong> To unregister, fill in the same information you registered with and press submit.
-            </div>
 
             <Form.Group className="mb-3">
               <Form.Label>Phone Number</Form.Label>
@@ -1134,6 +1131,9 @@ function Events() {
                 {rsvpStatus.message}
               </Alert>
             )}
+            <div className="small mt-4" style={{color:'rgba(108,117,125,0.75)'}}>
+              <strong style={{marginRight:'4px'}}>!</strong> To unregister, fill in the same information you registered with and press submit.
+            </div>
           </Form>
         </Modal.Body>
       </Modal>
