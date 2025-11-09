@@ -1020,6 +1020,9 @@ function Events() {
                 name="email"
               />
             </Form.Group>
+            <div className="text-warning small mb-3">
+              <strong>!</strong> To unregister, fill in the same information you registered with and press submit.
+            </div>
 
             <Form.Group className="mb-3">
               <Form.Label>Phone Number</Form.Label>
@@ -1106,22 +1109,7 @@ function Events() {
               Add Another Person
             </Button>
 
-            <Form.Group className="mb-3">
-              <Form.Check
-                type="checkbox"
-                id="remember-info"
-                label="Remember my information for future RSVPs"
-                defaultChecked={!!localStorage.getItem('bcb_user_info')}
-                onChange={(e) => {
-                  if (!e.target.checked) {
-                    localStorage.removeItem('bcb_user_info');
-                  }
-                }}
-              />
-              <Form.Text className="text-muted">
-                Your information is saved locally on your device
-              </Form.Text>
-            </Form.Group>
+            {/* Removed remember-info checkbox and helper text per request */}
 
             <div className="d-flex gap-2">
               <Button variant="primary" type="submit" size="lg">
