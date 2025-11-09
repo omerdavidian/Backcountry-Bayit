@@ -182,7 +182,7 @@ function Home() {
         statusType = 'info';
       } else if (isOverCapacity) {
         computedStatus = 'waitlist';
-        statusMessage = `This event has reached capacity (${capacity}). You\'re on the waitlist and will be notified if space opens.`;
+        statusMessage = `This event has reached capacity (${capacity}). You're on the waitlist and will be notified if space opens.`;
         statusType = 'warning';
       }
 
