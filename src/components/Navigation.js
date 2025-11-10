@@ -151,7 +151,7 @@ function Navigation() {
                       onClick={() => setExpanded(false)}
                     >
                       <FaUserShield size={20} className="me-1" />
-                      Admin
+                      {isAdmin ? 'Admin' : (userRole === 'manager' ? 'Manager' : 'Admin')}
                     </Nav.Link>
                     <Button
                       variant="outline-danger"
