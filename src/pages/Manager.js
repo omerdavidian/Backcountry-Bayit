@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Card, Button, Table, Modal, Form, Alert, Badge } from 'react-bootstrap';
+import { Container, Card, Button, Table, Modal, Form, Alert, Badge, Nav, Row, Col } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
@@ -197,39 +197,39 @@ function Manager() {
   }
 
   return (
-    <div className="bg-light min-vh-100 py-4">
-      <Container>
-        {/* Header */}
+    <div className="bg-light min-vh-100 py-5">
+      <Container fluid>
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
-            <h1 className="mb-1">
-              <FaUsers className="me-2 text-primary" />
-              Manager Dashboard
-            </h1>
-            <p className="text-muted mb-0">
-              Welcome, {currentUser.email} | Role: <Badge bg="primary">{userRole}</Badge>
-            </p>
+            <h1 className="fw-bold">Manager Dashboard</h1>
+            <p className="text-muted mb-0">Welcome, {currentUser.email} | Role: <Badge bg="primary">{userRole}</Badge></p>
           </div>
-          <Button variant="outline-danger" onClick={handleLogout}>
-            <FaSignOutAlt className="me-2" />
-            Logout
-          </Button>
+          <div>
+            <Button variant="outline-danger" onClick={handleLogout}>
+              <FaSignOutAlt className="me-2" /> Logout
+            </Button>
+          </div>
         </div>
 
         {alert.show && (
-          <Alert variant={alert.type} dismissible onClose={() => setAlert({ show: false, message: '', type: '' })}>
+          <Alert variant={alert.type} onClose={() => setAlert({ show: false, message: '', type: '' })} dismissible className="mb-4">
             {alert.message}
           </Alert>
         )}
 
-        {/* Events Section */}
-        <Card className="mb-4 border-0 shadow-sm">
-          <Card.Header className="bg-white py-3">
-            <div className="d-flex justify-content-between align-items-center">
-              <h4 className="mb-0">
-                <FaCalendarAlt className="me-2 text-primary" />
-                Manage Events
-              </h4>
+        <Row>
+          <Col md={2}>
+            <Nav variant="pills" className="flex-column" style={{ position: 'sticky', top: '20px' }}>
+              <Nav.Item>
+                <Nav.Link active>
+                  <FaCalendarAlt className="me-2" /> Events
+                </Nav.Link>
+              </Nav.Item>
+            </Nav>
+          </Col>
+
+          <Col md={10}>
+            <div className="mb-4 d-flex gap-2">
               <Button
                 variant="primary"
                 onClick={() => {
@@ -238,106 +238,60 @@ function Manager() {
                   setShowEventModal(true);
                 }}
               >
-                <FaPlus className="me-2" />
-                Create Event
+                <FaPlus className="me-2" /> Add Event
               </Button>
             </div>
-          </Card.Header>
-          <Card.Body>
-            {events.length === 0 ? (
-              <p className="text-muted text-center py-4">No events yet. Create your first event!</p>
-            ) : (
-              <Table responsive hover>
-                <thead>
-                  <tr>
-                    <th>Event</th>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Location</th>
-                    <th>Capacity</th>
-                    <th>RSVPs</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {events.map(event => (
-                    <tr key={event.id}>
-                      <td><strong>{event.title}</strong></td>
-                      <td>{new Date(event.date).toLocaleDateString()}</td>
-                      <td>{event.time}</td>
-                      <td>{event.location}</td>
-                      <td>{event.capacity}</td>
-                      <td>
-                        <Badge bg="info">
-                          {rsvps.filter(r => r.eventId === event.id).length} RSVPs
-                        </Badge>
-                      </td>
-                      <td>
-                        <Button
-                          variant="outline-primary"
-                          size="sm"
-                          className="me-2"
-                          onClick={() => handleEditEvent(event)}
-                        >
-                          <FaEdit />
-                        </Button>
-                        <Button
-                          variant="outline-danger"
-                          size="sm"
-                          onClick={() => handleDeleteEvent(event.id)}
-                        >
-                          <FaTrash />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            )}
-          </Card.Body>
-        </Card>
 
-        {/* RSVPs Summary */}
-        <Card className="border-0 shadow-sm">
-          <Card.Header className="bg-white py-3">
-            <h4 className="mb-0">
-              <FaUsers className="me-2 text-primary" />
-              Recent RSVPs
-            </h4>
-          </Card.Header>
-          <Card.Body>
-            {rsvps.length === 0 ? (
-              <p className="text-muted text-center py-4">No RSVPs yet.</p>
-            ) : (
-              <Table responsive hover>
-                <thead>
-                  <tr>
-                    <th>Event</th>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Guests</th>
-                    <th>Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rsvps.slice(0, 10).map(rsvp => (
-                    <tr key={rsvp.id}>
-                      <td><strong>{rsvp.eventTitle}</strong></td>
-                      <td>{rsvp.name}</td>
-                      <td>{rsvp.email}</td>
-                      <td>{rsvp.guests}</td>
-                      <td>
-                        {rsvp.timestamp?.toDate
-                          ? rsvp.timestamp.toDate().toLocaleDateString()
-                          : '-'}
-                      </td>
+            <Card className="border-0 shadow">
+              <Card.Body className="p-4">
+                <Table responsive hover>
+                  <thead className="bg-light">
+                    <tr>
+                      <th>Title</th>
+                      <th>Date</th>
+                      <th>Time</th>
+                      <th>Location</th>
+                      <th>RSVPs</th>
+                      <th>Capacity</th>
+                      <th>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </Table>
-            )}
-          </Card.Body>
-        </Card>
+                  </thead>
+                  <tbody>
+                    {events.map(event => (
+                      <tr key={event.id}>
+                        <td><strong>{event.title}</strong></td>
+                        <td>{new Date(event.date).toLocaleDateString()}</td>
+                        <td>{event.time}</td>
+                        <td>{event.location}</td>
+                        <td>{rsvps.filter(r => r.eventId === event.id).length} RSVPs</td>
+                        <td>{event.capacity}</td>
+                        <td>
+                          <Button variant="outline-primary" size="sm" className="me-2" onClick={() => handleEditEvent(event)}>
+                            <FaEdit />
+                          </Button>
+                          <Button variant="outline-danger" size="sm" onClick={() => handleDeleteEvent(event.id)}>
+                            <FaTrash />
+                          </Button>
+                          <Button variant="success" size="sm" className="ms-2" onClick={() => {
+                            const eventNameSlug = event.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+                            navigate(`/admin/rsvps/${event.id}/${eventNameSlug}`);
+                          }}>RSVPs</Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+
+                {events.length === 0 && (
+                  <div className="text-center text-muted py-5">
+                    <FaCalendarAlt size={50} className="mb-3" />
+                    <p>No events yet. Click "Add Event" to create your first event.</p>
+                  </div>
+                )}
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
       </Container>
 
       {/* Event Modal */}
