@@ -134,6 +134,24 @@ module.exports = async function handler(req, res) {
       `;
     }
 
+    // Emergency guard: prevent accidental email sends in production unless explicitly enabled.
+    // To enable sends in production set ALLOW_EMAILS=true in your environment (Vercel project settings).
+    const allowEmails = process.env.ALLOW_EMAILS === 'true';
+    if (process.env.NODE_ENV === 'production' && !allowEmails) {
+      console.warn('Email sending blocked: ALLOW_EMAILS is not set to "true" in production');
+      // Log request details to help trace the caller (avoid logging full PII to production logs in long-term).
+      console.log('Blocked email request summary:', {
+        subjectPreview: eventData && eventData.title ? eventData.title : null,
+        toCount: Array.isArray(rsvpData && rsvpData.attendees) ? 1 + rsvpData.attendees.length : (rsvpData && rsvpData.email) ? 1 : 0,
+        headers: {
+          origin: req.headers && req.headers.origin,
+          referer: req.headers && req.headers.referer,
+          forwardedFor: req.headers && req.headers['x-forwarded-for']
+        },
+      });
+      return res.status(503).json({ error: 'Email sending is disabled in this environment' });
+    }
+
     // Lazily require Resend so local tests can skip installing the lib.
     const { Resend } = require('resend');
     if (!process.env.RESEND_API_KEY) {

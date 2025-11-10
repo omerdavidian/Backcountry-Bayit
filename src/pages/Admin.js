@@ -226,52 +226,6 @@ function Admin() {
     }
   };
 
-  const handleTestEmail = async () => {
-    try {
-      setAlert({ show: true, message: 'Sending test email...', type: 'info' });
-
-      const response = await fetch('/api/send-rsvp-confirmation', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          rsvpData: {
-            firstName: 'Test',
-            lastName: 'User',
-            email: 'omer.davidian@bcbayit.org',
-            dietaryRestrictions: 'None'
-          },
-          eventData: {
-            title: 'Test Event',
-            date: 'December 31, 2023',
-            time: '6:30 PM',
-            location: 'BCB Community Center, Frisco'
-          },
-          status: 'approved'
-        })
-      });
-
-      const rawBody = await response.text();
-      let result;
-      try {
-        result = rawBody ? JSON.parse(rawBody) : {};
-      } catch (parseError) {
-        result = { error: rawBody || parseError.message };
-      }
-      console.log('API Response:', result);
-
-      if (response.ok) {
-        setAlert({ show: true, message: 'Test email sent successfully! Check your inbox.', type: 'success' });
-      } else {
-        setAlert({ show: true, message: `Failed to send test email: ${result.error || 'Unknown error'}`, type: 'danger' });
-      }
-    } catch (error) {
-      console.error('Error sending test email:', error);
-      setAlert({ show: true, message: `Error sending test email: ${error.message}`, type: 'danger' });
-    }
-  };
-
   const handleManagerSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -559,9 +513,7 @@ function Admin() {
                     <FaPlus className="me-2" />
                     Add Event
                   </Button>
-                  <Button variant="secondary" onClick={handleTestEmail}>
-                    Send Test Email
-                  </Button>
+                  {/* Test email button removed to prevent sending non-production emails */}
                 </div>
 
                 <Card className="border-0 shadow">
