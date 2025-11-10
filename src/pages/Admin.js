@@ -4,31 +4,38 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaSort, FaSortUp, FaSortDown, FaUserPlus } from 'react-icons/fa';
 import LocationAutocomplete from '../components/LocationAutocomplete';
+import EventFormFields from '../components/EventFormFields';
 
 function Admin() {
-  const { currentUser, logout, isManager } = useAuth();
+  const { currentUser, logout, isManager, isAdmin } = useAuth();
   const navigate = useNavigate();
-  // location is unused in this component
   const [events, setEvents] = useState([]);
   const [rsvps, setRSVPs] = useState([]);
   const [showEventModal, setShowEventModal] = useState(false);
+  const [showManagerModal, setShowManagerModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [alert, setAlert] = useState({ show: false, message: '', type: '' });
   const [eventSortConfig, setEventSortConfig] = useState({ key: 'date', direction: 'asc' });
+  const [managerForm, setManagerForm] = useState({
+    email: '',
+    password: '',
+    displayName: ''
+  });
   const [eventForm, setEventForm] = useState({
     title: '',
     date: '',
     hour: '6',
     minute: '30',
-    ampm: 'PM',
+    period: 'PM',
     location: 'BCB Community Center, Frisco',
     description: '',
     capacity: 40,
-    requireRSVP: true,
-    rsvpApprovalMode: 'immediate', // 'immediate' or 'approval'
-    limitCapacity: false // New state for capacity limit toggle
+    rsvpSources: { website: true, oneTable: false },
+    oneTableLink: '',
+    rsvpApprovalMode: 'immediate',
+    limitCapacity: false
   });
 
   // Redirect if not logged in or not a manager
@@ -84,7 +91,7 @@ function Admin() {
     e.preventDefault();
     try {
       // Convert time to display format
-      const timeString = `${eventForm.hour}:${eventForm.minute} ${eventForm.ampm}`;
+      const timeString = `${eventForm.hour}:${eventForm.minute} ${eventForm.period}`;
 
       const eventData = {
         ...eventForm,
@@ -141,14 +148,22 @@ function Admin() {
     setEditingEvent(event);
 
     // Parse existing time if it exists
-    let hour = '6', minute = '30', ampm = 'PM';
+    let hour = '6', minute = '30', period = 'PM';
     if (event.time) {
       const timeMatch = event.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
       if (timeMatch) {
         hour = timeMatch[1];
         minute = timeMatch[2];
-        ampm = timeMatch[3].toUpperCase();
+        period = timeMatch[3].toUpperCase();
       }
+    }
+
+    // Map legacy requireRSVP to rsvpSources for backward compatibility
+    let rsvpSources = { website: true, oneTable: false };
+    if (event.rsvpSources) {
+      rsvpSources = event.rsvpSources;
+    } else if (event.requireRSVP !== undefined) {
+      rsvpSources = { website: event.requireRSVP, oneTable: false };
     }
 
     setEventForm({
@@ -156,13 +171,14 @@ function Admin() {
       date: event.date,
       hour: hour,
       minute: minute,
-      ampm: ampm,
+      period: period,
       location: event.location,
       description: event.description,
       capacity: event.capacity,
-      requireRSVP: event.requireRSVP !== undefined ? event.requireRSVP : true,
+      rsvpSources: rsvpSources,
+      oneTableLink: event.oneTableLink || '',
       rsvpApprovalMode: event.rsvpApprovalMode || 'immediate',
-      limitCapacity: event.limitCapacity !== undefined ? event.limitCapacity : false // Ensure limitCapacity is set
+      limitCapacity: event.limitCapacity !== undefined ? event.limitCapacity : false
     });
     setShowEventModal(true);
   };
@@ -174,13 +190,14 @@ function Admin() {
       date: '',
       hour: '6',
       minute: '30',
-      ampm: 'PM',
+      period: 'PM',
       location: 'BCB Community Center, Frisco',
       description: '',
       capacity: 40,
-      requireRSVP: true,
+      rsvpSources: { website: true, oneTable: false },
+      oneTableLink: '',
       rsvpApprovalMode: 'immediate',
-      limitCapacity: false // Reset limitCapacity to false
+      limitCapacity: false
     });
   };
 
@@ -236,6 +253,38 @@ function Admin() {
     } catch (error) {
       console.error('Error sending test email:', error);
       setAlert({ show: true, message: `Error sending test email: ${error.message}`, type: 'danger' });
+    }
+  };
+
+  const handleManagerSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setAlert({ show: true, message: 'Creating manager account...', type: 'info' });
+
+      const response = await fetch('/api/create-manager', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: managerForm.email,
+          password: managerForm.password,
+          displayName: managerForm.displayName
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setAlert({ show: true, message: 'Manager account created successfully!', type: 'success' });
+        setShowManagerModal(false);
+        setManagerForm({ email: '', password: '', displayName: '' });
+      } else {
+        setAlert({ show: true, message: `Error: ${result.error}`, type: 'danger' });
+      }
+    } catch (error) {
+      console.error('Error creating manager:', error);
+      setAlert({ show: true, message: `Error creating manager: ${error.message}`, type: 'danger' });
     }
   };
 
@@ -342,6 +391,10 @@ function Admin() {
             <p className="text-muted mb-0">Welcome, {currentUser.email}</p>
           </div>
           <div>
+            <Button variant="info" onClick={() => setShowManagerModal(true)} className="me-2">
+              <FaUserPlus className="me-2" />
+              Create Manager
+            </Button>
             <Button variant="outline-danger" onClick={handleLogout}>
               <FaSignOutAlt className="me-2" />
               Logout
@@ -467,166 +520,15 @@ function Admin() {
         </Modal.Header>
         <Modal.Body>
           <Form onSubmit={handleEventSubmit}>
-            <Form.Group className="mb-3">
-              <Form.Label>Event Title *</Form.Label>
-              <Form.Control
-                type="text"
-                required
-                value={eventForm.title}
-                onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
-                placeholder="e.g., Shabbat Dinner, Chanukah Celebration"
-              />
-            </Form.Group>
-
-            <Row>
-              <Col lg={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Date *</Form.Label>
-                  <Form.Control
-                    type="date"
-                    required
-                    value={eventForm.date}
-                    onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })}
-                  />
-                </Form.Group>
-              </Col>
-              <Col lg={6}>
-                <Form.Label>Time *</Form.Label>
-                <Row>
-                  <Col xs={4}>
-                    <Form.Group className="mb-3">
-                      <Form.Select
-                        required
-                        value={eventForm.hour}
-                        onChange={(e) => setEventForm({ ...eventForm, hour: e.target.value })}
-                      >
-                        {[...Array(12)].map((_, i) => {
-                          const hour = i + 1;
-                          return <option key={hour} value={hour}>{hour}</option>;
-                        })}
-                      </Form.Select>
-                      <Form.Text className="text-muted small">Hour</Form.Text>
-                    </Form.Group>
-                  </Col>
-                  <Col xs={4}>
-                    <Form.Group className="mb-3">
-                      <Form.Select
-                        required
-                        value={eventForm.minute}
-                        onChange={(e) => setEventForm({ ...eventForm, minute: e.target.value })}
-                      >
-                        {['00', '10', '20', '30', '40', '50'].map(min => (
-                          <option key={min} value={min}>{min}</option>
-                        ))}
-                      </Form.Select>
-                      <Form.Text className="text-muted small">Min</Form.Text>
-                    </Form.Group>
-                  </Col>
-                  <Col xs={4}>
-                    <Form.Group className="mb-3">
-                      <Form.Select
-                        required
-                        value={eventForm.ampm}
-                        onChange={(e) => setEventForm({ ...eventForm, ampm: e.target.value })}
-                      >
-                        <option value="AM">AM</option>
-                        <option value="PM">PM</option>
-                      </Form.Select>
-                      <Form.Text className="text-muted small">AM/PM</Form.Text>
-                    </Form.Group>
-                  </Col>
-                </Row>
-              </Col>
-            </Row>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Location *</Form.Label>
-              <LocationAutocomplete
-                value={eventForm.location}
-                onChange={(value) => setEventForm({ ...eventForm, location: value })}
-                required={true}
-              />
-              <Form.Text className="text-muted">
-                Start typing to search for addresses. Google Maps autocomplete available if API key is configured.
-              </Form.Text>
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Description *</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={4}
-                required
-                value={eventForm.description}
-                onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
-                placeholder="Event description..."
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Check
-                type="checkbox"
-                id="limitCapacity"
-                label="Limit Capacity"
-                checked={eventForm.limitCapacity}
-                onChange={() => setEventForm((prevForm) => ({
-                  ...prevForm,
-                  limitCapacity: !prevForm.limitCapacity
-                }))}
-              />
-            </Form.Group>
-
-            {eventForm.limitCapacity && (
-              <Form.Group className="mb-3">
-                <Form.Label>Capacity *</Form.Label>
-                <Form.Control
-                  type="number"
-                  required
-                  min="1"
-                  value={eventForm.capacity}
-                  onChange={(e) => setEventForm({ ...eventForm, capacity: e.target.value })}
-                />
-                <Form.Text className="text-muted">Maximum number of guests</Form.Text>
-              </Form.Group>
-            )}
-
-            <Form.Group className="mb-3">
-              <Form.Label>RSVP Settings</Form.Label>
-              <Form.Text className="text-muted">
-                Configure how RSVPs are handled for this event.
-              </Form.Text>
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Check
-                type="checkbox"
-                id="requireRSVP"
-                label="Require RSVP for this event"
-                checked={eventForm.requireRSVP}
-                onChange={(e) => setEventForm({ ...eventForm, requireRSVP: e.target.checked })}
-              />
-              <Form.Text className="text-muted">
-                Uncheck if this is an open event without RSVP requirements
-              </Form.Text>
-            </Form.Group>
-
-            {eventForm.requireRSVP && (
-              <Form.Group className="mb-4">
-                <Form.Label>RSVP Approval Mode *</Form.Label>
-                <Form.Select
-                  value={eventForm.rsvpApprovalMode}
-                  onChange={(e) => setEventForm({ ...eventForm, rsvpApprovalMode: e.target.value })}
-                >
-                  <option value="immediate">Immediate - Auto-approve all RSVPs</option>
-                  <option value="approval">Approval Required - Manually approve each RSVP</option>
-                </Form.Select>
-                <Form.Text className="text-muted">
-                  {eventForm.rsvpApprovalMode === 'immediate'
-                    ? 'RSVPs will be automatically confirmed. Users over capacity will be added to a waitlist.'
-                    : 'All RSVPs will require your manual approval before confirmation.'}
-                </Form.Text>
-              </Form.Group>
-            )}
+            <EventFormFields 
+              eventForm={eventForm}
+              setEventForm={setEventForm}
+              showCapacityToggle={true}
+              handleToggleCapacityLimit={() => setEventForm((prevForm) => ({
+                ...prevForm,
+                limitCapacity: !prevForm.limitCapacity
+              }))}
+            />
 
             <div className="d-flex gap-2">
               <Button variant="primary" type="submit" size="lg">
@@ -640,6 +542,59 @@ function Admin() {
                 }}
                 size="lg"
               >
+                Cancel
+              </Button>
+            </div>
+          </Form>
+        </Modal.Body>
+      </Modal>
+
+      {/* Manager Creation Modal */}
+      <Modal show={showManagerModal} onHide={() => setShowManagerModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Create Manager Account</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form onSubmit={handleManagerSubmit}>
+            <Form.Group className="mb-3">
+              <Form.Label>Display Name *</Form.Label>
+              <Form.Control
+                type="text"
+                required
+                value={managerForm.displayName}
+                onChange={(e) => setManagerForm({ ...managerForm, displayName: e.target.value })}
+                placeholder="Manager's full name"
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Email *</Form.Label>
+              <Form.Control
+                type="email"
+                required
+                value={managerForm.email}
+                onChange={(e) => setManagerForm({ ...managerForm, email: e.target.value })}
+                placeholder="manager@example.com"
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Password *</Form.Label>
+              <Form.Control
+                type="password"
+                required
+                minLength="6"
+                value={managerForm.password}
+                onChange={(e) => setManagerForm({ ...managerForm, password: e.target.value })}
+                placeholder="Minimum 6 characters"
+              />
+            </Form.Group>
+
+            <div className="d-flex gap-2">
+              <Button variant="primary" type="submit">
+                Create Manager
+              </Button>
+              <Button variant="secondary" onClick={() => setShowManagerModal(false)}>
                 Cancel
               </Button>
             </div>

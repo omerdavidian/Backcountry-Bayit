@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "resend": "^6.2.0"
+    "resend": "^6.2.0",
+    "firebase-admin": "^12.0.0"
   }
 }

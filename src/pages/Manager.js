@@ -5,6 +5,7 @@ import { useAuth } from '../utils/AuthContext';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaUsers, FaSignOutAlt } from 'react-icons/fa';
+import EventFormFields from '../components/EventFormFields';
 
 function Manager() {
   const { currentUser, logout, isManager, userRole } = useAuth();
@@ -23,8 +24,10 @@ function Manager() {
     location: 'BCB Community Center, Frisco',
     description: '',
     capacity: 40,
-    requireRSVP: true,
-    rsvpApprovalMode: 'immediate'
+    rsvpSources: { website: true, oneTable: false },
+    oneTableLink: '',
+    rsvpApprovalMode: 'immediate',
+    limitCapacity: false
   });
 
   // Redirect if not logged in or not a manager
@@ -115,6 +118,14 @@ function Manager() {
       }
     }
 
+    // Map legacy requireRSVP to rsvpSources for backward compatibility
+    let rsvpSources = { website: true, oneTable: false };
+    if (event.rsvpSources) {
+      rsvpSources = event.rsvpSources;
+    } else if (event.requireRSVP !== undefined) {
+      rsvpSources = { website: event.requireRSVP, oneTable: false };
+    }
+
     setEventForm({
       title: event.title,
       date: event.date,
@@ -124,8 +135,10 @@ function Manager() {
       location: event.location,
       description: event.description,
       capacity: event.capacity,
-      requireRSVP: event.requireRSVP !== undefined ? event.requireRSVP : true,
-      rsvpApprovalMode: event.rsvpApprovalMode || 'immediate'
+      rsvpSources: rsvpSources,
+      oneTableLink: event.oneTableLink || '',
+      rsvpApprovalMode: event.rsvpApprovalMode || 'immediate',
+      limitCapacity: event.limitCapacity !== undefined ? event.limitCapacity : false
     });
     setShowEventModal(true);
   };
@@ -140,9 +153,18 @@ function Manager() {
       location: 'BCB Community Center, Frisco',
       description: '',
       capacity: 40,
-      requireRSVP: true,
-      rsvpApprovalMode: 'immediate'
+      rsvpSources: { website: true, oneTable: false },
+      oneTableLink: '',
+      rsvpApprovalMode: 'immediate',
+      limitCapacity: false
     });
+  };
+
+  const handleToggleCapacityLimit = (enabled) => {
+    setEventForm(prev => ({
+      ...prev,
+      limitCapacity: enabled
+    }));
   };
 
   const handleDeleteEvent = async (eventId) => {
@@ -325,124 +347,12 @@ function Manager() {
         </Modal.Header>
         <Modal.Body>
           <Form onSubmit={handleEventSubmit}>
-            <Form.Group className="mb-3">
-              <Form.Label>Event Title *</Form.Label>
-              <Form.Control
-                type="text"
-                required
-                value={eventForm.title}
-                onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
-                placeholder="e.g., Shabbat Dinner"
-              />
-            </Form.Group>
-
-            <Row>
-              <Col lg={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Date *</Form.Label>
-                  <Form.Control
-                    type="date"
-                    required
-                    value={eventForm.date}
-                    onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })}
-                  />
-                </Form.Group>
-              </Col>
-              <Col lg={6}>
-                <Form.Label>Time *</Form.Label>
-                <Row>
-                  <Col xs={4}>
-                    <Form.Select
-                      value={eventForm.hour}
-                      onChange={(e) => setEventForm({ ...eventForm, hour: e.target.value })}
-                    >
-                      {[...Array(12)].map((_, i) => {
-                        const hour = i + 1;
-                        return <option key={hour} value={hour}>{hour}</option>;
-                      })}
-                    </Form.Select>
-                    <Form.Text className="text-muted small">Hour</Form.Text>
-                  </Col>
-                  <Col xs={4}>
-                    <Form.Select
-                      value={eventForm.minute}
-                      onChange={(e) => setEventForm({ ...eventForm, minute: e.target.value })}
-                    >
-                      {['00', '10', '20', '30', '40', '50'].map(min => (
-                        <option key={min} value={min}>{min}</option>
-                      ))}
-                    </Form.Select>
-                    <Form.Text className="text-muted small">Min</Form.Text>
-                  </Col>
-                  <Col xs={4}>
-                    <Form.Select
-                      value={eventForm.period}
-                      onChange={(e) => setEventForm({ ...eventForm, period: e.target.value })}
-                    >
-                      <option value="AM">AM</option>
-                      <option value="PM">PM</option>
-                    </Form.Select>
-                    <Form.Text className="text-muted small">AM/PM</Form.Text>
-                  </Col>
-                </Row>
-              </Col>
-            </Row>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Location *</Form.Label>
-              <Form.Control
-                type="text"
-                required
-                value={eventForm.location}
-                onChange={(e) => setEventForm({ ...eventForm, location: e.target.value })}
-                placeholder="e.g., BCB Community Center, Frisco, CO"
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Description</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                value={eventForm.description}
-                onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
-                placeholder="Event description..."
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Capacity *</Form.Label>
-              <Form.Control
-                type="number"
-                required
-                min="1"
-                value={eventForm.capacity}
-                onChange={(e) => setEventForm({ ...eventForm, capacity: e.target.value })}
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Check
-                type="checkbox"
-                id="requireRSVP"
-                label="Require RSVP for this event"
-                checked={eventForm.requireRSVP}
-                onChange={(e) => setEventForm({ ...eventForm, requireRSVP: e.target.checked })}
-              />
-            </Form.Group>
-
-            {eventForm.requireRSVP && (
-              <Form.Group className="mb-4">
-                <Form.Label>RSVP Approval Mode</Form.Label>
-                <Form.Select
-                  value={eventForm.rsvpApprovalMode}
-                  onChange={(e) => setEventForm({ ...eventForm, rsvpApprovalMode: e.target.value })}
-                >
-                  <option value="immediate">Immediate - Auto-approve all RSVPs</option>
-                  <option value="approval">Approval Required - Manually approve each RSVP</option>
-                </Form.Select>
-              </Form.Group>
-            )}
+            <EventFormFields
+              eventForm={eventForm}
+              setEventForm={setEventForm}
+              showCapacityToggle={true}
+              handleToggleCapacityLimit={handleToggleCapacityLimit}
+            />
 
             <div className="d-flex gap-2">
               <Button variant="primary" type="submit" size="lg">
