@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Table, Modal, Form, Alert } from 'react-bootstrap';
+import { Container, Card, Button, Table, Modal, Form, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaSort, FaSortUp, FaSortDown, FaUserPlus } from 'react-icons/fa';
-import LocationAutocomplete from '../components/LocationAutocomplete';
 import EventFormFields from '../components/EventFormFields';
 
 function Admin() {
-  const { currentUser, logout, isManager, isAdmin } = useAuth();
+  const { currentUser, logout, isManager } = useAuth();
   const navigate = useNavigate();
   const [events, setEvents] = useState([]);
   const [rsvps, setRSVPs] = useState([]);
