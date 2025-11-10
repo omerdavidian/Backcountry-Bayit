@@ -3,16 +3,26 @@ const admin = require('firebase-admin');
 
 // Initialize Firebase Admin (only once)
 if (!admin.apps.length) {
-  try {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
-      })
-    });
-  } catch (error) {
-    console.error('Firebase admin initialization error:', error);
+  // Validate required environment variables early so we can return a helpful error
+  const missing = [];
+  if (!process.env.FIREBASE_PROJECT_ID) missing.push('FIREBASE_PROJECT_ID');
+  if (!process.env.FIREBASE_CLIENT_EMAIL) missing.push('FIREBASE_CLIENT_EMAIL');
+  if (!process.env.FIREBASE_PRIVATE_KEY) missing.push('FIREBASE_PRIVATE_KEY');
+
+  if (missing.length) {
+    console.error('Missing Firebase admin env vars:', missing.join(', '));
+  } else {
+    try {
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId: process.env.FIREBASE_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+        })
+      });
+    } catch (error) {
+      console.error('Firebase admin initialization error:', error);
+    }
   }
 }
 
@@ -45,6 +55,11 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
+    // Ensure Admin SDK initialized
+    if (!admin.apps.length) {
+      return res.status(500).json({ error: 'Firebase Admin SDK not initialized. Check server env vars.' });
+    }
+
     // Create the user in Firebase Auth
     const userRecord = await admin.auth().createUser({
       email: email,
@@ -68,17 +83,20 @@ module.exports = async function handler(req, res) {
     console.error('Error creating manager:', error);
     
     // Handle specific Firebase errors
-    if (error.code === 'auth/email-already-exists') {
-      return res.status(400).json({ error: 'Email already exists' });
-    } else if (error.code === 'auth/invalid-email') {
-      return res.status(400).json({ error: 'Invalid email address' });
-    } else if (error.code === 'auth/invalid-password') {
-      return res.status(400).json({ error: 'Invalid password' });
+    if (error && error.code) {
+      if (error.code === 'auth/email-already-exists') {
+        return res.status(400).json({ error: 'Email already exists' });
+      } else if (error.code === 'auth/invalid-email') {
+        return res.status(400).json({ error: 'Invalid email address' });
+      } else if (error.code === 'auth/invalid-password') {
+        return res.status(400).json({ error: 'Invalid password' });
+      }
     }
 
+    // Generic fallback with details for easier debugging in development
     return res.status(500).json({ 
       error: 'Failed to create manager account',
-      details: error.message 
+      details: error && error.message ? error.message : String(error)
     });
   }
 };
