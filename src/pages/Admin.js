@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Card, Button, Table, Modal, Form, Alert } from 'react-bootstrap';
+import { Container, Card, Button, Table, Modal, Form, Alert, Nav, Row, Col } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaSort, FaSortUp, FaSortDown, FaUserPlus } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaSort, FaSortUp, FaSortDown, FaUserPlus, FaUsers } from 'react-icons/fa';
 import EventFormFields from '../components/EventFormFields';
 
 function Admin() {
   const { currentUser, logout, isManager } = useAuth();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('users');
+  const [users, setUsers] = useState([]);
   const [events, setEvents] = useState([]);
   const [rsvps, setRSVPs] = useState([]);
   const [showEventModal, setShowEventModal] = useState(false);
@@ -53,10 +55,25 @@ function Admin() {
 
   useEffect(() => {
     if (currentUser && isManager) {
+      loadUsers();
       loadEvents();
       loadRSVPs();
     }
   }, [currentUser, isManager]);
+
+  const loadUsers = async () => {
+    try {
+      const response = await fetch('/api/list-users');
+      const result = await response.json();
+      if (response.ok) {
+        setUsers(result.users || []);
+      } else {
+        console.error('Error loading users:', result.error);
+      }
+    } catch (error) {
+      console.error('Error loading users:', error);
+    }
+  };
 
   const loadEvents = async () => {
     try {
@@ -278,12 +295,41 @@ function Admin() {
         setAlert({ show: true, message: 'Manager account created successfully!', type: 'success' });
         setShowManagerModal(false);
         setManagerForm({ email: '', password: '', displayName: '' });
+        loadUsers(); // Reload users list
       } else {
         setAlert({ show: true, message: `Error: ${result.error}`, type: 'danger' });
       }
     } catch (error) {
       console.error('Error creating manager:', error);
       setAlert({ show: true, message: `Error creating manager: ${error.message}`, type: 'danger' });
+    }
+  };
+
+  const handleDeleteUser = async (userId, userEmail) => {
+    if (window.confirm(`Are you sure you want to delete user ${userEmail}?`)) {
+      try {
+        setAlert({ show: true, message: 'Deleting user...', type: 'info' });
+
+        const response = await fetch('/api/delete-user', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ userId })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          setAlert({ show: true, message: 'User deleted successfully!', type: 'success' });
+          loadUsers(); // Reload users list
+        } else {
+          setAlert({ show: true, message: `Error: ${result.error}`, type: 'danger' });
+        }
+      } catch (error) {
+        console.error('Error deleting user:', error);
+        setAlert({ show: true, message: `Error deleting user: ${error.message}`, type: 'danger' });
+      }
     }
   };
 
@@ -383,23 +429,16 @@ function Admin() {
 
   return (
     <div className="bg-light min-vh-100 py-5">
-      <Container>
+      <Container fluid>
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
-            <h1 className="fw-bold">Event Management</h1>
+            <h1 className="fw-bold">Admin Dashboard</h1>
             <p className="text-muted mb-0">Welcome, {currentUser.email}</p>
           </div>
           <div>
-            <Button variant="info" onClick={() => setShowManagerModal(true)} className="me-2">
-              <FaUserPlus className="me-2" />
-              Create Manager
-            </Button>
             <Button variant="outline-danger" onClick={handleLogout}>
               <FaSignOutAlt className="me-2" />
               Logout
-            </Button>
-            <Button variant="secondary" className="ms-2" onClick={handleTestEmail}>
-              Send Test Email
             </Button>
           </div>
         </div>
@@ -415,101 +454,204 @@ function Admin() {
           </Alert>
         )}
 
-        <div className="mb-4">
-          <Button
-            variant="primary"
-            onClick={() => {
-              resetEventForm();
-              setShowEventModal(true);
-            }}
-          >
-            <FaPlus className="me-2" />
-            Add Event
-          </Button>
-        </div>
+        <Row>
+          <Col md={2}>
+            <Nav variant="pills" className="flex-column" style={{ position: 'sticky', top: '20px' }}>
+              <Nav.Item>
+                <Nav.Link 
+                  active={activeTab === 'users'} 
+                  onClick={() => setActiveTab('users')}
+                  className="mb-2"
+                >
+                  <FaUsers className="me-2" />
+                  Users
+                </Nav.Link>
+              </Nav.Item>
+              <Nav.Item>
+                <Nav.Link 
+                  active={activeTab === 'events'} 
+                  onClick={() => setActiveTab('events')}
+                  className="mb-2"
+                >
+                  <FaCalendarAlt className="me-2" />
+                  Events
+                </Nav.Link>
+              </Nav.Item>
+            </Nav>
+          </Col>
 
-        <Card className="border-0 shadow">
-          <Card.Body className="p-4">
-            <Table responsive hover>
-              <thead className="bg-light">
-                <tr>
-                  <th onClick={() => handleEventSort('title')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                    Title {getSortIcon('title', eventSortConfig)}
-                  </th>
-                  <th onClick={() => handleEventSort('date')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                    Date {getSortIcon('date', eventSortConfig)}
-                  </th>
-                  <th onClick={() => handleEventSort('time')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                    Time {getSortIcon('time', eventSortConfig)}
-                  </th>
-                  <th onClick={() => handleEventSort('location')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                    Location {getSortIcon('location', eventSortConfig)}
-                  </th>
-                  <th onClick={() => handleEventSort('rsvpCount')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                    RSVPs {getSortIcon('rsvpCount', eventSortConfig)}
-                  </th>
-                  <th onClick={() => handleEventSort('capacity')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                    Capacity {getSortIcon('capacity', eventSortConfig)}
-                  </th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedEvents.map(event => {
-                  const isPast = isEventPast(event.date);
-                  return (
-                    <tr key={event.id} style={{ opacity: isPast ? 0.5 : 1 }}>
-                      <td><strong>{event.title}</strong></td>
-                      <td>{formatEventDate(event.date)}</td>
-                      <td>{event.time}</td>
-                      <td>{event.location}</td>
-                      <td>
-                        {getTotalGuestsForEvent(event.id)} guests
-                        {' '}({getRSVPsForEvent(event.id).length} RSVPs)
-                      </td>
-                      <td>{event.capacity}</td>
-                      <td>
-                        <Button
-                          variant="outline-primary"
-                          size="sm"
-                          className="me-2"
-                          onClick={() => handleEditEvent(event)}
-                        >
-                          <FaEdit />
-                        </Button>
-                        <Button
-                          variant="outline-danger"
-                          size="sm"
-                          onClick={() => handleDeleteEvent(event.id)}
-                        >
-                          <FaTrash />
-                        </Button>
-                        <Button
-                          variant={getRSVPButtonVariant(event.id)}
-                          size="sm"
-                          onClick={() => {
-                            const eventNameSlug = event.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-                            navigate(`/admin/rsvps/${event.id}/${eventNameSlug}`);
-                          }}
-                          title="Manage RSVPs"
-                        >
-                          RSVPs
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </Table>
+          <Col md={10}>
+            {/* Users Tab */}
+            {activeTab === 'users' && (
+              <>
+                <div className="mb-4">
+                  <Button
+                    variant="primary"
+                    onClick={() => setShowManagerModal(true)}
+                  >
+                    <FaUserPlus className="me-2" />
+                    Create Manager
+                  </Button>
+                </div>
 
-            {events.length === 0 && (
-              <div className="text-center text-muted py-5">
-                <FaCalendarAlt size={50} className="mb-3" />
-                <p>No events yet. Click "Add Event" to create your first event.</p>
-              </div>
+                <Card className="border-0 shadow">
+                  <Card.Body className="p-4">
+                    <h3 className="mb-4">User Management</h3>
+                    <Table responsive hover>
+                      <thead className="bg-light">
+                        <tr>
+                          <th>Name</th>
+                          <th>Email</th>
+                          <th>Role</th>
+                          <th>Created</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {users.map(user => (
+                          <tr key={user.uid}>
+                            <td><strong>{user.displayName || 'N/A'}</strong></td>
+                            <td>{user.email}</td>
+                            <td>
+                              <span className={`badge ${user.customClaims?.admin ? 'bg-danger' : 'bg-primary'}`}>
+                                {user.customClaims?.admin ? 'Admin' : 'Manager'}
+                              </span>
+                            </td>
+                            <td>{new Date(user.metadata.creationTime).toLocaleDateString()}</td>
+                            <td>
+                              <Button
+                                variant="outline-danger"
+                                size="sm"
+                                onClick={() => handleDeleteUser(user.uid, user.email)}
+                                disabled={user.email === currentUser.email}
+                                title={user.email === currentUser.email ? "Cannot delete your own account" : "Delete user"}
+                              >
+                                <FaTrash />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+
+                    {users.length === 0 && (
+                      <div className="text-center text-muted py-5">
+                        <FaUsers size={50} className="mb-3" />
+                        <p>No users found.</p>
+                      </div>
+                    )}
+                  </Card.Body>
+                </Card>
+              </>
             )}
-          </Card.Body>
-        </Card>
+
+            {/* Events Tab */}
+            {activeTab === 'events' && (
+              <>
+                <div className="mb-4 d-flex gap-2">
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      resetEventForm();
+                      setShowEventModal(true);
+                    }}
+                  >
+                    <FaPlus className="me-2" />
+                    Add Event
+                  </Button>
+                  <Button variant="secondary" onClick={handleTestEmail}>
+                    Send Test Email
+                  </Button>
+                </div>
+
+                <Card className="border-0 shadow">
+                  <Card.Body className="p-4">
+                    <h3 className="mb-4">Event Management</h3>
+                    <Table responsive hover>
+                      <thead className="bg-light">
+                        <tr>
+                          <th onClick={() => handleEventSort('title')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                            Title {getSortIcon('title', eventSortConfig)}
+                          </th>
+                          <th onClick={() => handleEventSort('date')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                            Date {getSortIcon('date', eventSortConfig)}
+                          </th>
+                          <th onClick={() => handleEventSort('time')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                            Time {getSortIcon('time', eventSortConfig)}
+                          </th>
+                          <th onClick={() => handleEventSort('location')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                            Location {getSortIcon('location', eventSortConfig)}
+                          </th>
+                          <th onClick={() => handleEventSort('rsvpCount')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                            RSVPs {getSortIcon('rsvpCount', eventSortConfig)}
+                          </th>
+                          <th onClick={() => handleEventSort('capacity')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                            Capacity {getSortIcon('capacity', eventSortConfig)}
+                          </th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sortedEvents.map(event => {
+                          const isPast = isEventPast(event.date);
+                          return (
+                            <tr key={event.id} style={{ opacity: isPast ? 0.5 : 1 }}>
+                              <td><strong>{event.title}</strong></td>
+                              <td>{formatEventDate(event.date)}</td>
+                              <td>{event.time}</td>
+                              <td>{event.location}</td>
+                              <td>
+                                {getTotalGuestsForEvent(event.id)} guests
+                                {' '}({getRSVPsForEvent(event.id).length} RSVPs)
+                              </td>
+                              <td>{event.capacity}</td>
+                              <td>
+                                <Button
+                                  variant="outline-primary"
+                                  size="sm"
+                                  className="me-2"
+                                  onClick={() => handleEditEvent(event)}
+                                >
+                                  <FaEdit />
+                                </Button>
+                                <Button
+                                  variant="outline-danger"
+                                  size="sm"
+                                  className="me-2"
+                                  onClick={() => handleDeleteEvent(event.id)}
+                                >
+                                  <FaTrash />
+                                </Button>
+                                <Button
+                                  variant={getRSVPButtonVariant(event.id)}
+                                  size="sm"
+                                  onClick={() => {
+                                    const eventNameSlug = event.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+                                    navigate(`/admin/rsvps/${event.id}/${eventNameSlug}`);
+                                  }}
+                                  title="Manage RSVPs"
+                                >
+                                  RSVPs
+                                </Button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </Table>
+
+                    {events.length === 0 && (
+                      <div className="text-center text-muted py-5">
+                        <FaCalendarAlt size={50} className="mb-3" />
+                        <p>No events yet. Click "Add Event" to create your first event.</p>
+                      </div>
+                    )}
+                  </Card.Body>
+                </Card>
+              </>
+            )}
+          </Col>
+        </Row>
       </Container>
 
       {/* Event Modal */}
