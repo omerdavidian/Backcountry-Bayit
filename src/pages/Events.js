@@ -652,29 +652,6 @@ function Events() {
     }
   };
 
-  // Add functionality to RSVP form for multiple attendees
-  const handleAddAttendee = () => {
-    setRSVPData((prevData) => ({
-      ...prevData,
-      attendees: [...prevData.attendees, { firstName: '', lastName: '', email: '', phone: '' }]
-    }));
-  };
-
-  const handleRemoveAttendee = (index) => {
-    setRSVPData((prevData) => ({
-      ...prevData,
-      attendees: prevData.attendees.filter((_, i) => i !== index)
-    }));
-  };
-
-  const handleAttendeeChange = (index, field, value) => {
-    setRSVPData((prevData) => {
-      const updatedAttendees = [...prevData.attendees];
-      updatedAttendees[index][field] = value;
-      return { ...prevData, attendees: updatedAttendees };
-    });
-  };
-
   // Add functionality to toggle capacity limit
   const handleToggleCapacityLimit = () => {
     setEventForm((prevForm) => ({
