@@ -9,6 +9,7 @@ import { useAuth } from '../utils/AuthContext';
 import { FaCalendarAlt, FaUsers, FaClock, FaMapMarkerAlt, FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
 import { sendRSVPConfirmationEmail } from '../utils/emailService';
 import EventFormFields from '../components/EventFormFields';
+import RSVPForm from '../components/RSVPForm';
 
 function Events() {
   const { isAdmin, isManager } = useAuth();
@@ -46,6 +47,7 @@ function Events() {
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
+  const [confirmOneTable, setConfirmOneTable] = useState(false);
   const calendarRef = useRef(null);
   const monthPickerRef = useRef(null);
 
@@ -1001,191 +1003,39 @@ function Events() {
           <Modal.Title>RSVP for {selectedEvent?.title}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {selectedEvent && (
-            <div className="mb-4 p-3 bg-light rounded">
-              <h5 className="mb-3">{selectedEvent.title}</h5>
-              <p className="mb-1">
-                <strong>Date:</strong> {formatEventDate(selectedEvent.date)}
-              </p>
-              <p className="mb-1"><strong>Time:</strong> {selectedEvent.time}</p>
-              <p className="mb-0"><strong>Location:</strong> {selectedEvent.location}</p>
-              {selectedEvent?.rsvpSources?.oneTable && selectedEvent?.oneTableLink && (
-                <div className="mt-2">
-                  <a href={selectedEvent.oneTableLink} target="_blank" rel="noreferrer">RSVP through OneTable</a>
+          <RSVPForm
+            selectedEvent={selectedEvent}
+            rsvpData={rsvpData}
+            setRSVPData={setRSVPData}
+            handleRSVPSubmit={handleRSVPSubmit}
+            existingRSVP={existingRSVP}
+            handleUnregister={handleUnregister}
+            onCancel={() => {
+              setShowRSVPModal(false);
+              setExistingRSVP(null);
+              setRsvpStatus({ show: false, message: '', type: '' });
+            }}
+            rsvpStatus={rsvpStatus}
+            confirmOneTable={confirmOneTable}
+            setConfirmOneTable={setConfirmOneTable}
+            eventInfoDisplay={
+              selectedEvent && (
+                <div className="mb-4 p-3 bg-light rounded">
+                  <h5 className="mb-3">{selectedEvent.title}</h5>
+                  <p className="mb-1">
+                    <strong>Date:</strong> {formatEventDate(selectedEvent.date)}
+                  </p>
+                  <p className="mb-1"><strong>Time:</strong> {selectedEvent.time}</p>
+                  <p className="mb-0"><strong>Location:</strong> {selectedEvent.location}</p>
+                  {selectedEvent?.rsvpSources?.oneTable && selectedEvent?.oneTableLink && (
+                    <div className="mt-2">
+                      <a href={selectedEvent.oneTableLink} target="_blank" rel="noreferrer">RSVP through OneTable</a>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
-
-          <Form onSubmit={handleRSVPSubmit} autoComplete="on">
-            {selectedEvent?.rsvpSources?.oneTable && selectedEvent?.oneTableLink && (
-              <Form.Group className="mb-3">
-                <Form.Check
-                  type="checkbox"
-                  id="confirmOneTableEvents"
-                  label={
-                    <span>
-                      I confirm I registered via OneTable at{' '}
-                      <a href={selectedEvent.oneTableLink} target="_blank" rel="noreferrer">this link</a>.
-                    </span>
-                  }
-                  required={selectedEvent?.rsvpSources?.website !== true}
-                />
-              </Form.Group>
-            )}
-            <Form.Group className="mb-3">
-              <Form.Label>First Name *</Form.Label>
-              <Form.Control
-                type="text"
-                required
-                value={rsvpData.firstName}
-                onChange={(e) => setRSVPData({ ...rsvpData, firstName: e.target.value })}
-                placeholder="John"
-                autoComplete="given-name"
-                name="firstName"
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Last Name *</Form.Label>
-              <Form.Control
-                type="text"
-                required
-                value={rsvpData.lastName}
-                onChange={(e) => setRSVPData({ ...rsvpData, lastName: e.target.value })}
-                placeholder="Doe"
-                autoComplete="family-name"
-                name="lastName"
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Email *</Form.Label>
-              <Form.Control
-                type="email"
-                required
-                value={rsvpData.email}
-                onChange={(e) => setRSVPData({ ...rsvpData, email: e.target.value })}
-                placeholder="john@example.com"
-                autoComplete="email"
-                name="email"
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Phone Number</Form.Label>
-              <Form.Control
-                type="tel"
-                value={rsvpData.phone}
-                onChange={(e) => setRSVPData({ ...rsvpData, phone: e.target.value })}
-                placeholder="(123) 456-7890"
-                autoComplete="tel"
-                name="phone"
-              />
-            </Form.Group>
-
-            {rsvpData.attendees.map((attendee, index) => (
-              <div key={index} className="mb-4 p-3 bg-light rounded position-relative">
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h5 className="mb-0">Additional Guest {index + 1}</h5>
-                  <Button
-                    variant="outline-danger"
-                    size="sm"
-                    onClick={() => handleRemoveAttendee(index)}
-                  >
-                    <FaTrash /> Remove
-                  </Button>
-                </div>
-                <Form.Group className="mb-3">
-                  <Form.Label>First Name *</Form.Label>
-                  <Form.Control
-                    type="text"
-                    required
-                    value={attendee.firstName}
-                    onChange={(e) => handleAttendeeChange(index, 'firstName', e.target.value)}
-                    placeholder="John"
-                    autoComplete="given-name"
-                    name={`attendee-${index}-firstName`}
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Last Name *</Form.Label>
-                  <Form.Control
-                    type="text"
-                    required
-                    value={attendee.lastName}
-                    onChange={(e) => handleAttendeeChange(index, 'lastName', e.target.value)}
-                    placeholder="Doe"
-                    autoComplete="family-name"
-                    name={`attendee-${index}-lastName`}
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Email *</Form.Label>
-                  <Form.Control
-                    type="email"
-                    required
-                    value={attendee.email}
-                    onChange={(e) => handleAttendeeChange(index, 'email', e.target.value)}
-                    placeholder="john@example.com"
-                    autoComplete="email"
-                    name={`attendee-${index}-email`}
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Phone</Form.Label>
-                  <Form.Control
-                    type="tel"
-                    value={attendee.phone}
-                    onChange={(e) => handleAttendeeChange(index, 'phone', e.target.value)}
-                    placeholder="(123) 456-7890"
-                    autoComplete="tel"
-                    name={`attendee-${index}-phone`}
-                  />
-                </Form.Group>
-              </div>
-            ))}
-
-            <Button
-              variant="outline-primary"
-              onClick={handleAddAttendee}
-              className="mt-3"
-            >
-              Add Another Person
-            </Button>
-
-            {/* Removed remember-info checkbox and helper text per request */}
-
-            <div className="d-flex gap-2">
-              <Button variant="primary" type="submit" size="lg">
-                {existingRSVP ? 'Update RSVP' : 'Submit RSVP'}
-              </Button>
-              {existingRSVP && (
-                <Button variant="danger" onClick={handleUnregister} size="lg">
-                  Unregister
-                </Button>
-              )}
-              <Button variant="secondary" onClick={() => {
-                setShowRSVPModal(false);
-                setExistingRSVP(null);
-                setRsvpStatus({ show: false, message: '', type: '' });
-              }} size="lg">
-                Cancel
-              </Button>
-            </div>
-
-            {rsvpStatus.show && (
-              <Alert variant={rsvpStatus.type} className="mt-4 mb-0">
-                {rsvpStatus.message}
-              </Alert>
-            )}
-            <div className="small mt-4" style={{color:'rgba(108,117,125,0.75)'}}>
-              <strong style={{marginRight:'4px'}}>!</strong> To unregister, fill in the same information you registered with and press submit.
-            </div>
-          </Form>
+              )
+            }
+          />
         </Modal.Body>
       </Modal>
 
