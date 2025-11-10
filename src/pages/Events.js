@@ -34,9 +34,11 @@ function Events() {
     location: 'BCB Community Center, Frisco',
     description: '',
     capacity: 40,
-    requireRSVP: true,
+    // New RSVP source model
+    rsvpSources: { website: true, oneTable: false },
+    oneTableLink: '',
     rsvpApprovalMode: 'immediate',
-    limitCapacity: false // New state for capacity limit toggle
+    limitCapacity: false // capacity limit toggle
   });
   const [rsvpStatus, setRsvpStatus] = useState({ show: false, message: '', type: '' });
   const [eventStatus, setEventStatus] = useState({ show: false, message: '', type: '' });
@@ -286,9 +288,14 @@ function Events() {
       location: event.location,
       description: event.description,
       capacity: event.capacity,
-      requireRSVP: event.requireRSVP !== undefined ? event.requireRSVP : true,
+      // Backwards compatibility: derive rsvpSources from legacy requireRSVP if absent
+      rsvpSources: event.rsvpSources || {
+        website: event.requireRSVP !== undefined ? !!event.requireRSVP : true,
+        oneTable: !!event.oneTableLink
+      },
+      oneTableLink: event.oneTableLink || '',
       rsvpApprovalMode: event.rsvpApprovalMode || 'immediate',
-      limitCapacity: event.limitCapacity !== undefined ? event.limitCapacity : false // Ensure toggle state is set
+      limitCapacity: event.limitCapacity !== undefined ? event.limitCapacity : false
     });
     setShowEventModal(true);
   };
@@ -308,9 +315,13 @@ function Events() {
         location: eventForm.location,
         description: eventForm.description,
         capacity: parseInt(eventForm.capacity),
-        requireRSVP: eventForm.requireRSVP,
+        // New fields
+        rsvpSources: eventForm.rsvpSources,
+        oneTableLink: eventForm.rsvpSources.oneTable ? eventForm.oneTableLink : '',
+        // Legacy field retained for backward compatibility (maps to website selection)
+        requireRSVP: eventForm.rsvpSources.website,
         rsvpApprovalMode: eventForm.rsvpApprovalMode,
-        limitCapacity: eventForm.limitCapacity // Include capacity limit in event data
+        limitCapacity: eventForm.limitCapacity
       };
 
       if (editingEvent) {
@@ -384,9 +395,10 @@ function Events() {
       location: 'BCB Community Center, Frisco',
       description: '',
       capacity: 40,
-      requireRSVP: true,
+      rsvpSources: { website: true, oneTable: false },
+      oneTableLink: '',
       rsvpApprovalMode: 'immediate',
-      limitCapacity: false // Reset capacity limit toggle
+      limitCapacity: false
     });
   };
 
@@ -399,6 +411,19 @@ function Events() {
         setRsvpStatus({
           show: true,
           message: 'This event does not require RSVP. Just show up!',
+          type: 'info'
+        });
+        return;
+      }
+
+      // If website RSVPs are disabled via rsvpSources, block local RSVP and provide OneTable link if available
+      if (selectedEvent.rsvpSources && selectedEvent.rsvpSources.website === false) {
+        const oneTableMsg = selectedEvent.rsvpSources.oneTable && selectedEvent.oneTableLink
+          ? ` You can RSVP via OneTable here: ${selectedEvent.oneTableLink}`
+          : '';
+        setRsvpStatus({
+          show: true,
+          message: `Website RSVPs are disabled for this event.${oneTableMsg}`,
           type: 'info'
         });
         return;
@@ -830,6 +855,11 @@ function Events() {
                         <FaClock className="me-2 text-primary" />
                         <strong>Time:</strong> {event.time}
                       </div>
+                      {event?.rsvpSources?.oneTable && event?.oneTableLink && (
+                        <div className="mb-2">
+                          <a href={event.oneTableLink} target="_blank" rel="noreferrer">RSVP through OneTable</a>
+                        </div>
+                      )}
                       <div className="mb-3">
                         <FaMapMarkerAlt className="me-2 text-primary" />
                         <strong>Location:</strong> {event.location}
@@ -978,10 +1008,30 @@ function Events() {
               </p>
               <p className="mb-1"><strong>Time:</strong> {selectedEvent.time}</p>
               <p className="mb-0"><strong>Location:</strong> {selectedEvent.location}</p>
+              {selectedEvent?.rsvpSources?.oneTable && selectedEvent?.oneTableLink && (
+                <div className="mt-2">
+                  <a href={selectedEvent.oneTableLink} target="_blank" rel="noreferrer">RSVP through OneTable</a>
+                </div>
+              )}
             </div>
           )}
 
           <Form onSubmit={handleRSVPSubmit} autoComplete="on">
+            {selectedEvent?.rsvpSources?.oneTable && selectedEvent?.oneTableLink && (
+              <Form.Group className="mb-3">
+                <Form.Check
+                  type="checkbox"
+                  id="confirmOneTableEvents"
+                  label={
+                    <span>
+                      I confirm I registered via OneTable at{' '}
+                      <a href={selectedEvent.oneTableLink} target="_blank" rel="noreferrer">this link</a>.
+                    </span>
+                  }
+                  required={selectedEvent?.rsvpSources?.website !== true}
+                />
+              </Form.Group>
+            )}
             <Form.Group className="mb-3">
               <Form.Label>First Name *</Form.Label>
               <Form.Control
@@ -1260,17 +1310,42 @@ function Events() {
               </Form.Group>
             )}
 
+            {/* RSVP Sources */}
             <Form.Group className="mb-3">
-              <Form.Check
-                type="checkbox"
-                id="requireRSVP"
-                label="Require RSVP for this event"
-                checked={eventForm.requireRSVP}
-                onChange={(e) => setEventForm({ ...eventForm, requireRSVP: e.target.checked })}
-              />
+              <Form.Label>RSVP to this event through:</Form.Label>
+              <div className="d-flex gap-3">
+                <Form.Check
+                  type="checkbox"
+                  id="rsvpWebsite"
+                  label="This website"
+                  checked={!!eventForm.rsvpSources.website}
+                  onChange={(e) => setEventForm({ ...eventForm, rsvpSources: { ...eventForm.rsvpSources, website: e.target.checked } })}
+                />
+                <Form.Check
+                  type="checkbox"
+                  id="rsvpOneTable"
+                  label="OneTable"
+                  checked={!!eventForm.rsvpSources.oneTable}
+                  onChange={(e) => setEventForm({ ...eventForm, rsvpSources: { ...eventForm.rsvpSources, oneTable: e.target.checked } })}
+                />
+              </div>
             </Form.Group>
 
-            {eventForm.requireRSVP && (
+            {eventForm.rsvpSources.oneTable && (
+              <Form.Group className="mb-3">
+                <Form.Label>OneTable Link *</Form.Label>
+                <Form.Control
+                  type="url"
+                  required
+                  value={eventForm.oneTableLink}
+                  onChange={(e) => setEventForm({ ...eventForm, oneTableLink: e.target.value })}
+                  placeholder="https://onetable.org/event/…"
+                />
+                <Form.Text className="text-muted">Attendees will see this link and must confirm registering via OneTable to RSVP on the website.</Form.Text>
+              </Form.Group>
+            )}
+
+            {eventForm.rsvpSources.website && (
               <Form.Group className="mb-4">
                 <Form.Label>RSVP Approval Mode</Form.Label>
                 <Form.Select

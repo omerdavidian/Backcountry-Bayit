@@ -108,6 +108,7 @@ function Home() {
   const [showRSVPModal, setShowRSVPModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [existingRSVP, setExistingRSVP] = useState(null);
+  const [confirmOneTable, setConfirmOneTable] = useState(false);
   const [rsvpData, setRSVPData] = useState({
     firstName: '',
     lastName: '',
@@ -128,11 +129,33 @@ function Home() {
     try {
       const rsvpsCollection = collection(db, 'rsvps');
 
+      // If website RSVP is disabled, inform the user and show external options
+      if (selectedEvent.rsvpSources && selectedEvent.rsvpSources.website === false) {
+        const oneTableMsg = selectedEvent.rsvpSources.oneTable && selectedEvent.oneTableLink
+          ? ` You can RSVP via OneTable here: ${selectedEvent.oneTableLink}`
+          : '';
+        setRsvpStatus({
+          show: true,
+          message: `This event is not accepting RSVPs on the website.${oneTableMsg}`,
+          type: 'info'
+        });
+        return;
+      }
       if (selectedEvent.requireRSVP === false) {
         setRsvpStatus({
           show: true,
           message: 'This event does not require RSVP. Just show up!',
           type: 'info'
+        });
+        return;
+      }
+
+      // If OneTable is enabled, require user confirmation
+      if (selectedEvent?.rsvpSources?.oneTable && !confirmOneTable) {
+        setRsvpStatus({
+          show: true,
+          message: 'Please confirm that you registered through OneTable before submitting your RSVP here.',
+          type: 'warning'
         });
         return;
       }
@@ -433,14 +456,59 @@ function Home() {
     } else {
       date = new Date(event.date);
     }
-    
+
     const dateStr = date.toLocaleDateString('en-US', {
       weekday: 'long',
       month: 'long',
       day: 'numeric',
-      year: 'numeric'
+      year: 'numeric',
     });
-    const timeStr = `${event.hour}:${event.minute} ${event.period}`;
+
+    // Build a robust time string that avoids "undefined"
+    const pad2 = (v) => `${v}`.padStart(2, '0');
+    let rawHour = event?.hour;
+    let rawMinute = event?.minute;
+    let period = (event?.period || '').toString().trim().toUpperCase();
+
+    // If period (or hour/minute) missing but combined time exists, parse it
+    if ((!period || !rawHour || !rawMinute) && typeof event?.time === 'string') {
+      const match = event.time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+      if (match) {
+        if (!rawHour) rawHour = match[1];
+        if (!rawMinute) rawMinute = match[2];
+        if (!period) period = match[3].toUpperCase();
+      }
+    }
+
+    const hasHour = rawHour !== undefined && rawHour !== null && rawHour !== '';
+    let hourNum = hasHour ? Number(rawHour) : NaN;
+    let minute = rawMinute !== undefined && rawMinute !== null && rawMinute !== ''
+      ? pad2(rawMinute)
+      : '00';
+
+    // Derive AM/PM only if still missing AND hour seems to be 24h style
+    if (!period && !Number.isNaN(hourNum)) {
+      if (hourNum === 0) {
+        period = 'AM';
+        hourNum = 12;
+      } else if (hourNum < 12) {
+        period = 'AM';
+      } else if (hourNum === 12) {
+        period = 'PM';
+      } else {
+        period = 'PM';
+        hourNum = hourNum - 12;
+      }
+    }
+
+    let timeStr = 'Time TBD';
+    if (!Number.isNaN(hourNum)) {
+      const displayHour = Math.max(1, Math.min(12, hourNum));
+      timeStr = `${displayHour}:${minute}${period ? ' ' + period : ''}`.trim();
+    } else if (event?.time) {
+      timeStr = event.time; // final fallback keeps original string
+    }
+
     return { dateStr, timeStr };
   };
 
@@ -803,6 +871,7 @@ function Home() {
                                 setExistingRSVP(null);
                                 setRsvpStatus({ show: false, message: '', type: '' });
                                 loadSavedUserInfo();
+                                setConfirmOneTable(false);
                                 setShowRSVPModal(true);
                               }}
                             >
@@ -921,6 +990,7 @@ function Home() {
         setShowRSVPModal(false);
         setExistingRSVP(null);
         setRsvpStatus({ show: false, message: '', type: '' });
+        setConfirmOneTable(false);
       }} size="lg">
         <Modal.Header closeButton>
           <Modal.Title>RSVP for {selectedEvent?.title}</Modal.Title>
@@ -934,10 +1004,34 @@ function Home() {
               </p>
               <p className="mb-1"><strong>Time:</strong> {formatEventDateTime(selectedEvent).timeStr}</p>
               <p className="mb-0"><strong>Location:</strong> {selectedEvent.location}</p>
+              {selectedEvent?.rsvpSources?.oneTable && selectedEvent?.oneTableLink && (
+                <div className="mt-2">
+                  <a href={selectedEvent.oneTableLink} target="_blank" rel="noreferrer">
+                    RSVP through OneTable
+                  </a>
+                </div>
+              )}
             </div>
           )}
 
           <Form onSubmit={handleRSVPSubmit} autoComplete="on">
+            {selectedEvent?.rsvpSources?.oneTable && selectedEvent?.oneTableLink && (
+              <Form.Group className="mb-3">
+                <Form.Check
+                  type="checkbox"
+                  id="confirmOneTable"
+                  label={
+                    <span>
+                      I confirm I registered via OneTable at{' '}
+                      <a href={selectedEvent.oneTableLink} target="_blank" rel="noreferrer">this link</a>.
+                    </span>
+                  }
+                  checked={confirmOneTable}
+                  onChange={(e) => setConfirmOneTable(e.target.checked)}
+                  required={selectedEvent?.rsvpSources?.oneTable === true}
+                />
+              </Form.Group>
+            )}
             <Form.Group className="mb-3">
               <Form.Label>First Name *</Form.Label>
               <Form.Control
