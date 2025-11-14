@@ -27,7 +27,9 @@ function Manager() {
     rsvpSources: { website: true, oneTable: false },
     oneTableLink: '',
     rsvpApprovalMode: 'immediate',
-    limitCapacity: false
+    limitCapacity: false,
+    imageUrl: '',
+    imagePosition: 50
   });
 
   // Redirect if not logged in or not a manager
@@ -79,9 +81,24 @@ function Manager() {
       const timeString = `${eventForm.hour}:${eventForm.minute} ${eventForm.period}`;
 
       const eventData = {
-        ...eventForm,
-        time: timeString
+        title: eventForm.title,
+        date: eventForm.date,
+        time: timeString,
+        location: eventForm.location,
+        description: eventForm.description,
+        capacity: eventForm.capacity,
+        rsvpSources: eventForm.rsvpSources || { website: true, oneTable: false },
+        oneTableLink: eventForm.oneTableLink || '',
+        rsvpApprovalMode: eventForm.rsvpApprovalMode || 'immediate',
+        limitCapacity: eventForm.limitCapacity || false,
+        imageUrl: eventForm.imageUrl || '',
+        imagePosition: eventForm.imagePosition ?? 50
       };
+
+      // Debug logging
+      console.log('Saving event with data:', eventData);
+      console.log('Image URL:', eventData.imageUrl);
+      console.log('Image Position:', eventData.imagePosition);
 
       if (editingEvent) {
         await updateDoc(doc(db, 'events', editingEvent.id), eventData);

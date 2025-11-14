@@ -36,7 +36,9 @@ function Admin() {
     rsvpSources: { website: true, oneTable: false },
     oneTableLink: '',
     rsvpApprovalMode: 'immediate',
-    limitCapacity: false
+    limitCapacity: false,
+    imageUrl: '',
+    imagePosition: 50
   });
 
   // Redirect if not logged in or not a manager
@@ -105,21 +107,45 @@ function Admin() {
 
   const handleEventSubmit = async (e) => {
     e.preventDefault();
+    console.log('=== FORM SUBMIT STARTED ===');
+    
     try {
       // Convert time to display format
       const timeString = `${eventForm.hour}:${eventForm.minute} ${eventForm.period}`;
 
+      // Debug: log the raw form before processing
+      console.log('RAW eventForm:', eventForm);
+      console.log('RAW eventForm.imageUrl:', eventForm.imageUrl);
+      console.log('RAW eventForm.imagePosition:', eventForm.imagePosition);
+
       const eventData = {
-        ...eventForm,
-        time: timeString
+        title: eventForm.title,
+        date: eventForm.date,
+        time: timeString,
+        location: eventForm.location,
+        description: eventForm.description,
+        capacity: eventForm.capacity,
+        rsvpSources: eventForm.rsvpSources || { website: true, oneTable: false },
+        oneTableLink: eventForm.oneTableLink || '',
+        rsvpApprovalMode: eventForm.rsvpApprovalMode || 'immediate',
+        limitCapacity: eventForm.limitCapacity || false,
+        imageUrl: eventForm.imageUrl || '',
+        imagePosition: eventForm.imagePosition ?? 50
       };
+
+      // Debug logging
+      console.log('FINAL eventData to save:', eventData);
+      console.log('FINAL Image URL:', eventData.imageUrl);
+      console.log('FINAL Image Position:', eventData.imagePosition);
 
       if (editingEvent) {
         // Update existing event
+        console.log('Updating event with ID:', editingEvent.id);
         await updateDoc(doc(db, 'events', editingEvent.id), eventData);
         setAlert({ show: true, message: 'Event updated successfully!', type: 'success' });
       } else {
         // Create new event
+        console.log('Creating new event');
         await addDoc(collection(db, 'events'), eventData);
         setAlert({ show: true, message: 'Event created successfully!', type: 'success' });
       }
@@ -174,6 +200,25 @@ function Admin() {
       }
     }
 
+    // Ensure date is in YYYY-MM-DD format for the date input
+    let dateStr = '';
+    if (event.date) {
+      if (typeof event.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(event.date)) {
+        dateStr = event.date;
+      } else if (event.date.toDate && typeof event.date.toDate === 'function') {
+        // Firestore Timestamp
+        const d = event.date.toDate();
+        dateStr = d.toISOString().split('T')[0];
+      } else {
+        // Try to parse as date
+        const d = new Date(event.date);
+        if (!isNaN(d.getTime())) {
+          dateStr = d.toISOString().split('T')[0];
+        }
+      }
+    }
+    console.log('Editing event - original date:', event.date, 'formatted date:', dateStr);
+
     // Map legacy requireRSVP to rsvpSources for backward compatibility
     let rsvpSources = { website: true, oneTable: false };
     if (event.rsvpSources) {
@@ -184,7 +229,7 @@ function Admin() {
 
     setEventForm({
       title: event.title,
-      date: event.date,
+      date: dateStr,
       hour: hour,
       minute: minute,
       period: period,

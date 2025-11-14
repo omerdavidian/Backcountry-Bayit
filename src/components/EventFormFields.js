@@ -103,7 +103,11 @@ function EventFormFields({ eventForm, setEventForm, showCapacityToggle = true, h
         <Form.Control
           type="text"
           value={eventForm.imageUrl || ''}
-          onChange={(e) => setEventForm({ ...eventForm, imageUrl: e.target.value })}
+          onChange={(e) => {
+            const newUrl = e.target.value;
+            console.log('Image URL changed to:', newUrl);
+            setEventForm({ ...eventForm, imageUrl: newUrl });
+          }}
           placeholder="https://... or /images/Event Flyers/your-image.jpg"
         />
         <Form.Text className="text-muted">
@@ -119,8 +123,9 @@ function EventFormFields({ eventForm, setEventForm, showCapacityToggle = true, h
           onChange={(e) => {
             const file = e.target.files[0];
             if (file) {
-              // Check file size (warn if over 500KB as base64 will be larger)
-              if (file.size > 500000) {
+              // Check file size (warn if over 750KB as base64 encoding adds ~33% overhead)
+              // 750KB * 1.33 ≈ 1MB (Firestore field limit)
+              if (file.size > 750000) {
                 alert('Warning: Large images may not save properly. For best results:\n\n1. Copy your image to: public/images/Event Flyers/\n2. Use the URL field above with: /images/Event Flyers/your-filename.jpg');
                 return;
               }
@@ -134,7 +139,7 @@ function EventFormFields({ eventForm, setEventForm, showCapacityToggle = true, h
           }}
         />
         <Form.Text className="text-muted">
-          For small images only (&lt;500KB). For larger images, manually place them in public/images/Event Flyers/ and use the URL field above.
+          For small images only (&lt;750KB). For larger images, manually place them in public/images/Event Flyers/ and use the URL field above.
         </Form.Text>
       </Form.Group>
 
