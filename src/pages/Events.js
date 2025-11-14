@@ -1045,18 +1045,60 @@ function Events() {
             setConfirmOneTable={setConfirmOneTable}
             eventInfoDisplay={
               selectedEvent && (
-                <div className="mb-4 p-3 bg-light rounded">
-                  <h5 className="mb-3">{selectedEvent.title}</h5>
-                  <p className="mb-1">
-                    <strong>Date:</strong> {formatEventDate(selectedEvent.date)}
-                  </p>
-                  <p className="mb-1"><strong>Time:</strong> {selectedEvent.time}</p>
-                  <p className="mb-0"><strong>Location:</strong> {selectedEvent.location}</p>
-                  {selectedEvent?.rsvpSources?.oneTable && selectedEvent?.oneTableLink && (
-                    <div className="mt-2">
-                      <a href={selectedEvent.oneTableLink} target="_blank" rel="noreferrer">RSVP through OneTable</a>
+                <div className="mb-4 bg-light rounded overflow-hidden">
+                  {selectedEvent.imageUrl && (
+                    <div 
+                      style={{ 
+                        width: '100%', 
+                        height: '200px', 
+                        overflow: 'hidden',
+                        cursor: 'pointer',
+                        position: 'relative'
+                      }}
+                      onClick={() => {
+                        setSelectedImage({ url: selectedEvent.imageUrl, title: selectedEvent.title });
+                        setShowImageModal(true);
+                      }}
+                    >
+                      <img 
+                        src={selectedEvent.imageUrl} 
+                        alt={selectedEvent.title}
+                        style={{ 
+                          width: '100%', 
+                          height: '100%', 
+                          objectFit: 'cover',
+                          objectPosition: `center ${selectedEvent.imagePosition || 50}%`
+                        }}
+                      />
+                      <div 
+                        style={{
+                          position: 'absolute',
+                          bottom: '8px',
+                          right: '8px',
+                          backgroundColor: 'rgba(0,0,0,0.6)',
+                          color: 'white',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          fontSize: '0.75rem'
+                        }}
+                      >
+                        Click to view full image
+                      </div>
                     </div>
                   )}
+                  <div className="p-3">
+                    <h5 className="mb-3">{selectedEvent.title}</h5>
+                    <p className="mb-1">
+                      <strong>Date:</strong> {formatEventDate(selectedEvent.date)}
+                    </p>
+                    <p className="mb-1"><strong>Time:</strong> {selectedEvent.time}</p>
+                    <p className="mb-0"><strong>Location:</strong> {selectedEvent.location}</p>
+                    {selectedEvent?.rsvpSources?.oneTable && selectedEvent?.oneTableLink && (
+                      <div className="mt-2">
+                        <a href={selectedEvent.oneTableLink} target="_blank" rel="noreferrer">RSVP through OneTable</a>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )
             }
