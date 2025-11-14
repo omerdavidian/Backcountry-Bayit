@@ -330,7 +330,9 @@ function Events() {
         // Legacy field retained for backward compatibility (maps to website selection)
         requireRSVP: eventForm.rsvpSources.website,
         rsvpApprovalMode: eventForm.rsvpApprovalMode,
-        limitCapacity: eventForm.limitCapacity
+        limitCapacity: eventForm.limitCapacity,
+        imageUrl: eventForm.imageUrl || '',
+        imagePosition: eventForm.imagePosition ?? 50
       };
 
       if (editingEvent) {
