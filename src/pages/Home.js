@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row, Col, Card, Button, Modal } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { FaStar, FaCalendarAlt, FaHeart, FaUsers, FaMapMarkerAlt, FaClock } from 'react-icons/fa';
-import { collection, getDocs, query, orderBy, where, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, where, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import RSVPForm from '../components/RSVPForm';
 
@@ -247,8 +247,8 @@ function Home() {
         attendees: rsvpData.attendees,
         dietaryRestrictions: rsvpData.dietaryRestrictions || '',
         status: rsvpStatus,
-        timestamp: existingRSVP ? existingRSVP.timestamp : new Date(),
-        updatedAt: new Date()
+        timestamp: existingRSVP ? existingRSVP.timestamp : serverTimestamp(),
+        updatedAt: serverTimestamp()
       };
 
       if (existingRSVP) {
