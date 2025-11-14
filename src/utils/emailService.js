@@ -20,23 +20,23 @@ export const sendRSVPConfirmationEmail = async (rsvpData, eventData, status = 'a
 
     console.log('API Response status:', response.status);
 
+    const responseBody = await response.text();
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API Error response:', errorText);
-      
+      console.error('API Error response:', responseBody);
       try {
-        const error = JSON.parse(errorText);
-        throw new Error(error.details || error.error || 'Failed to send email');
+        const parsed = JSON.parse(responseBody);
+        throw new Error(parsed.details || parsed.error || 'Failed to send email');
       } catch (parseError) {
-        throw new Error(`Failed to send email: ${response.status} ${errorText}`);
+        throw new Error(`Failed to send email: ${response.status} ${responseBody}`);
       }
     }
 
-    const result = await response.json();
+    const result = responseBody ? JSON.parse(responseBody) : {};
     console.log('Email sent successfully:', result);
-    return { success: true, data: result };
+    return result;
   } catch (error) {
     console.error('Error sending RSVP confirmation email:', error);
-    return { success: false, error: error.message };
+    throw error;
   }
 };

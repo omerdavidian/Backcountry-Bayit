@@ -544,17 +544,23 @@ function Events() {
       saveUserInfo(rsvpData);
 
       // Send confirmation email
+      let emailWarning;
       try {
         await sendRSVPConfirmationEmail(rsvpData, selectedEvent, rsvpStatus);
       } catch (emailError) {
         console.error('Error sending confirmation email:', emailError);
-        // Don't fail the RSVP if email fails
+        emailWarning = emailError.message || 'confirmation email could not be sent';
       }
+
+      const finalMessage = emailWarning
+        ? `${statusMessage} We could not send a confirmation email (${emailWarning}).`
+        : statusMessage;
+      const finalType = emailWarning ? 'warning' : statusType;
 
       setRsvpStatus({
         show: true,
-        message: statusMessage,
-        type: statusType
+        message: finalMessage,
+        type: finalType
       });
 
       setRSVPData({
