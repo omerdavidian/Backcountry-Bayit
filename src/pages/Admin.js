@@ -194,7 +194,9 @@ function Admin() {
       rsvpSources: rsvpSources,
       oneTableLink: event.oneTableLink || '',
       rsvpApprovalMode: event.rsvpApprovalMode || 'immediate',
-      limitCapacity: event.limitCapacity !== undefined ? event.limitCapacity : false
+      limitCapacity: event.limitCapacity !== undefined ? event.limitCapacity : false,
+      imageUrl: event.imageUrl || '',
+      imagePosition: event.imagePosition || 50
     });
     setShowEventModal(true);
   };
@@ -213,7 +215,9 @@ function Admin() {
       rsvpSources: { website: true, oneTable: false },
       oneTableLink: '',
       rsvpApprovalMode: 'immediate',
-      limitCapacity: false
+      limitCapacity: false,
+      imageUrl: '',
+      imagePosition: 50
     });
   };
 

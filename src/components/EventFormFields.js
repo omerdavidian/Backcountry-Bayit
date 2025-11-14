@@ -97,6 +97,82 @@ function EventFormFields({ eventForm, setEventForm, showCapacityToggle = true, h
         />
       </Form.Group>
 
+      {/* Event Image/Flyer */}
+      <Form.Group className="mb-3">
+        <Form.Label>Event Image/Flyer</Form.Label>
+        <Form.Control
+          type="text"
+          value={eventForm.imageUrl || ''}
+          onChange={(e) => setEventForm({ ...eventForm, imageUrl: e.target.value })}
+          placeholder="Image URL or upload a file below"
+        />
+        <Form.Text className="text-muted">
+          Paste an image URL or use the upload button below to select a file
+        </Form.Text>
+      </Form.Group>
+
+      <Form.Group className="mb-3">
+        <Form.Label>Or Upload Image File</Form.Label>
+        <Form.Control
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files[0];
+            if (file) {
+              // For now, we'll store the file in the form state and let the parent handle upload
+              // In a full implementation, you'd upload to storage and get a URL
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                setEventForm({ ...eventForm, imageUrl: reader.result, imageFile: file });
+              };
+              reader.readAsDataURL(file);
+            }
+          }}
+        />
+        <Form.Text className="text-muted">
+          Upload an image file (will be stored in /images/Event Flyers/)
+        </Form.Text>
+      </Form.Group>
+
+      {eventForm.imageUrl && (
+        <>
+          <Form.Group className="mb-3">
+            <Form.Label>Image Preview</Form.Label>
+            <div style={{ 
+              width: '100%', 
+              height: '200px', 
+              overflow: 'hidden', 
+              borderRadius: '8px',
+              border: '1px solid #dee2e6'
+            }}>
+              <img 
+                src={eventForm.imageUrl} 
+                alt="Event preview"
+                style={{ 
+                  width: '100%', 
+                  height: '100%', 
+                  objectFit: 'cover',
+                  objectPosition: `center ${eventForm.imagePosition || 50}%`
+                }}
+              />
+            </div>
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Image Vertical Position: {eventForm.imagePosition || 50}%</Form.Label>
+            <Form.Range
+              min="0"
+              max="100"
+              value={eventForm.imagePosition || 50}
+              onChange={(e) => setEventForm({ ...eventForm, imagePosition: parseInt(e.target.value) })}
+            />
+            <Form.Text className="text-muted">
+              Adjust which part of the image shows in the banner (0% = top, 50% = center, 100% = bottom)
+            </Form.Text>
+          </Form.Group>
+        </>
+      )}
+
       {showCapacityToggle && (
         <Form.Group className="mb-3">
           <Form.Check

@@ -40,7 +40,9 @@ function Events() {
     rsvpSources: { website: true, oneTable: false },
     oneTableLink: '',
     rsvpApprovalMode: 'immediate',
-    limitCapacity: false // capacity limit toggle
+    limitCapacity: false, // capacity limit toggle
+    imageUrl: '',
+    imagePosition: 50
   });
   const [rsvpStatus, setRsvpStatus] = useState({ show: false, message: '', type: '' });
   const [eventStatus, setEventStatus] = useState({ show: false, message: '', type: '' });
@@ -48,6 +50,8 @@ function Events() {
   const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
   const [confirmOneTable, setConfirmOneTable] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
   const calendarRef = useRef(null);
   const monthPickerRef = useRef(null);
 
@@ -298,7 +302,9 @@ function Events() {
       },
       oneTableLink: event.oneTableLink || '',
       rsvpApprovalMode: event.rsvpApprovalMode || 'immediate',
-      limitCapacity: event.limitCapacity !== undefined ? event.limitCapacity : false
+      limitCapacity: event.limitCapacity !== undefined ? event.limitCapacity : false,
+      imageUrl: event.imageUrl || '',
+      imagePosition: event.imagePosition || 50
     });
     setShowEventModal(true);
   };
@@ -401,7 +407,9 @@ function Events() {
       rsvpSources: { website: true, oneTable: false },
       oneTableLink: '',
       rsvpApprovalMode: 'immediate',
-      limitCapacity: false
+      limitCapacity: false,
+      imageUrl: '',
+      imagePosition: 50
     });
   };
 
@@ -811,6 +819,46 @@ function Events() {
               .map((event) => (
                 <Col key={event.id} md={6}>
                   <Card className="h-100 border-0 shadow-sm card-hover">
+                    {event.imageUrl && (
+                      <div 
+                        style={{ 
+                          width: '100%', 
+                          height: '200px', 
+                          overflow: 'hidden',
+                          cursor: 'pointer',
+                          position: 'relative'
+                        }}
+                        onClick={() => {
+                          setSelectedImage({ url: event.imageUrl, title: event.title });
+                          setShowImageModal(true);
+                        }}
+                      >
+                        <img 
+                          src={event.imageUrl} 
+                          alt={event.title}
+                          style={{ 
+                            width: '100%', 
+                            height: '100%', 
+                            objectFit: 'cover',
+                            objectPosition: `center ${event.imagePosition || 50}%`
+                          }}
+                        />
+                        <div 
+                          style={{
+                            position: 'absolute',
+                            bottom: '8px',
+                            right: '8px',
+                            backgroundColor: 'rgba(0,0,0,0.6)',
+                            color: 'white',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            fontSize: '0.75rem'
+                          }}
+                        >
+                          Click to view full image
+                        </div>
+                      </div>
+                    )}
                     <Card.Body className="p-4">
                       {isEventToday(event.date) && (
                         <div className="mb-3 text-center">
@@ -1045,6 +1093,32 @@ function Events() {
               </Button>
             </div>
           </Form>
+        </Modal.Body>
+      </Modal>
+
+      {/* Image Modal (Full-size view) */}
+      <Modal 
+        show={showImageModal} 
+        onHide={() => setShowImageModal(false)} 
+        size="xl"
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>{selectedImage?.title}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-0">
+          {selectedImage?.url && (
+            <img 
+              src={selectedImage.url} 
+              alt={selectedImage.title}
+              style={{ 
+                width: '100%', 
+                height: 'auto',
+                maxHeight: '80vh',
+                objectFit: 'contain'
+              }}
+            />
+          )}
         </Modal.Body>
       </Modal>
     </div>
