@@ -99,15 +99,15 @@ function EventFormFields({ eventForm, setEventForm, showCapacityToggle = true, h
 
       {/* Event Image/Flyer */}
       <Form.Group className="mb-3">
-        <Form.Label>Event Image/Flyer</Form.Label>
+        <Form.Label>Event Image/Flyer URL</Form.Label>
         <Form.Control
           type="text"
           value={eventForm.imageUrl || ''}
           onChange={(e) => setEventForm({ ...eventForm, imageUrl: e.target.value })}
-          placeholder="Image URL or upload a file below"
+          placeholder="https://... or /images/Event Flyers/your-image.jpg"
         />
         <Form.Text className="text-muted">
-          Paste an image URL or use the upload button below to select a file
+          Enter a full URL or a path like /images/Event Flyers/filename.jpg (after placing the file in that folder)
         </Form.Text>
       </Form.Group>
 
@@ -119,8 +119,12 @@ function EventFormFields({ eventForm, setEventForm, showCapacityToggle = true, h
           onChange={(e) => {
             const file = e.target.files[0];
             if (file) {
-              // For now, we'll store the file in the form state and let the parent handle upload
-              // In a full implementation, you'd upload to storage and get a URL
+              // Check file size (warn if over 500KB as base64 will be larger)
+              if (file.size > 500000) {
+                alert('Warning: Large images may not save properly. For best results:\n\n1. Copy your image to: public/images/Event Flyers/\n2. Use the URL field above with: /images/Event Flyers/your-filename.jpg');
+                return;
+              }
+              
               const reader = new FileReader();
               reader.onloadend = () => {
                 setEventForm({ ...eventForm, imageUrl: reader.result, imageFile: file });
@@ -130,7 +134,7 @@ function EventFormFields({ eventForm, setEventForm, showCapacityToggle = true, h
           }}
         />
         <Form.Text className="text-muted">
-          Upload an image file (will be stored in /images/Event Flyers/)
+          For small images only (&lt;500KB). For larger images, manually place them in public/images/Event Flyers/ and use the URL field above.
         </Form.Text>
       </Form.Group>
 
