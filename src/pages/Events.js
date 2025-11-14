@@ -420,27 +420,7 @@ function Events() {
     try {
       const rsvpsCollection = collection(db, 'rsvps');
 
-      if (selectedEvent.requireRSVP === false) {
-        setRsvpStatus({
-          show: true,
-          message: 'This event does not require RSVP. Just show up!',
-          type: 'info'
-        });
-        return;
-      }
-
-      // If website RSVPs are disabled via rsvpSources, block local RSVP and provide OneTable link if available
-      if (selectedEvent.rsvpSources && selectedEvent.rsvpSources.website === false) {
-        const oneTableMsg = selectedEvent.rsvpSources.oneTable && selectedEvent.oneTableLink
-          ? ` You can RSVP via OneTable here: ${selectedEvent.oneTableLink}`
-          : '';
-        setRsvpStatus({
-          show: true,
-          message: `Website RSVPs are disabled for this event.${oneTableMsg}`,
-          type: 'info'
-        });
-        return;
-      }
+      // Website RSVPs are always allowed. If OneTable is enabled, we still require confirmation below.
 
       // Check if this email already has an RSVP for this event (as primary or attendee)
       const q = query(

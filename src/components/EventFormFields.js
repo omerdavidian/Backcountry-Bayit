@@ -208,20 +208,14 @@ function EventFormFields({ eventForm, setEventForm, showCapacityToggle = true, h
         </Form.Group>
       )}
 
-      {/* RSVP Sources */}
+      {/* RSVP Sources - website RSVP is always enabled; users can optionally enable OneTable */}
       <Form.Group className="mb-3">
         <Form.Label>RSVP to this event through:</Form.Label>
-        <div className="d-flex gap-3">
-          <Form.Check
-            type="checkbox"
-            id="rsvpWebsite"
-            label="This website"
-            checked={!!eventForm.rsvpSources?.website}
-            onChange={(e) => setEventForm({ 
-              ...eventForm, 
-              rsvpSources: { ...eventForm.rsvpSources, website: e.target.checked } 
-            })}
-          />
+        <div className="d-flex gap-3 align-items-center">
+          <div>
+            <strong>This website</strong>
+            <div className="text-muted small">(always enabled)</div>
+          </div>
           <Form.Check
             type="checkbox"
             id="rsvpOneTable"
@@ -229,7 +223,8 @@ function EventFormFields({ eventForm, setEventForm, showCapacityToggle = true, h
             checked={!!eventForm.rsvpSources?.oneTable}
             onChange={(e) => setEventForm({ 
               ...eventForm, 
-              rsvpSources: { ...eventForm.rsvpSources, oneTable: e.target.checked } 
+              // keep website RSVP always true
+              rsvpSources: { website: true, oneTable: e.target.checked } 
             })}
           />
         </div>

@@ -130,26 +130,7 @@ function Home() {
     try {
       const rsvpsCollection = collection(db, 'rsvps');
 
-      // If website RSVP is disabled, inform the user and show external options
-      if (selectedEvent.rsvpSources && selectedEvent.rsvpSources.website === false) {
-        const oneTableMsg = selectedEvent.rsvpSources.oneTable && selectedEvent.oneTableLink
-          ? ` You can RSVP via OneTable here: ${selectedEvent.oneTableLink}`
-          : '';
-        setRsvpStatus({
-          show: true,
-          message: `This event is not accepting RSVPs on the website.${oneTableMsg}`,
-          type: 'info'
-        });
-        return;
-      }
-      if (selectedEvent.requireRSVP === false) {
-        setRsvpStatus({
-          show: true,
-          message: 'This event does not require RSVP. Just show up!',
-          type: 'info'
-        });
-        return;
-      }
+      // Website RSVPs are always allowed. If OneTable is enabled, we still require confirmation below.
 
       // If OneTable is enabled, require user confirmation
       if (selectedEvent?.rsvpSources?.oneTable && !confirmOneTable) {
