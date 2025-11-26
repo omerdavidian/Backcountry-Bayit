@@ -580,7 +580,7 @@ function Home() {
         <div className="hero-content" style={{position: "relative", zIndex: 3, width: "100%"}}>
           <h1 className="display-3 fw-bold mb-4 text-center">Welcome to the Backcountry Bayit</h1>
           <p className="lead mb-4 text-center" style={{fontSize: "1.5rem"}}>
-            A vibrant Jewish community for people in their 20s and 30s in Frisco, Colorado
+            A vibrant Jewish community for people in their 20's and 30's in Frisco, Colorado
           </p>
           <div className="star-decoration text-center">✡</div>
           <p className="mt-4 mb-4 text-center" style={{fontSize: "1.2rem"}}>

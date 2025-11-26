@@ -26,7 +26,7 @@ function About() {
           <Row className="justify-content-center">
             <Col lg={10}>
               <h2 className="section-title text-center mb-5">Our Mission</h2>
-              <p className="lead text-center mb-5">We bring together young adults, locals, and visitors in their 20s and 30s to celebrate Shabbat, seasonal gatherings, and social events in the Colorado Rockies.</p>
+              <p className="lead text-center mb-5">We bring together young adults, locals, and visitors in their 20's and 30's to celebrate Shabbat, seasonal gatherings, and social events in the Colorado Rockies.</p>
               <Row className="g-4">
                 <Col md={6}>
                   <Card className="h-100 border-0 shadow-sm">
@@ -46,7 +46,7 @@ function About() {
                         <FaStar />
                       </div>
                       <h4>Inclusive Community</h4>
-                      <p>From curious newcomers to deeply observant members, Backcountry Bayit focuses on singles and young professionals in their 20s and 30s, creating space for connection and meaningful engagement.</p>
+                      <p>From curious newcomers to deeply observant members, Backcountry Bayit focuses on singles and young professionals in their 20's and 30's, creating space for connection and meaningful engagement.</p>
                     </Card.Body>
                   </Card>
                 </Col>
