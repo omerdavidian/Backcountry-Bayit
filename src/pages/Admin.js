@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaSort, FaSortUp, FaSortDown, FaUserPlus, FaUsers } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaSort, FaSortUp, FaSortDown, FaUserPlus, FaUsers, FaDownload } from 'react-icons/fa';
 import EventFormFields from '../components/EventFormFields';
 
 function Admin() {
@@ -345,6 +345,70 @@ function Admin() {
     return eventRSVPs.reduce((total, rsvp) => total + (rsvp.guests || 1), 0);
   };
 
+  const handleDownloadCSV = (event) => {
+    try {
+      const rows = getRSVPsForEvent(event.id) || [];
+      if (!rows.length) {
+        alert('No RSVPs for this event');
+        return;
+      }
+
+      const escape = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+
+      const headers = [
+        'Primary First Name',
+        'Primary Last Name',
+        'Primary Email',
+        'Phone',
+        'Additional Attendees',
+        'Dietary Restrictions',
+        'Status',
+        'Timestamp'
+      ];
+
+      const lines = [headers.map(escape).join(',')];
+
+      rows.forEach(r => {
+        const attendees = Array.isArray(r.attendees) ? r.attendees.map(a => `${(a.firstName||'').trim()} ${(a.lastName||'').trim()}${a.email ? ' <' + a.email + '>' : ''}`.trim()).join('; ') : '';
+        // Normalize timestamp
+        let ts = '';
+        try {
+          if (r.timestamp && typeof r.timestamp.toDate === 'function') ts = r.timestamp.toDate().toISOString();
+          else ts = r.timestamp ? new Date(r.timestamp).toISOString() : '';
+        } catch (e) {
+          ts = '';
+        }
+
+        const row = [
+          escape(r.firstName),
+          escape(r.lastName),
+          escape(r.email),
+          escape(r.phone),
+          escape(attendees),
+          escape(r.dietaryRestrictions),
+          escape(r.status),
+          escape(ts)
+        ];
+        lines.push(row.join(','));
+      });
+
+      const csv = lines.join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeTitle = (event.title || 'event').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      a.download = `${safeTitle || 'event'}-rsvps.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export CSV:', error);
+      alert('Failed to export CSV. See console for details.');
+    }
+  };
+
   const isEventPast = (eventDate) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -633,6 +697,15 @@ function Admin() {
                                   title="Manage RSVPs"
                                 >
                                   RSVPs
+                                </Button>
+                                <Button
+                                  variant="outline-success"
+                                  size="sm"
+                                  className="ms-2"
+                                  onClick={() => handleDownloadCSV(event)}
+                                  title="Download RSVPs as CSV"
+                                >
+                                  <FaDownload />
                                 </Button>
                               </td>
                             </tr>
