@@ -1,6 +1,7 @@
 import React from 'react';
 import { Container, Row, Col, Card } from 'react-bootstrap';
 import { FaHeart, FaHandHoldingHeart, FaUsers, FaUtensils, FaStar } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
 
 function Donate() {
   return (
@@ -98,8 +99,9 @@ function Donate() {
                     Your donation is tax-deductible to the fullest extent allowed by law.
                   </p>
 
-                  {/* PayPal Donate Button */}
-                  <div className="mb-4">
+                  {/* Donation Buttons */}
+                  <div className="d-flex flex-wrap justify-content-center gap-3 mb-4">
+                    {/* PayPal */}
                     <form
                       action="https://www.paypal.com/donate"
                       method="post"
@@ -111,19 +113,49 @@ function Donate() {
                         className="donate-btn"
                         style={{
                           border: 'none',
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          backgroundColor: '#0070ba'
                         }}
                       >
                         <FaHeart className="me-2" />
                         Donate via PayPal
                       </button>
                     </form>
+
+                    {/* Venmo */}
+                    <a
+                      href="https://venmo.com/u/bcbayit"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="donate-btn text-decoration-none"
+                      style={{
+                        backgroundColor: '#008CFF',
+                        display: 'inline-flex',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <FaHeart className="me-2" />
+                      Donate via Venmo
+                    </a>
+
+                    {/* Zelle */}
+                    <Link
+                      to="/zelle"
+                      className="donate-btn text-decoration-none"
+                      style={{
+                        backgroundColor: '#6D1ED4',
+                        display: 'inline-flex',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <FaHeart className="me-2" />
+                      Donate via Zelle
+                    </Link>
                   </div>
 
                   <p className="text-muted mb-0">
                     <small>
-                      You will be redirected to PayPal's secure donation page.
-                      You can donate with or without a PayPal account.
+                      Choose your preferred payment method. All donations are tax-deductible.
                     </small>
                   </p>
                 </Card.Body>

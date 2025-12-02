@@ -12,6 +12,7 @@ import Login from './pages/Login';
 import Admin from './pages/Admin';
 import Manager from './pages/Manager';
 import EventRSVPs from './pages/EventRSVPs';
+import Zelle from './pages/Zelle';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './styles/theme.css';
 
@@ -32,6 +33,7 @@ function App() {
               <Route path="/admin" element={<Admin />} />
               <Route path="/manager" element={<Manager />} />
               <Route path="/admin/rsvps/:eventId/:eventName" element={<EventRSVPs />} />
+              <Route path="/zelle" element={<Zelle />} />
             </Routes>
           </main>
           <Footer />
