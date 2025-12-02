@@ -18,21 +18,35 @@ export function AuthProvider({ children }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
 
-      if (user) {
-        try {
-          // Get user role from Firestore
+      if (!user) {
+        setUserRole(null);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Prefer Firebase Auth custom claims for role
+        const tokenResult = await user.getIdTokenResult();
+        const claims = tokenResult.claims || {};
+        if (claims.admin) {
+          setUserRole('admin');
+        } else if (claims.isManager) {
+          setUserRole('manager');
+        } else {
+          // Fallback to Firestore record if custom claim is missing
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
             setUserRole(userDoc.data().role);
+          } else {
+            setUserRole(null);
           }
-        } catch (error) {
-          console.error('Error fetching user role:', error);
         }
-      } else {
+      } catch (error) {
+        console.error('Error fetching user role:', error);
         setUserRole(null);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     });
 
     return unsubscribe;

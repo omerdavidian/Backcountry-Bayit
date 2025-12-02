@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Container, Table, Button, Alert } from 'react-bootstrap';
 import { collection, getDocs, getDoc, updateDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -9,6 +9,7 @@ import { FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
 function EventRSVPs() {
   const { eventId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [rsvps, setRSVPs] = useState([]);
   const [event, setEvent] = useState(null);
   const [statusMessage, setStatusMessage] = useState({ show: false, message: '', type: '' });
@@ -151,7 +152,18 @@ function EventRSVPs() {
         <h1 className="fw-bold">RSVPs for {event?.title || 'Loading...'}</h1>
         <div className="d-flex align-items-center">
           <div className="me-3 text-muted small">Approved guests: <strong>{approvedGuestsCount}</strong></div>
-          <Button variant="outline-secondary" onClick={() => navigate('/admin')}>
+          <Button
+            variant="outline-secondary"
+            onClick={() => {
+              const fromTab = location?.state?.fromTab;
+              if (fromTab) {
+                navigate('/admin', { state: { fromTab } });
+              } else {
+                // Fallback to history back if no tab info
+                navigate(-1);
+              }
+            }}
+          >
             Back to Admin
           </Button>
         </div>

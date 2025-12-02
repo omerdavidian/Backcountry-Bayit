@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaDownload } from 'react-icons/fa';
 import EventFormFields from '../components/EventFormFields';
 
 function Manager() {
@@ -74,6 +74,106 @@ function Manager() {
       console.error('Error loading RSVPs:', error);
     }
   };
+
+  const getRSVPsForEvent = (eventId) => {
+    return rsvps.filter(rsvp => rsvp.eventId === eventId);
+  };
+
+  const getTotalGuestsForEvent = (eventId) => {
+    const eventRSVPs = getRSVPsForEvent(eventId);
+    return eventRSVPs.reduce((total, rsvp) => total + (rsvp.guests || 1), 0);
+  };
+
+  const handleDownloadCSV = (event) => {
+    try {
+      const rows = getRSVPsForEvent(event.id) || [];
+      if (!rows.length) {
+        alert('No RSVPs for this event');
+        return;
+      }
+
+      const escape = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+
+      const headers = [
+        'Primary First Name',
+        'Primary Last Name',
+        'Primary Email',
+        'Phone',
+        'Additional Attendees',
+        'Dietary Restrictions',
+        'Status',
+        'Timestamp'
+      ];
+
+      const lines = [headers.map(escape).join(',')];
+
+      rows.forEach(r => {
+        const attendees = Array.isArray(r.attendees) ? r.attendees.map(a => `${(a.firstName||'').trim()} ${(a.lastName||'').trim()}${a.email ? ' <' + a.email + '>' : ''}`.trim()).join('; ') : '';
+        // Normalize timestamp
+        let ts = '';
+        try {
+          if (r.timestamp && typeof r.timestamp.toDate === 'function') ts = r.timestamp.toDate().toISOString();
+          else ts = r.timestamp ? new Date(r.timestamp).toISOString() : '';
+        } catch (e) {
+          ts = '';
+        }
+
+        const row = [
+          escape(r.firstName),
+          escape(r.lastName),
+          escape(r.email),
+          escape(r.phone),
+          escape(attendees),
+          escape(r.dietaryRestrictions),
+          escape(r.status),
+          escape(ts)
+        ];
+        lines.push(row.join(','));
+      });
+
+      const csv = lines.join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeTitle = (event.title || 'event').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      a.download = `${safeTitle || 'event'}-rsvps.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export CSV:', error);
+      alert('Failed to export CSV. See console for details.');
+    }
+  };
+
+  const isEventPast = (eventDate) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let eventD;
+    if (typeof eventDate === 'string' && eventDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = eventDate.split('-').map(Number);
+      eventD = new Date(year, month - 1, day);
+    } else {
+      eventD = new Date(eventDate);
+    }
+    eventD.setHours(0, 0, 0, 0);
+    return eventD < today;
+  };
+
+  const formatEventDate = (dateString) => {
+    if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateString.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    }
+    return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  };
+
+  const sortedEvents = [...events].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const upcomingEvents = sortedEvents.filter(e => !isEventPast(e.date));
+  const pastEvents = sortedEvents.filter(e => isEventPast(e.date));
 
   const handleEventSubmit = async (e) => {
     e.preventDefault();
@@ -278,13 +378,13 @@ function Manager() {
                     </tr>
                   </thead>
                   <tbody>
-                    {events.map(event => (
+                    {upcomingEvents.map(event => (
                       <tr key={event.id}>
                         <td><strong>{event.title}</strong></td>
-                        <td>{new Date(event.date).toLocaleDateString()}</td>
+                        <td>{formatEventDate(event.date)}</td>
                         <td>{event.time}</td>
                         <td>{event.location}</td>
-                        <td>{rsvps.filter(r => r.eventId === event.id).length} RSVPs</td>
+                        <td>{getRSVPsForEvent(event.id).length} RSVPs</td>
                         <td>{event.capacity}</td>
                         <td>
                           <Button variant="outline-primary" size="sm" className="me-2" onClick={() => handleEditEvent(event)}>
@@ -297,6 +397,9 @@ function Manager() {
                             const eventNameSlug = event.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
                             navigate(`/admin/rsvps/${event.id}/${eventNameSlug}`);
                           }}>RSVPs</Button>
+                          <Button variant="outline-success" size="sm" className="ms-2" onClick={() => handleDownloadCSV(event)}>
+                            <FaDownload />
+                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -311,6 +414,58 @@ function Manager() {
                 )}
               </Card.Body>
             </Card>
+            {/* Past Events Section */}
+            <div className="mt-4">
+              <Card className="border-0 shadow">
+                <Card.Body className="p-4">
+                  <h4 className="mb-3">Past Events</h4>
+                  {pastEvents.length > 0 ? (
+                    <Table responsive hover>
+                      <thead className="bg-light">
+                        <tr>
+                          <th>Title</th>
+                          <th>Date</th>
+                          <th>Time</th>
+                          <th>Location</th>
+                          <th>RSVPs</th>
+                          <th>Capacity</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pastEvents.map(event => (
+                          <tr key={event.id} style={{ opacity: 0.6 }}>
+                            <td><strong>{event.title}</strong></td>
+                            <td>{formatEventDate(event.date)}</td>
+                            <td>{event.time}</td>
+                            <td>{event.location}</td>
+                            <td>{getRSVPsForEvent(event.id).length} RSVPs</td>
+                            <td>{event.capacity}</td>
+                            <td>
+                              <Button variant="outline-primary" size="sm" className="me-2" onClick={() => handleEditEvent(event)}>
+                                <FaEdit />
+                              </Button>
+                              <Button variant="outline-danger" size="sm" className="me-2" onClick={() => handleDeleteEvent(event.id)}>
+                                <FaTrash />
+                              </Button>
+                              <Button variant="success" size="sm" onClick={() => {
+                                const eventNameSlug = event.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+                                navigate(`/admin/rsvps/${event.id}/${eventNameSlug}`);
+                              }}>RSVPs</Button>
+                              <Button variant="outline-success" size="sm" className="ms-2" onClick={() => handleDownloadCSV(event)}>
+                                <FaDownload />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                  ) : (
+                    <div className="text-center text-muted py-3">No past events.</div>
+                  )}
+                </Card.Body>
+              </Card>
+            </div>
           </Col>
         </Row>
       </Container>

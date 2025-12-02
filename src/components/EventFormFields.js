@@ -1,6 +1,57 @@
 import React from 'react';
 import { Form, Row, Col } from 'react-bootstrap';
 
+const MAX_IMAGE_DIMENSION = 2048;
+const WEBP_QUALITY = 0.78;
+
+const createCanvas = (image) => {
+  const ratio = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(image.width, image.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(image.width * ratio));
+  canvas.height = Math.max(1, Math.round(image.height * ratio));
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas;
+};
+
+const processImageFile = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  const image = new Image();
+
+  image.onerror = () => reject(new Error('Unable to load image for compression.'));
+  image.onload = () => {
+    const canvas = createCanvas(image);
+    canvas.toBlob((blob) => {
+      if (!blob) return reject(new Error('Image compression failed.'));
+      const dataReader = new FileReader();
+      dataReader.onload = () => resolve({ blob, dataUrl: dataReader.result });
+      dataReader.onerror = () => reject(new Error('Failed to read compressed image.'));
+      dataReader.readAsDataURL(blob);
+    }, 'image/webp', WEBP_QUALITY);
+  };
+
+  reader.onload = () => { image.src = reader.result; };
+  reader.onerror = () => reject(new Error('Failed to load selected image.'));
+  reader.readAsDataURL(file);
+});
+
+const downloadAsUploadedPhoto = (blob, originalName) => {
+  const safeName = (originalName || 'event-image')
+    .toLowerCase()
+    .replace(/\.[^.]+$/, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  const filename = `uploaded event photos/${safeName || 'event'}-${Date.now()}.webp`;
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+};
+
 /**
  * Shared event form fields component used across Admin, Manager, and Events pages.
  * Renders all input fields for creating/editing events.
@@ -11,6 +62,22 @@ import { Form, Row, Col } from 'react-bootstrap';
  * @param {Function} handleToggleCapacityLimit - Handler for capacity toggle (optional)
  */
 function EventFormFields({ eventForm, setEventForm, showCapacityToggle = true, handleToggleCapacityLimit }) {
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    try {
+      const { blob, dataUrl } = await processImageFile(file);
+      setEventForm({ ...eventForm, imageUrl: dataUrl, imageFile: file });
+      downloadAsUploadedPhoto(blob, file.name);
+    } catch (error) {
+      console.error('Image processing failed:', error);
+      alert('Unable to process this image. Please try a different file or check the file type.');
+    }
+    e.target.value = '';
+  };
   return (
     <>
       <Form.Group className="mb-3">
@@ -120,23 +187,7 @@ function EventFormFields({ eventForm, setEventForm, showCapacityToggle = true, h
         <Form.Control
           type="file"
           accept="image/*"
-          onChange={(e) => {
-            const file = e.target.files[0];
-            if (file) {
-              // Check file size (warn if over 750KB as base64 encoding adds ~33% overhead)
-              // 750KB * 1.33 ≈ 1MB (Firestore field limit)
-              if (file.size > 750000) {
-                alert('Warning: Large images may not save properly. For best results:\n\n1. Copy your image to: public/images/Event Flyers/\n2. Use the URL field above with: /images/Event Flyers/your-filename.jpg');
-                return;
-              }
-              
-              const reader = new FileReader();
-              reader.onloadend = () => {
-                setEventForm({ ...eventForm, imageUrl: reader.result, imageFile: file });
-              };
-              reader.readAsDataURL(file);
-            }
-          }}
+          onChange={handleImageUpload}
         />
         <Form.Text className="text-muted">
           For small images only (&lt;750KB). For larger images, manually place them in public/images/Event Flyers/ and use the URL field above.

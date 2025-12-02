@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Card, Button, Table, Modal, Form, Alert, Nav, Row, Col } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -10,6 +10,7 @@ import EventFormFields from '../components/EventFormFields';
 function Admin() {
   const { currentUser, logout, isManager } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('users');
   const [users, setUsers] = useState([]);
   const [events, setEvents] = useState([]);
@@ -60,6 +61,10 @@ function Admin() {
       loadUsers();
       loadEvents();
       loadRSVPs();
+    }
+    // If navigation provided a preferred tab, select it
+    if (location?.state && location.state.fromTab) {
+      setActiveTab(location.state.fromTab);
     }
   }, [currentUser, isManager]);
 
@@ -484,6 +489,9 @@ function Admin() {
     return 0;
   });
 
+  const upcomingEvents = sortedEvents.filter(e => !isEventPast(e.date));
+  const pastEvents = sortedEvents.filter(e => isEventPast(e.date));
+
   if (!currentUser || !isManager) {
     return null;
   }
@@ -559,6 +567,14 @@ function Admin() {
                     <FaUserPlus className="me-2" />
                     Create Manager
                   </Button>
+                  <Button
+                    variant="secondary"
+                    className="ms-2"
+                    onClick={() => loadUsers()}
+                    title="Refresh users list"
+                  >
+                    Refresh Users
+                  </Button>
                 </div>
 
                 <Card className="border-0 shadow">
@@ -608,7 +624,7 @@ function Admin() {
                       </div>
                     )}
                   </Card.Body>
-                </Card>
+                  </Card>
               </>
             )}
 
@@ -657,7 +673,7 @@ function Admin() {
                         </tr>
                       </thead>
                       <tbody>
-                        {sortedEvents.map(event => {
+                        {upcomingEvents.map(event => {
                           const isPast = isEventPast(event.date);
                           return (
                             <tr key={event.id} style={{ opacity: isPast ? 0.5 : 1 }}>
@@ -690,9 +706,9 @@ function Admin() {
                                 <Button
                                   variant={getRSVPButtonVariant(event.id)}
                                   size="sm"
-                                  onClick={() => {
+                                    onClick={() => {
                                     const eventNameSlug = event.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-                                    navigate(`/admin/rsvps/${event.id}/${eventNameSlug}`);
+                                    navigate(`/admin/rsvps/${event.id}/${eventNameSlug}`, { state: { fromTab: activeTab } });
                                   }}
                                   title="Manage RSVPs"
                                 >
@@ -722,6 +738,85 @@ function Admin() {
                     )}
                   </Card.Body>
                 </Card>
+
+                {/* Past Events Section */}
+                <div className="mt-4">
+                  <Card className="border-0 shadow">
+                    <Card.Body className="p-4">
+                      <h4 className="mb-3">Past Events</h4>
+                      {pastEvents.length > 0 ? (
+                        <Table responsive hover>
+                          <thead className="bg-light">
+                            <tr>
+                              <th>Title</th>
+                              <th>Date</th>
+                              <th>Time</th>
+                              <th>Location</th>
+                              <th>RSVPs</th>
+                              <th>Capacity</th>
+                              <th>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {pastEvents.map(event => (
+                              <tr key={event.id} style={{ opacity: 0.6 }}>
+                                <td><strong>{event.title}</strong></td>
+                                <td>{formatEventDate(event.date)}</td>
+                                <td>{event.time}</td>
+                                <td>{event.location}</td>
+                                <td>
+                                  {getTotalGuestsForEvent(event.id)} guests
+                                  {' '}({getRSVPsForEvent(event.id).length} RSVPs)
+                                </td>
+                                <td>{event.capacity}</td>
+                                <td>
+                                  <Button
+                                    variant="outline-primary"
+                                    size="sm"
+                                    className="me-2"
+                                    onClick={() => handleEditEvent(event)}
+                                  >
+                                    <FaEdit />
+                                  </Button>
+                                  <Button
+                                    variant="outline-danger"
+                                    size="sm"
+                                    className="me-2"
+                                    onClick={() => handleDeleteEvent(event.id)}
+                                  >
+                                    <FaTrash />
+                                  </Button>
+                                  <Button
+                                    variant={getRSVPButtonVariant(event.id)}
+                                    size="sm"
+                                    onClick={() => {
+                                      const eventNameSlug = event.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+                                      navigate(`/admin/rsvps/${event.id}/${eventNameSlug}`, { state: { fromTab: activeTab } });
+                                    }}
+                                    title="Manage RSVPs"
+                                  >
+                                    RSVPs
+                                  </Button>
+                                  <Button
+                                    variant="outline-success"
+                                    size="sm"
+                                    className="ms-2"
+                                    onClick={() => handleDownloadCSV(event)}
+                                    title="Download RSVPs as CSV"
+                                  >
+                                    <FaDownload />
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </Table>
+                      ) : (
+                        <div className="text-center text-muted py-3">No past events.</div>
+                      )}
+                    </Card.Body>
+                  </Card>
+                </div>
               </>
             )}
           </Col>
