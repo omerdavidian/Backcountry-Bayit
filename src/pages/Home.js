@@ -265,9 +265,30 @@ function Home() {
       }, 4000);
     } catch (error) {
       console.error("Error submitting RSVP:", error);
+
+      // If permission denied, store a pending RSVP locally so user doesn't lose data.
+      let shortMsg = error?.message ? `There was an error submitting your RSVP: ${error.message}` : "There was an error submitting your RSVP. Please try again or contact us directly.";
+      if (error?.code === "permission-denied") {
+        try {
+          const pendingKey = "bcb_pending_rsvps";
+          const existing = JSON.parse(localStorage.getItem(pendingKey) || "[]");
+          existing.push({
+            savedAt: new Date().toISOString(),
+            eventId: selectedEvent?.id,
+            eventTitle: selectedEvent?.title,
+            eventDate: selectedEvent?.date,
+            ...rsvpData,
+          });
+          localStorage.setItem(pendingKey, JSON.stringify(existing));
+          shortMsg = "Permissions error: your RSVP was saved locally and will need to be resubmitted once our system permissions are updated. Please try again later or contact us directly.";
+        } catch (storageError) {
+          console.error("Failed to store pending RSVP locally:", storageError);
+        }
+      }
+
       setRsvpStatus({
         show: true,
-        message: "There was an error submitting your RSVP. Please try again.",
+        message: shortMsg,
         type: "danger",
       });
     }
