@@ -12,6 +12,9 @@ service cloud.firestore {
 
     // RSVPs: public create and update (with validation), managers can read/update/delete
     match /rsvps/{rsvpId} {
+      // Allow public read so client can check capacity and duplicates
+      allow read: if true;
+
       // Anyone can create an RSVP as long as required fields are present and valid types
       allow create: if
         request.resource.data.keys().hasAll(['eventId','firstName','lastName','email','status','timestamp']) &&
@@ -27,9 +30,6 @@ service cloud.firestore {
         request.resource.data.email == resource.data.email &&
         request.resource.data.keys().hasAll(['eventId','firstName','lastName','email','status']) &&
         request.resource.data.eventId == resource.data.eventId;
-      
-      // Allow users to delete their own RSVP by email match
-      allow delete: if resource.data.email == request.resource.data.email;
       
       // Managers and admins can read, update, delete all RSVPs
       allow read, update, delete: if request.auth != null &&
