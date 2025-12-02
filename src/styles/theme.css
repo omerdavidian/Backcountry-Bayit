@@ -413,77 +413,33 @@ body {
 
 /* Mobile Responsive */
 @media (max-width: 991px) {
-  .navbar-three-section {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-  }
-
-  .navbar-left {
-    flex: 0 0 auto;
-  }
-
-  .navbar-toggle {
-    flex: 0 0 auto;
-  }
-
   .navbar-center {
     position: static;
     transform: none;
     width: 100%;
-    margin: 1rem 0 0.5rem 0;
+    margin: 1rem 0;
   }
 
   .navbar-center .nav {
     flex-direction: column;
     width: 100%;
-    gap: 0;
-    align-items: flex-start;
-  }
-
-  .navbar-center .nav-link {
-    padding: 0.75rem 1rem;
-    width: 100%;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  }
-
-  .navbar-center .nav-link:last-child {
-    border-bottom: none;
+    /* on mobile, reduce gap so items don't feel too spaced when stacked */
+    gap: 0.6rem;
+    font-size: 1rem;
   }
 
   .navbar-right {
     margin-left: 0;
     width: 100%;
-    margin-top: 0.5rem;
-    padding-top: 0.75rem;
-    border-top: 2px solid rgba(0, 102, 204, 0.1);
   }
 
   .navbar-right .nav {
-    display: flex;
     flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 0.75rem;
+    justify-content: center;
   }
 
-  .navbar-right .social-link {
-    padding: 0.5rem;
-  }
-
-  .navbar-right .admin-link {
-    margin-left: 0;
-    padding: 0.5rem 1rem;
-  }
-
-  .navbar-right .btn {
-    margin-left: 0;
-    padding: 0.5rem 1rem;
-  }
-
-  .navbar-bcb .navbar-collapse {
-    margin-top: 1rem;
+  .navbar-three-section {
+    flex-direction: column;
   }
 }
 
