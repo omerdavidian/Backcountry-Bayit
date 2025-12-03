@@ -491,7 +491,7 @@ function Admin() {
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
             <h1 className="fw-bold">Admin Dashboard</h1>
-            <p className="text-muted mb-0">Welcome, {currentUser.displayName || currentUser.email}</p>
+            <p className="text-muted mb-0">Welcome, {currentUser.email}</p>
           </div>
           <div>
             <Button variant="outline-danger" onClick={handleLogout}>
@@ -544,7 +544,6 @@ function Admin() {
                       <th>Email</th>
                       <th>Role</th>
                       <th>Created</th>
-                      <th>Last Login</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
@@ -556,12 +555,9 @@ function Admin() {
                         </td>
                         <td>{user.email}</td>
                         <td>
-                          <span className={`badge ${user.customClaims?.admin || ['omerdavidian@gmail.com', 'omer.shachar@gmail.com'].includes(user.email) ? "bg-danger" : "bg-primary"}`}>
-                            {user.customClaims?.admin || ['omerdavidian@gmail.com', 'omer.shachar@gmail.com'].includes(user.email) ? "Admin" : "Manager"}
-                          </span>
+                          <span className={`badge ${user.customClaims?.admin ? "bg-danger" : "bg-primary"}`}>{user.customClaims?.admin ? "Admin" : "Manager"}</span>
                         </td>
                         <td>{new Date(user.metadata.creationTime).toLocaleDateString()}</td>
-                        <td>{user.metadata.lastSignInTime ? new Date(user.metadata.lastSignInTime).toLocaleDateString() + ' ' + new Date(user.metadata.lastSignInTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'N/A'}</td>
                         <td>
                           <Button variant="outline-danger" size="sm" onClick={() => handleDeleteUser(user.uid, user.email)} disabled={user.email === currentUser.email} title={user.email === currentUser.email ? "Cannot delete your own account" : "Delete user"}>
                             <FaTrash />
