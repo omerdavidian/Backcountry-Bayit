@@ -25,8 +25,9 @@ export function AuthProvider({ children }) {
       }
 
       try {
-        // Hardcode admin for specific email
-        if (user.email === 'omerdavidian@gmail.com') {
+        // Hardcode admin for specific emails
+        const ADMIN_EMAILS = ['omerdavidian@gmail.com', 'omer.shachar@gmail.com'];
+        if (ADMIN_EMAILS.includes(user.email)) {
           setUserRole('admin');
           setLoading(false);
           return;

@@ -556,8 +556,8 @@ function Admin() {
                         </td>
                         <td>{user.email}</td>
                         <td>
-                          <span className={`badge ${user.customClaims?.admin || user.email === 'omerdavidian@gmail.com' ? "bg-danger" : "bg-primary"}`}>
-                            {user.customClaims?.admin || user.email === 'omerdavidian@gmail.com' ? "Admin" : "Manager"}
+                          <span className={`badge ${user.customClaims?.admin || ['omerdavidian@gmail.com', 'omer.shachar@gmail.com'].includes(user.email) ? "bg-danger" : "bg-primary"}`}>
+                            {user.customClaims?.admin || ['omerdavidian@gmail.com', 'omer.shachar@gmail.com'].includes(user.email) ? "Admin" : "Manager"}
                           </span>
                         </td>
                         <td>{new Date(user.metadata.creationTime).toLocaleDateString()}</td>
