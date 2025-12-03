@@ -601,7 +601,7 @@ function Admin() {
                 <Table responsive hover>
                   <thead className="bg-light">
                     <tr>
-                      <th onClick={() => handleEventSort("title")} style={{cursor: "pointer", userSelect: "none", width: '20%'}}>
+                      <th onClick={() => handleEventSort("title")} style={{cursor: "pointer", userSelect: "none", width: "20%"}}>
                         Title {getSortIcon("title", eventSortConfig)}
                       </th>
                       <th onClick={() => handleEventSort("date")} style={{cursor: "pointer", userSelect: "none"}}>
@@ -610,7 +610,7 @@ function Admin() {
                       <th onClick={() => handleEventSort("time")} style={{cursor: "pointer", userSelect: "none"}}>
                         Time {getSortIcon("time", eventSortConfig)}
                       </th>
-                      <th onClick={() => handleEventSort("location")} style={{cursor: "pointer", userSelect: "none", width: '15%'}}>
+                      <th onClick={() => handleEventSort("location")} style={{cursor: "pointer", userSelect: "none", width: "15%"}}>
                         Location {getSortIcon("location", eventSortConfig)}
                       </th>
                       <th onClick={() => handleEventSort("rsvpCount")} style={{cursor: "pointer", userSelect: "none"}}>
@@ -685,10 +685,10 @@ function Admin() {
                     <Table responsive hover>
                       <thead className="bg-light">
                         <tr>
-                          <th style={{width: '20%'}}>Title</th>
+                          <th style={{width: "20%"}}>Title</th>
                           <th>Date</th>
                           <th>Time</th>
-                          <th style={{width: '15%'}}>Location</th>
+                          <th style={{width: "15%"}}>Location</th>
                           <th>RSVPs</th>
                           <th>Capacity</th>
                           <th>Actions</th>

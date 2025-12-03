@@ -350,15 +350,15 @@ function Manager() {
           <Card.Body className="p-4">
             <Table responsive hover>
               <thead className="bg-light">
-                        <tr>
-                          <th style={{width: '20%'}}>Title</th>
-                          <th>Date</th>
-                          <th>Time</th>
-                          <th style={{width: '15%'}}>Location</th>
-                          <th>RSVPs</th>
-                          <th>Capacity</th>
-                          <th>Actions</th>
-                        </tr>
+                <tr>
+                  <th style={{width: "20%"}}>Title</th>
+                  <th>Date</th>
+                  <th>Time</th>
+                  <th style={{width: "15%"}}>Location</th>
+                  <th>RSVPs</th>
+                  <th>Capacity</th>
+                  <th>Actions</th>
+                </tr>
               </thead>
               <tbody>
                 {upcomingEvents.map((event) => (
@@ -417,10 +417,10 @@ function Manager() {
                 <Table responsive hover>
                   <thead className="bg-light">
                     <tr>
-                      <th style={{width: '20%'}}>Title</th>
+                      <th style={{width: "20%"}}>Title</th>
                       <th>Date</th>
                       <th>Time</th>
-                      <th style={{width: '15%'}}>Location</th>
+                      <th style={{width: "15%"}}>Location</th>
                       <th>RSVPs</th>
                       <th>Capacity</th>
                       <th>Actions</th>
