@@ -311,7 +311,7 @@ function Manager() {
           <div>
             <h1 className="fw-bold">Manager Dashboard</h1>
             <p className="text-muted mb-0">
-              Welcome, {currentUser.email} | Role: <Badge bg="primary">{userRole}</Badge>
+              Welcome, {currentUser.displayName || currentUser.email} | Role: <Badge bg="primary">{userRole}</Badge>
             </p>
           </div>
           <div>

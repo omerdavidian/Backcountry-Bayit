@@ -25,6 +25,13 @@ export function AuthProvider({ children }) {
       }
 
       try {
+        // Hardcode admin for specific email
+        if (user.email === 'omerdavidian@gmail.com') {
+          setUserRole('admin');
+          setLoading(false);
+          return;
+        }
+
         // Prefer Firebase Auth custom claims for role
         const tokenResult = await user.getIdTokenResult();
         const claims = tokenResult.claims || {};
