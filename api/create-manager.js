@@ -73,6 +73,16 @@ module.exports = async function handler(req, res) {
       isManager: true
     });
 
+    // Add user to Firestore 'users' collection
+    const db = admin.firestore();
+    await db.collection('users').doc(userRecord.uid).set({
+      email: email,
+      displayName: displayName,
+      role: 'manager',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      uid: userRecord.uid
+    });
+
     return res.status(200).json({
       success: true,
       uid: userRecord.uid,

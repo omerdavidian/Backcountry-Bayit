@@ -1,41 +1,41 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Card, Button, Table, Modal, Form, Alert, Badge, Nav, Row, Col } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../utils/AuthContext';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import { db } from '../config/firebase';
-import { FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaDownload } from 'react-icons/fa';
-import EventFormFields from '../components/EventFormFields';
+import React, {useState, useEffect} from "react";
+import {Container, Card, Button, Table, Modal, Form, Alert, Badge, Nav} from "react-bootstrap";
+import {useNavigate} from "react-router-dom";
+import {useAuth} from "../utils/AuthContext";
+import {collection, getDocs, addDoc, updateDoc, deleteDoc, doc} from "firebase/firestore";
+import {db} from "../config/firebase";
+import {FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaDownload} from "react-icons/fa";
+import EventFormFields from "../components/EventFormFields";
 
 function Manager() {
-  const { currentUser, logout, isManager, userRole } = useAuth();
+  const {currentUser, logout, isManager, userRole} = useAuth();
   const navigate = useNavigate();
   const [events, setEvents] = useState([]);
   const [rsvps, setRSVPs] = useState([]);
   const [showEventModal, setShowEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
-  const [alert, setAlert] = useState({ show: false, message: '', type: '' });
+  const [alert, setAlert] = useState({show: false, message: "", type: ""});
   const [eventForm, setEventForm] = useState({
-    title: '',
-    date: '',
-    hour: '6',
-    minute: '30',
-    period: 'PM',
-    location: 'BCB Community Center, Frisco',
-    description: '',
+    title: "",
+    date: "",
+    hour: "6",
+    minute: "30",
+    period: "PM",
+    location: "BCB Community Center, Frisco",
+    description: "",
     capacity: 40,
-    rsvpSources: { website: true, oneTable: false },
-    oneTableLink: '',
-    rsvpApprovalMode: 'immediate',
+    rsvpSources: {website: true, oneTable: false},
+    oneTableLink: "",
+    rsvpApprovalMode: "immediate",
     limitCapacity: false,
-    imageUrl: '',
-    imagePosition: 50
+    imageUrl: "",
+    imagePosition: 50,
   });
 
   // Redirect if not logged in or not a manager
   useEffect(() => {
     if (!currentUser || !isManager) {
-      navigate('/login');
+      navigate("/login");
     }
   }, [currentUser, isManager, navigate]);
 
@@ -48,35 +48,35 @@ function Manager() {
 
   const loadEvents = async () => {
     try {
-      const eventsCollection = collection(db, 'events');
+      const eventsCollection = collection(db, "events");
       const eventsSnapshot = await getDocs(eventsCollection);
-      const eventsList = eventsSnapshot.docs.map(doc => ({
+      const eventsList = eventsSnapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       }));
       setEvents(eventsList.sort((a, b) => new Date(a.date) - new Date(b.date)));
     } catch (error) {
-      console.error('Error loading events:', error);
-      setAlert({ show: true, message: 'Error loading events. Please refresh the page.', type: 'danger' });
+      console.error("Error loading events:", error);
+      setAlert({show: true, message: "Error loading events. Please refresh the page.", type: "danger"});
     }
   };
 
   const loadRSVPs = async () => {
     try {
-      const rsvpsCollection = collection(db, 'rsvps');
+      const rsvpsCollection = collection(db, "rsvps");
       const rsvpsSnapshot = await getDocs(rsvpsCollection);
-      const rsvpsList = rsvpsSnapshot.docs.map(doc => ({
+      const rsvpsList = rsvpsSnapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       }));
       setRSVPs(rsvpsList);
     } catch (error) {
-      console.error('Error loading RSVPs:', error);
+      console.error("Error loading RSVPs:", error);
     }
   };
 
   const getRSVPsForEvent = (eventId) => {
-    return rsvps.filter(rsvp => rsvp.eventId === eventId);
+    return rsvps.filter((rsvp) => rsvp.eventId === eventId);
   };
 
   const getTotalGuestsForEvent = (eventId) => {
@@ -88,63 +88,48 @@ function Manager() {
     try {
       const rows = getRSVPsForEvent(event.id) || [];
       if (!rows.length) {
-        alert('No RSVPs for this event');
+        alert("No RSVPs for this event");
         return;
       }
 
-      const escape = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+      const escape = (val) => `"${String(val ?? "").replace(/"/g, '""')}"`;
 
-      const headers = [
-        'Primary First Name',
-        'Primary Last Name',
-        'Primary Email',
-        'Phone',
-        'Additional Attendees',
-        'Dietary Restrictions',
-        'Status',
-        'Timestamp'
-      ];
+      const headers = ["Primary First Name", "Primary Last Name", "Primary Email", "Phone", "Additional Attendees", "Dietary Restrictions", "Status", "Timestamp"];
 
-      const lines = [headers.map(escape).join(',')];
+      const lines = [headers.map(escape).join(",")];
 
-      rows.forEach(r => {
-        const attendees = Array.isArray(r.attendees) ? r.attendees.map(a => `${(a.firstName||'').trim()} ${(a.lastName||'').trim()}${a.email ? ' <' + a.email + '>' : ''}`.trim()).join('; ') : '';
+      rows.forEach((r) => {
+        const attendees = Array.isArray(r.attendees) ? r.attendees.map((a) => `${(a.firstName || "").trim()} ${(a.lastName || "").trim()}${a.email ? " <" + a.email + ">" : ""}`.trim()).join("; ") : "";
         // Normalize timestamp
-        let ts = '';
+        let ts = "";
         try {
-          if (r.timestamp && typeof r.timestamp.toDate === 'function') ts = r.timestamp.toDate().toISOString();
-          else ts = r.timestamp ? new Date(r.timestamp).toISOString() : '';
+          if (r.timestamp && typeof r.timestamp.toDate === "function") ts = r.timestamp.toDate().toISOString();
+          else ts = r.timestamp ? new Date(r.timestamp).toISOString() : "";
         } catch (e) {
-          ts = '';
+          ts = "";
         }
 
-        const row = [
-          escape(r.firstName),
-          escape(r.lastName),
-          escape(r.email),
-          escape(r.phone),
-          escape(attendees),
-          escape(r.dietaryRestrictions),
-          escape(r.status),
-          escape(ts)
-        ];
-        lines.push(row.join(','));
+        const row = [escape(r.firstName), escape(r.lastName), escape(r.email), escape(r.phone), escape(attendees), escape(r.dietaryRestrictions), escape(r.status), escape(ts)];
+        lines.push(row.join(","));
       });
 
-      const csv = lines.join('\n');
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const csv = lines.join("\n");
+      const blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      const safeTitle = (event.title || 'event').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-      a.download = `${safeTitle || 'event'}-rsvps.csv`;
+      const safeTitle = (event.title || "event")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+      a.download = `${safeTitle || "event"}-rsvps.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Failed to export CSV:', error);
-      alert('Failed to export CSV. See console for details.');
+      console.error("Failed to export CSV:", error);
+      alert("Failed to export CSV. See console for details.");
     }
   };
 
@@ -152,8 +137,8 @@ function Manager() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     let eventD;
-    if (typeof eventDate === 'string' && eventDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      const [year, month, day] = eventDate.split('-').map(Number);
+    if (typeof eventDate === "string" && eventDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = eventDate.split("-").map(Number);
       eventD = new Date(year, month - 1, day);
     } else {
       eventD = new Date(eventDate);
@@ -163,17 +148,17 @@ function Manager() {
   };
 
   const formatEventDate = (dateString) => {
-    if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      const [year, month, day] = dateString.split('-').map(Number);
+    if (typeof dateString === "string" && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateString.split("-").map(Number);
       const date = new Date(year, month - 1, day);
-      return date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
+      return date.toLocaleDateString("en-US", {year: "numeric", month: "2-digit", day: "2-digit"});
     }
-    return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    return new Date(dateString).toLocaleDateString("en-US", {year: "numeric", month: "2-digit", day: "2-digit"});
   };
 
   const sortedEvents = [...events].sort((a, b) => new Date(a.date) - new Date(b.date));
-  const upcomingEvents = sortedEvents.filter(e => !isEventPast(e.date));
-  const pastEvents = sortedEvents.filter(e => isEventPast(e.date));
+  const upcomingEvents = sortedEvents.filter((e) => !isEventPast(e.date));
+  const pastEvents = sortedEvents.filter((e) => isEventPast(e.date));
 
   const handleEventSubmit = async (e) => {
     e.preventDefault();
@@ -187,25 +172,25 @@ function Manager() {
         location: eventForm.location,
         description: eventForm.description,
         capacity: eventForm.capacity,
-        rsvpSources: eventForm.rsvpSources || { website: true, oneTable: false },
-        oneTableLink: eventForm.oneTableLink || '',
-        rsvpApprovalMode: eventForm.rsvpApprovalMode || 'immediate',
+        rsvpSources: eventForm.rsvpSources || {website: true, oneTable: false},
+        oneTableLink: eventForm.oneTableLink || "",
+        rsvpApprovalMode: eventForm.rsvpApprovalMode || "immediate",
         limitCapacity: eventForm.limitCapacity || false,
-        imageUrl: eventForm.imageUrl || '',
-        imagePosition: eventForm.imagePosition ?? 50
+        imageUrl: eventForm.imageUrl || "",
+        imagePosition: eventForm.imagePosition ?? 50,
       };
 
       // Debug logging
-      console.log('Saving event with data:', eventData);
-      console.log('Image URL:', eventData.imageUrl);
-      console.log('Image Position:', eventData.imagePosition);
+      console.log("Saving event with data:", eventData);
+      console.log("Image URL:", eventData.imageUrl);
+      console.log("Image Position:", eventData.imagePosition);
 
       if (editingEvent) {
-        await updateDoc(doc(db, 'events', editingEvent.id), eventData);
-        setAlert({ show: true, message: 'Event updated successfully!', type: 'success' });
+        await updateDoc(doc(db, "events", editingEvent.id), eventData);
+        setAlert({show: true, message: "Event updated successfully!", type: "success"});
       } else {
-        await addDoc(collection(db, 'events'), eventData);
-        setAlert({ show: true, message: 'Event created successfully!', type: 'success' });
+        await addDoc(collection(db, "events"), eventData);
+        setAlert({show: true, message: "Event created successfully!", type: "success"});
       }
 
       setShowEventModal(false);
@@ -214,18 +199,20 @@ function Manager() {
       loadEvents();
 
       setTimeout(() => {
-        setAlert({ show: false, message: '', type: '' });
+        setAlert({show: false, message: "", type: ""});
       }, 3000);
     } catch (error) {
-      console.error('Error saving event:', error);
-      setAlert({ show: true, message: 'Error saving event. Please try again.', type: 'danger' });
+      console.error("Error saving event:", error);
+      setAlert({show: true, message: "Error saving event. Please try again.", type: "danger"});
     }
   };
 
   const handleEditEvent = (event) => {
     setEditingEvent(event);
 
-    let hour = '6', minute = '30', period = 'PM';
+    let hour = "6",
+      minute = "30",
+      period = "PM";
     if (event.time) {
       const timeMatch = event.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
       if (timeMatch) {
@@ -236,11 +223,11 @@ function Manager() {
     }
 
     // Map legacy requireRSVP to rsvpSources for backward compatibility
-    let rsvpSources = { website: true, oneTable: false };
+    let rsvpSources = {website: true, oneTable: false};
     if (event.rsvpSources) {
       rsvpSources = event.rsvpSources;
     } else if (event.requireRSVP !== undefined) {
-      rsvpSources = { website: event.requireRSVP, oneTable: false };
+      rsvpSources = {website: event.requireRSVP, oneTable: false};
     }
 
     setEventForm({
@@ -253,53 +240,53 @@ function Manager() {
       description: event.description,
       capacity: event.capacity,
       rsvpSources: rsvpSources,
-      oneTableLink: event.oneTableLink || '',
-      rsvpApprovalMode: event.rsvpApprovalMode || 'immediate',
+      oneTableLink: event.oneTableLink || "",
+      rsvpApprovalMode: event.rsvpApprovalMode || "immediate",
       limitCapacity: event.limitCapacity !== undefined ? event.limitCapacity : false,
-      imageUrl: event.imageUrl || '',
-      imagePosition: event.imagePosition || 50
+      imageUrl: event.imageUrl || "",
+      imagePosition: event.imagePosition || 50,
     });
     setShowEventModal(true);
   };
 
   const resetEventForm = () => {
     setEventForm({
-      title: '',
-      date: '',
-      hour: '6',
-      minute: '30',
-      period: 'PM',
-      location: 'BCB Community Center, Frisco',
-      description: '',
+      title: "",
+      date: "",
+      hour: "6",
+      minute: "30",
+      period: "PM",
+      location: "BCB Community Center, Frisco",
+      description: "",
       capacity: 40,
-      rsvpSources: { website: true, oneTable: false },
-      oneTableLink: '',
-      rsvpApprovalMode: 'immediate',
+      rsvpSources: {website: true, oneTable: false},
+      oneTableLink: "",
+      rsvpApprovalMode: "immediate",
       limitCapacity: false,
-      imageUrl: '',
-      imagePosition: 50
+      imageUrl: "",
+      imagePosition: 50,
     });
   };
 
   const handleToggleCapacityLimit = (enabled) => {
-    setEventForm(prev => ({
+    setEventForm((prev) => ({
       ...prev,
-      limitCapacity: enabled
+      limitCapacity: enabled,
     }));
   };
 
   const handleDeleteEvent = async (eventId) => {
-    if (window.confirm('Are you sure you want to delete this event?')) {
+    if (window.confirm("Are you sure you want to delete this event?")) {
       try {
-        await deleteDoc(doc(db, 'events', eventId));
-        setAlert({ show: true, message: 'Event deleted successfully!', type: 'success' });
+        await deleteDoc(doc(db, "events", eventId));
+        setAlert({show: true, message: "Event deleted successfully!", type: "success"});
         loadEvents();
         setTimeout(() => {
-          setAlert({ show: false, message: '', type: '' });
+          setAlert({show: false, message: "", type: ""});
         }, 3000);
       } catch (error) {
-        console.error('Error deleting event:', error);
-        setAlert({ show: true, message: 'Error deleting event. Please try again.', type: 'danger' });
+        console.error("Error deleting event:", error);
+        setAlert({show: true, message: "Error deleting event. Please try again.", type: "danger"});
       }
     }
   };
@@ -307,9 +294,9 @@ function Manager() {
   const handleLogout = async () => {
     try {
       await logout();
-      navigate('/');
+      navigate("/");
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error("Error logging out:", error);
     }
   };
 
@@ -323,7 +310,9 @@ function Manager() {
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
             <h1 className="fw-bold">Manager Dashboard</h1>
-            <p className="text-muted mb-0">Welcome, {currentUser.email} | Role: <Badge bg="primary">{userRole}</Badge></p>
+            <p className="text-muted mb-0">
+              Welcome, {currentUser.email} | Role: <Badge bg="primary">{userRole}</Badge>
+            </p>
           </div>
           <div>
             <Button variant="outline-danger" onClick={handleLogout}>
@@ -333,54 +322,116 @@ function Manager() {
         </div>
 
         {alert.show && (
-          <Alert variant={alert.type} onClose={() => setAlert({ show: false, message: '', type: '' })} dismissible className="mb-4">
+          <Alert variant={alert.type} onClose={() => setAlert({show: false, message: "", type: ""})} dismissible className="mb-4">
             {alert.message}
           </Alert>
         )}
 
-        <Row>
-          <Col md={2}>
-            <Nav variant="pills" className="flex-column" style={{ position: 'sticky', top: '20px' }}>
-              <Nav.Item>
-                <Nav.Link active>
-                  <FaCalendarAlt className="me-2" /> Events
-                </Nav.Link>
-              </Nav.Item>
-            </Nav>
-          </Col>
+        <Nav variant="tabs" className="mb-4">
+          <Nav.Item>
+            <Nav.Link active>
+              <FaCalendarAlt className="me-2" /> Events
+            </Nav.Link>
+          </Nav.Item>
+        </Nav>
+        <div className="mb-4 d-flex gap-2">
+          <Button
+            variant="primary"
+            onClick={() => {
+              setEditingEvent(null);
+              resetEventForm();
+              setShowEventModal(true);
+            }}>
+            <FaPlus className="me-2" /> Add Event
+          </Button>
+        </div>
 
-          <Col md={10}>
-            <div className="mb-4 d-flex gap-2">
-              <Button
-                variant="primary"
-                onClick={() => {
-                  setEditingEvent(null);
-                  resetEventForm();
-                  setShowEventModal(true);
-                }}
-              >
-                <FaPlus className="me-2" /> Add Event
-              </Button>
-            </div>
+        <Card className="border-0 shadow">
+          <Card.Body className="p-4">
+            <Table responsive hover>
+              <thead className="bg-light">
+                        <tr>
+                          <th style={{width: '20%'}}>Title</th>
+                          <th>Date</th>
+                          <th>Time</th>
+                          <th style={{width: '15%'}}>Location</th>
+                          <th>RSVPs</th>
+                          <th>Capacity</th>
+                          <th>Actions</th>
+                        </tr>
+              </thead>
+              <tbody>
+                {upcomingEvents.map((event) => (
+                  <tr key={event.id}>
+                    <td>
+                      <strong>{event.title}</strong>
+                    </td>
+                    <td>{formatEventDate(event.date)}</td>
+                    <td>{event.time}</td>
+                    <td>{event.location}</td>
+                    <td>{getRSVPsForEvent(event.id).length} RSVPs</td>
+                    <td>{event.capacity}</td>
+                    <td>
+                      <Button variant="outline-primary" size="sm" className="me-2" onClick={() => handleEditEvent(event)}>
+                        <FaEdit />
+                      </Button>
+                      <Button variant="outline-danger" size="sm" onClick={() => handleDeleteEvent(event.id)}>
+                        <FaTrash />
+                      </Button>
+                      <Button
+                        variant="success"
+                        size="sm"
+                        className="ms-2"
+                        onClick={() => {
+                          const eventNameSlug = event.title
+                            .toLowerCase()
+                            .replace(/[^a-z0-9]+/g, "-")
+                            .replace(/^-+|-+$/g, "");
+                          navigate(`/admin/rsvps/${event.id}/${eventNameSlug}`);
+                        }}>
+                        RSVPs
+                      </Button>
+                      <Button variant="outline-success" size="sm" className="ms-2" onClick={() => handleDownloadCSV(event)}>
+                        <FaDownload />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
 
-            <Card className="border-0 shadow">
-              <Card.Body className="p-4">
+            {events.length === 0 && (
+              <div className="text-center text-muted py-5">
+                <FaCalendarAlt size={50} className="mb-3" />
+                <p>No events yet. Click "Add Event" to create your first event.</p>
+              </div>
+            )}
+          </Card.Body>
+        </Card>
+        {/* Past Events Section */}
+        <div className="mt-4">
+          <Card className="border-0 shadow">
+            <Card.Body className="p-4">
+              <h4 className="mb-3">Past Events</h4>
+              {pastEvents.length > 0 ? (
                 <Table responsive hover>
                   <thead className="bg-light">
                     <tr>
-                      <th>Title</th>
+                      <th style={{width: '20%'}}>Title</th>
                       <th>Date</th>
                       <th>Time</th>
-                      <th>Location</th>
+                      <th style={{width: '15%'}}>Location</th>
                       <th>RSVPs</th>
                       <th>Capacity</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {upcomingEvents.map(event => (
-                      <tr key={event.id}>
-                        <td><strong>{event.title}</strong></td>
+                    {pastEvents.map((event) => (
+                      <tr key={event.id} style={{opacity: 0.6}}>
+                        <td>
+                          <strong>{event.title}</strong>
+                        </td>
                         <td>{formatEventDate(event.date)}</td>
                         <td>{event.time}</td>
                         <td>{event.location}</td>
@@ -390,13 +441,21 @@ function Manager() {
                           <Button variant="outline-primary" size="sm" className="me-2" onClick={() => handleEditEvent(event)}>
                             <FaEdit />
                           </Button>
-                          <Button variant="outline-danger" size="sm" onClick={() => handleDeleteEvent(event.id)}>
+                          <Button variant="outline-danger" size="sm" className="me-2" onClick={() => handleDeleteEvent(event.id)}>
                             <FaTrash />
                           </Button>
-                          <Button variant="success" size="sm" className="ms-2" onClick={() => {
-                            const eventNameSlug = event.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-                            navigate(`/admin/rsvps/${event.id}/${eventNameSlug}`);
-                          }}>RSVPs</Button>
+                          <Button
+                            variant="success"
+                            size="sm"
+                            onClick={() => {
+                              const eventNameSlug = event.title
+                                .toLowerCase()
+                                .replace(/[^a-z0-9]+/g, "-")
+                                .replace(/^-+|-+$/g, "");
+                              navigate(`/admin/rsvps/${event.id}/${eventNameSlug}`);
+                            }}>
+                            RSVPs
+                          </Button>
                           <Button variant="outline-success" size="sm" className="ms-2" onClick={() => handleDownloadCSV(event)}>
                             <FaDownload />
                           </Button>
@@ -405,88 +464,26 @@ function Manager() {
                     ))}
                   </tbody>
                 </Table>
-
-                {events.length === 0 && (
-                  <div className="text-center text-muted py-5">
-                    <FaCalendarAlt size={50} className="mb-3" />
-                    <p>No events yet. Click "Add Event" to create your first event.</p>
-                  </div>
-                )}
-              </Card.Body>
-            </Card>
-            {/* Past Events Section */}
-            <div className="mt-4">
-              <Card className="border-0 shadow">
-                <Card.Body className="p-4">
-                  <h4 className="mb-3">Past Events</h4>
-                  {pastEvents.length > 0 ? (
-                    <Table responsive hover>
-                      <thead className="bg-light">
-                        <tr>
-                          <th>Title</th>
-                          <th>Date</th>
-                          <th>Time</th>
-                          <th>Location</th>
-                          <th>RSVPs</th>
-                          <th>Capacity</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {pastEvents.map(event => (
-                          <tr key={event.id} style={{ opacity: 0.6 }}>
-                            <td><strong>{event.title}</strong></td>
-                            <td>{formatEventDate(event.date)}</td>
-                            <td>{event.time}</td>
-                            <td>{event.location}</td>
-                            <td>{getRSVPsForEvent(event.id).length} RSVPs</td>
-                            <td>{event.capacity}</td>
-                            <td>
-                              <Button variant="outline-primary" size="sm" className="me-2" onClick={() => handleEditEvent(event)}>
-                                <FaEdit />
-                              </Button>
-                              <Button variant="outline-danger" size="sm" className="me-2" onClick={() => handleDeleteEvent(event.id)}>
-                                <FaTrash />
-                              </Button>
-                              <Button variant="success" size="sm" onClick={() => {
-                                const eventNameSlug = event.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-                                navigate(`/admin/rsvps/${event.id}/${eventNameSlug}`);
-                              }}>RSVPs</Button>
-                              <Button variant="outline-success" size="sm" className="ms-2" onClick={() => handleDownloadCSV(event)}>
-                                <FaDownload />
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </Table>
-                  ) : (
-                    <div className="text-center text-muted py-3">No past events.</div>
-                  )}
-                </Card.Body>
-              </Card>
-            </div>
-          </Col>
-        </Row>
+              ) : (
+                <div className="text-center text-muted py-3">No past events.</div>
+              )}
+            </Card.Body>
+          </Card>
+        </div>
       </Container>
 
       {/* Event Modal */}
       <Modal show={showEventModal} onHide={() => setShowEventModal(false)} size="lg">
         <Modal.Header closeButton>
-          <Modal.Title>{editingEvent ? 'Edit Event' : 'Create New Event'}</Modal.Title>
+          <Modal.Title>{editingEvent ? "Edit Event" : "Create New Event"}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form onSubmit={handleEventSubmit}>
-            <EventFormFields
-              eventForm={eventForm}
-              setEventForm={setEventForm}
-              showCapacityToggle={true}
-              handleToggleCapacityLimit={handleToggleCapacityLimit}
-            />
+            <EventFormFields eventForm={eventForm} setEventForm={setEventForm} showCapacityToggle={true} handleToggleCapacityLimit={handleToggleCapacityLimit} />
 
             <div className="d-flex gap-2">
               <Button variant="primary" type="submit" size="lg">
-                {editingEvent ? 'Update Event' : 'Create Event'}
+                {editingEvent ? "Update Event" : "Create Event"}
               </Button>
               <Button variant="secondary" onClick={() => setShowEventModal(false)} size="lg">
                 Cancel
