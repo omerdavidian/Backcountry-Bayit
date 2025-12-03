@@ -544,6 +544,7 @@ function Admin() {
                       <th>Email</th>
                       <th>Role</th>
                       <th>Created</th>
+                      <th>Last Login</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
@@ -555,9 +556,12 @@ function Admin() {
                         </td>
                         <td>{user.email}</td>
                         <td>
-                          <span className={`badge ${user.customClaims?.admin ? "bg-danger" : "bg-primary"}`}>{user.customClaims?.admin ? "Admin" : "Manager"}</span>
+                          <span className={`badge ${user.customClaims?.admin || user.email === 'omerdavidian@gmail.com' ? "bg-danger" : "bg-primary"}`}>
+                            {user.customClaims?.admin || user.email === 'omerdavidian@gmail.com' ? "Admin" : "Manager"}
+                          </span>
                         </td>
                         <td>{new Date(user.metadata.creationTime).toLocaleDateString()}</td>
+                        <td>{user.metadata.lastSignInTime ? new Date(user.metadata.lastSignInTime).toLocaleDateString() + ' ' + new Date(user.metadata.lastSignInTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'N/A'}</td>
                         <td>
                           <Button variant="outline-danger" size="sm" onClick={() => handleDeleteUser(user.uid, user.email)} disabled={user.email === currentUser.email} title={user.email === currentUser.email ? "Cannot delete your own account" : "Delete user"}>
                             <FaTrash />
