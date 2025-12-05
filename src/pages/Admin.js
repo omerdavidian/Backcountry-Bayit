@@ -347,7 +347,17 @@ function Admin() {
 
   const getTotalGuestsForEvent = (eventId) => {
     const eventRSVPs = getRSVPsForEvent(eventId);
-    return eventRSVPs.reduce((total, rsvp) => total + (rsvp.guests || 1), 0);
+    return eventRSVPs.reduce((total, rsvp) => {
+      // If RSVP includes an attendees array, count its length
+      if (Array.isArray(rsvp.attendees) && rsvp.attendees.length > 0) {
+        return total + rsvp.attendees.length;
+      }
+      // If RSVP has a numeric guests field, use it
+      const guestsNum = Number(rsvp.guests);
+      if (!isNaN(guestsNum) && guestsNum > 0) return total + guestsNum;
+      // Fall back to 1 (the primary person)
+      return total + 1;
+    }, 0);
   };
 
   const handleDownloadCSV = (event) => {

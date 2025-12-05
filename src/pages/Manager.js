@@ -81,7 +81,14 @@ function Manager() {
 
   const getTotalGuestsForEvent = (eventId) => {
     const eventRSVPs = getRSVPsForEvent(eventId);
-    return eventRSVPs.reduce((total, rsvp) => total + (rsvp.guests || 1), 0);
+    return eventRSVPs.reduce((total, rsvp) => {
+      if (Array.isArray(rsvp.attendees) && rsvp.attendees.length > 0) {
+        return total + rsvp.attendees.length;
+      }
+      const guestsNum = Number(rsvp.guests);
+      if (!isNaN(guestsNum) && guestsNum > 0) return total + guestsNum;
+      return total + 1;
+    }, 0);
   };
 
   const handleDownloadCSV = (event) => {
@@ -369,7 +376,7 @@ function Manager() {
                     <td>{formatEventDate(event.date)}</td>
                     <td>{event.time}</td>
                     <td>{event.location}</td>
-                    <td>{getRSVPsForEvent(event.id).length} RSVPs</td>
+                    <td>{getTotalGuestsForEvent(event.id)} guests ({getRSVPsForEvent(event.id).length} RSVPs)</td>
                     <td>{event.capacity}</td>
                     <td>
                       <Button variant="outline-primary" size="sm" className="me-2" onClick={() => handleEditEvent(event)}>
@@ -435,7 +442,7 @@ function Manager() {
                         <td>{formatEventDate(event.date)}</td>
                         <td>{event.time}</td>
                         <td>{event.location}</td>
-                        <td>{getRSVPsForEvent(event.id).length} RSVPs</td>
+                        <td>{getTotalGuestsForEvent(event.id)} guests ({getRSVPsForEvent(event.id).length} RSVPs)</td>
                         <td>{event.capacity}</td>
                         <td>
                           <Button variant="outline-primary" size="sm" className="me-2" onClick={() => handleEditEvent(event)}>
