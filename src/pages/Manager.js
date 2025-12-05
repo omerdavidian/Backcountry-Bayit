@@ -82,8 +82,10 @@ function Manager() {
   const getTotalGuestsForEvent = (eventId) => {
     const eventRSVPs = getRSVPsForEvent(eventId);
     return eventRSVPs.reduce((total, rsvp) => {
-      if (Array.isArray(rsvp.attendees) && rsvp.attendees.length > 0) {
-        return total + rsvp.attendees.length;
+      if (Array.isArray(rsvp.attendees)) {
+        const attendeesCount = rsvp.attendees.length || 0;
+        const primaryPresent = rsvp.firstName || rsvp.email || rsvp.name ? 1 : 0;
+        return total + attendeesCount + primaryPresent;
       }
       const guestsNum = Number(rsvp.guests);
       if (!isNaN(guestsNum) && guestsNum > 0) return total + guestsNum;

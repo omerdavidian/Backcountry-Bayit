@@ -348,13 +348,22 @@ function Admin() {
   const getTotalGuestsForEvent = (eventId) => {
     const eventRSVPs = getRSVPsForEvent(eventId);
     return eventRSVPs.reduce((total, rsvp) => {
-      // If RSVP includes an attendees array, count its length
-      if (Array.isArray(rsvp.attendees) && rsvp.attendees.length > 0) {
-        return total + rsvp.attendees.length;
+      // If RSVP includes an attendees array, treat attendees as the extra people
+      // and include the primary attendee if present. This covers cases where
+      // `attendees` contains only additional guests (common in the UI screenshots).
+      if (Array.isArray(rsvp.attendees)) {
+        const attendeesCount = rsvp.attendees.length || 0;
+        const primaryPresent = rsvp.firstName || rsvp.email || rsvp.name ? 1 : 0;
+        // If attendees appears to already include the primary (unlikely), this
+        // will slightly overcount; prefer this logic because screenshots show
+        // `attendees` listing additional people beneath the primary.
+        return total + attendeesCount + primaryPresent;
       }
-      // If RSVP has a numeric guests field, use it
+
+      // If RSVP has a numeric guests field, use it (assume it is the total)
       const guestsNum = Number(rsvp.guests);
       if (!isNaN(guestsNum) && guestsNum > 0) return total + guestsNum;
+
       // Fall back to 1 (the primary person)
       return total + 1;
     }, 0);
