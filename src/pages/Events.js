@@ -103,14 +103,21 @@ function Events() {
 
   const loadEvents = useCallback(async () => {
     try {
-      // Fetch events from our API proxy which gets them from Google Calendar
-      const response = await fetch("/api/fetch-google-calendar");
+      // Fetch events from our API which gets them from Google Calendar
+      const response = await fetch("/api/events");
       if (!response.ok) {
         throw new Error("Failed to fetch events");
       }
 
       const data = await response.json();
-      const allEvents = data.events || [];
+      const allEvents = (data.events || []).map((event) => ({
+        ...event,
+        // Add compatibility fields for existing render logic
+        date: event.start.split("T")[0],
+        // Ensure metadata defaults
+        capacity: event.capacity || 40,
+        rsvpSources: event.rsvpSources || {website: true, oneTable: false},
+      }));
 
       console.log("All events loaded from Google Calendar:", allEvents);
 

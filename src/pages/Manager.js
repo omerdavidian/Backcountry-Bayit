@@ -48,12 +48,30 @@ function Manager() {
 
   const loadEvents = async () => {
     try {
-      const eventsCollection = collection(db, "events");
-      const eventsSnapshot = await getDocs(eventsCollection);
-      const eventsList = eventsSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      const response = await fetch("/api/events");
+      if (!response.ok) throw new Error("Failed to fetch events");
+      const data = await response.json();
+
+      const eventsList = data.events.map((event) => {
+        // Convert ISO start to date and time strings for compatibility
+        const startDate = new Date(event.start);
+        const dateStr = event.start.split("T")[0];
+        const timeStr = startDate.toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        });
+
+        return {
+          ...event,
+          date: dateStr,
+          time: timeStr,
+          // Ensure metadata fields are present
+          capacity: event.capacity || 40,
+          rsvpSources: event.rsvpSources || {website: true, oneTable: false},
+        };
+      });
+
       setEvents(eventsList.sort((a, b) => new Date(a.date) - new Date(b.date)));
     } catch (error) {
       console.error("Error loading events:", error);
@@ -172,12 +190,25 @@ function Manager() {
   const handleEventSubmit = async (e) => {
     e.preventDefault();
     try {
-      const timeString = `${eventForm.hour}:${eventForm.minute} ${eventForm.period}`;
+      // Construct ISO DateTime
+      let hour = parseInt(eventForm.hour);
+      if (eventForm.period === "PM" && hour !== 12) hour += 12;
+      if (eventForm.period === "AM" && hour === 12) hour = 0;
+
+      // Create date object in local time
+      const startDateTime = new Date(`${eventForm.date}T${hour.toString().padStart(2, "0")}:${eventForm.minute}:00`);
+      const endDateTime = new Date(startDateTime.getTime() + 2 * 60 * 60 * 1000); // Default 2 hours duration
+
+      // Format as ISO string (YYYY-MM-DDTHH:mm:ss)
+      const toLocalISO = (date) => {
+        const pad = (n) => n.toString().padStart(2, "0");
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
+      };
 
       const eventData = {
         title: eventForm.title,
-        date: eventForm.date,
-        time: timeString,
+        start: toLocalISO(startDateTime),
+        end: toLocalISO(endDateTime),
         location: eventForm.location,
         description: eventForm.description,
         capacity: eventForm.capacity,
@@ -189,18 +220,24 @@ function Manager() {
         imagePosition: eventForm.imagePosition ?? 50,
       };
 
-      // Debug logging
-      console.log("Saving event with data:", eventData);
-      console.log("Image URL:", eventData.imageUrl);
-      console.log("Image Position:", eventData.imagePosition);
-
+      let response;
       if (editingEvent) {
-        await updateDoc(doc(db, "events", editingEvent.id), eventData);
-        setAlert({show: true, message: "Event updated successfully!", type: "success"});
+        response = await fetch("/api/events", {
+          method: "PUT",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({id: editingEvent.id, ...eventData}),
+        });
       } else {
-        await addDoc(collection(db, "events"), eventData);
-        setAlert({show: true, message: "Event created successfully!", type: "success"});
+        response = await fetch("/api/events", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(eventData),
+        });
       }
+
+      if (!response.ok) throw new Error("Failed to save event");
+
+      setAlert({show: true, message: editingEvent ? "Event updated successfully!" : "Event created successfully!", type: "success"});
 
       setShowEventModal(false);
       setEditingEvent(null);
@@ -287,7 +324,12 @@ function Manager() {
   const handleDeleteEvent = async (eventId) => {
     if (window.confirm("Are you sure you want to delete this event?")) {
       try {
-        await deleteDoc(doc(db, "events", eventId));
+        const response = await fetch(`/api/events?id=${eventId}`, {
+          method: "DELETE",
+        });
+
+        if (!response.ok) throw new Error("Failed to delete event");
+
         setAlert({show: true, message: "Event deleted successfully!", type: "success"});
         loadEvents();
         setTimeout(() => {
@@ -378,7 +420,9 @@ function Manager() {
                     <td>{formatEventDate(event.date)}</td>
                     <td>{event.time}</td>
                     <td>{event.location}</td>
-                    <td>{getTotalGuestsForEvent(event.id)} guests ({getRSVPsForEvent(event.id).length} RSVPs)</td>
+                    <td>
+                      {getTotalGuestsForEvent(event.id)} guests ({getRSVPsForEvent(event.id).length} RSVPs)
+                    </td>
                     <td>{event.capacity}</td>
                     <td>
                       <Button variant="outline-primary" size="sm" className="me-2" onClick={() => handleEditEvent(event)}>
@@ -444,7 +488,9 @@ function Manager() {
                         <td>{formatEventDate(event.date)}</td>
                         <td>{event.time}</td>
                         <td>{event.location}</td>
-                        <td>{getTotalGuestsForEvent(event.id)} guests ({getRSVPsForEvent(event.id).length} RSVPs)</td>
+                        <td>
+                          {getTotalGuestsForEvent(event.id)} guests ({getRSVPsForEvent(event.id).length} RSVPs)
+                        </td>
                         <td>{event.capacity}</td>
                         <td>
                           <Button variant="outline-primary" size="sm" className="me-2" onClick={() => handleEditEvent(event)}>
