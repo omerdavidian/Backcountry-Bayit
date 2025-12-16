@@ -96,8 +96,8 @@ module.exports = async function handler(req, res) {
       // LIST EVENTS
       const response = await calendar.events.list({
         calendarId: CALENDAR_ID,
-        timeMin: new Date().toISOString(),
-        maxResults: 100,
+        // timeMin: new Date().toISOString(), // Removed to allow fetching past events
+        maxResults: 250, // Increased limit to accommodate past events
         singleEvents: true,
         orderBy: "startTime",
       });

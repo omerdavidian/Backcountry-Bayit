@@ -4,16 +4,20 @@ import {Container, Table, Button, Alert} from "react-bootstrap";
 import {collection, getDocs, getDoc, updateDoc, deleteDoc, doc, query, where} from "firebase/firestore";
 import {db} from "../config/firebase";
 import {sendRSVPConfirmationEmail} from "../utils/emailService";
-import {FaSort, FaSortUp, FaSortDown} from "react-icons/fa";
+import {FaSort, FaSortUp, FaSortDown, FaEnvelope} from "react-icons/fa";
+import EmailRSVPsModal from "../components/EmailRSVPsModal";
+import {useAuth} from "../utils/AuthContext";
 
 function EventRSVPs() {
   const {eventId} = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const {isAdmin, isManager} = useAuth();
   const [rsvps, setRSVPs] = useState([]);
   const [event, setEvent] = useState(null);
   const [statusMessage, setStatusMessage] = useState({show: false, message: "", type: ""});
   const [sortConfig, setSortConfig] = useState({key: "timestamp", direction: "desc"});
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   // Count approved guests (primary + additional attendees)
   const approvedGuestsCount = rsvps.reduce((sum, r) => {
@@ -158,6 +162,12 @@ function EventRSVPs() {
           <div className="me-3 text-muted small">
             Approved guests: <strong>{approvedGuestsCount}</strong>
           </div>
+          {(isAdmin || isManager) && (
+            <Button variant="primary" className="me-2" onClick={() => setShowEmailModal(true)}>
+              <FaEnvelope className="me-2" />
+              Email Guests
+            </Button>
+          )}
           <Button
             variant="outline-secondary"
             onClick={() => {
@@ -274,6 +284,22 @@ function EventRSVPs() {
           </tbody>
         </Table>
       )}
+
+      <EmailRSVPsModal
+        show={showEmailModal}
+        onHide={() => setShowEmailModal(false)}
+        event={event}
+        recipients={rsvps
+          .filter((r) => r.status !== "rejected") // Exclude rejected
+          .map((r) => ({
+            email: r.email,
+            name: r.firstName ? `${r.firstName} ${r.lastName}` : r.name,
+          }))
+          .filter((v, i, a) => a.findIndex((t) => t.email === v.email) === i)} // Unique emails
+        onSuccess={() => {
+          setStatusMessage({show: true, message: "Emails sent successfully!", type: "success"});
+        }}
+      />
     </Container>
   );
 }

@@ -1,12 +1,13 @@
 import React, {useState, useEffect, useRef, useCallback} from "react";
-import {Container, Row, Col, Card, Button, Modal, Alert, Table} from "react-bootstrap";
+import {Container, Row, Col, Card, Button, Modal, Alert, Table, Form} from "react-bootstrap";
 import {Link} from "react-router-dom";
 import {collection, getDocs, doc, query, where, updateDoc, addDoc, serverTimestamp, deleteDoc} from "firebase/firestore";
 import {db} from "../config/firebase";
 import {useAuth} from "../utils/AuthContext";
-import {FaCalendarAlt, FaUsers, FaClock, FaMapMarkerAlt, FaEdit} from "react-icons/fa";
+import {FaCalendarAlt, FaUsers, FaClock, FaMapMarkerAlt, FaEdit, FaTrash} from "react-icons/fa";
 import {sendRSVPConfirmationEmail} from "../utils/emailService";
 import RSVPForm from "../components/RSVPForm";
+import EventFormFields from "../components/EventFormFields";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -30,6 +31,27 @@ function Events() {
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [showPastEvents, setShowPastEvents] = useState(false);
+
+  // Edit Event State
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
+  const [alert, setAlert] = useState({show: false, message: "", type: ""});
+  const [eventForm, setEventForm] = useState({
+    title: "",
+    date: "",
+    hour: "6",
+    minute: "30",
+    period: "PM",
+    location: "BCB Community Center, Frisco",
+    description: "",
+    capacity: 40,
+    rsvpSources: {website: true, oneTable: false},
+    oneTableLink: "",
+    rsvpApprovalMode: "immediate",
+    limitCapacity: false,
+    imageUrl: "",
+    imagePosition: 50,
+  });
 
   // Calendar state
   const calendarRef = useRef(null);
@@ -93,13 +115,17 @@ function Events() {
 
   // Determine if an event date is in the past (compares date parts only)
   const isEventPast = (eventDate) => {
-    const d = parseEventDate(eventDate);
-    if (!d || isNaN(d.getTime())) return false;
     const today = new Date();
-    // Compare only Y/M/D to avoid timezone/time issues
-    const a = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    const b = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    return a < b;
+    today.setHours(0, 0, 0, 0);
+    let eventD;
+    if (typeof eventDate === "string" && eventDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = eventDate.split("-").map(Number);
+      eventD = new Date(year, month - 1, day);
+    } else {
+      eventD = new Date(eventDate);
+    }
+    eventD.setHours(0, 0, 0, 0);
+    return eventD < today;
   };
 
   const loadEvents = useCallback(async () => {
@@ -111,16 +137,31 @@ function Events() {
       }
 
       const data = await response.json();
-      const allEvents = (data.events || []).map((event) => ({
-        ...event,
-        // Add compatibility fields for existing render logic
-        date: event.start.split("T")[0],
-        // Ensure metadata defaults
-        capacity: event.capacity || 40,
-        rsvpSources: event.rsvpSources || {website: true, oneTable: false},
-      }));
+      const allEvents = (data.events || []).map((event) => {
+        // Parse time from start date
+        let timeStr = "All Day";
+        if (event.start && event.start.includes("T")) {
+          const startDate = new Date(event.start);
+          timeStr = startDate.toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          });
+        }
+
+        return {
+          ...event,
+          // Add compatibility fields for existing render logic
+          date: event.start.split("T")[0],
+          time: timeStr,
+          // Ensure metadata defaults
+          capacity: event.capacity || 40,
+          rsvpSources: event.rsvpSources || {website: true, oneTable: false},
+        };
+      });
 
       console.log("All events loaded from Google Calendar:", allEvents);
+      console.log("Past events check:", allEvents.map(e => ({title: e.title, date: e.date, isPast: isEventPast(e.date)})));
 
       setEvents(allEvents);
     } catch (error) {
@@ -448,6 +489,165 @@ function Events() {
     }
   };
 
+  const handleEditEvent = (event) => {
+    setEditingEvent(event);
+
+    let hour = "6",
+      minute = "30",
+      period = "PM";
+    if (event.time) {
+      const timeMatch = event.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+      if (timeMatch) {
+        hour = timeMatch[1];
+        minute = timeMatch[2];
+        period = timeMatch[3].toUpperCase();
+      }
+    }
+
+    // Map legacy requireRSVP to rsvpSources for backward compatibility
+    let rsvpSources = {website: true, oneTable: false};
+    if (event.rsvpSources) {
+      rsvpSources = event.rsvpSources;
+    } else if (event.requireRSVP !== undefined) {
+      rsvpSources = {website: event.requireRSVP, oneTable: false};
+    }
+
+    setEventForm({
+      title: event.title,
+      date: event.date,
+      hour: hour,
+      minute: minute,
+      period: period,
+      location: event.location,
+      description: event.description,
+      capacity: event.capacity,
+      rsvpSources: rsvpSources,
+      oneTableLink: event.oneTableLink || "",
+      rsvpApprovalMode: event.rsvpApprovalMode || "immediate",
+      limitCapacity: event.limitCapacity !== undefined ? event.limitCapacity : false,
+      imageUrl: event.imageUrl || "",
+      imagePosition: event.imagePosition || 50,
+    });
+    setShowEditModal(true);
+  };
+
+  const resetEventForm = () => {
+    setEventForm({
+      title: "",
+      date: "",
+      hour: "6",
+      minute: "30",
+      period: "PM",
+      location: "BCB Community Center, Frisco",
+      description: "",
+      capacity: 40,
+      rsvpSources: {website: true, oneTable: false},
+      oneTableLink: "",
+      rsvpApprovalMode: "immediate",
+      limitCapacity: false,
+      imageUrl: "",
+      imagePosition: 50,
+    });
+  };
+
+  const handleToggleCapacityLimit = (enabled) => {
+    setEventForm((prev) => ({
+      ...prev,
+      limitCapacity: enabled,
+    }));
+  };
+
+  const handleSaveEvent = async (e) => {
+    e.preventDefault();
+    try {
+      // Construct ISO DateTime
+      let hour = parseInt(eventForm.hour);
+      if (eventForm.period === "PM" && hour !== 12) hour += 12;
+      if (eventForm.period === "AM" && hour === 12) hour = 0;
+
+      // Create date object in local time
+      const startDateTime = new Date(`${eventForm.date}T${hour.toString().padStart(2, "0")}:${eventForm.minute}:00`);
+      const endDateTime = new Date(startDateTime.getTime() + 2 * 60 * 60 * 1000); // Default 2 hours duration
+
+      // Format as ISO string (YYYY-MM-DDTHH:mm:ss)
+      const toLocalISO = (date) => {
+        const pad = (n) => n.toString().padStart(2, "0");
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
+      };
+
+      const eventData = {
+        title: eventForm.title,
+        start: toLocalISO(startDateTime),
+        end: toLocalISO(endDateTime),
+        location: eventForm.location,
+        description: eventForm.description,
+        capacity: eventForm.capacity,
+        rsvpSources: eventForm.rsvpSources || {website: true, oneTable: false},
+        oneTableLink: eventForm.oneTableLink || "",
+        rsvpApprovalMode: eventForm.rsvpApprovalMode || "immediate",
+        limitCapacity: eventForm.limitCapacity || false,
+        imageUrl: eventForm.imageUrl || "",
+        imagePosition: eventForm.imagePosition ?? 50,
+      };
+
+      let response;
+      if (editingEvent) {
+        response = await fetch("/api/events", {
+          method: "PUT",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({id: editingEvent.id, ...eventData}),
+        });
+      } else {
+        // Should not happen in edit mode, but good to have
+        response = await fetch("/api/events", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(eventData),
+        });
+      }
+
+      if (!response.ok) throw new Error("Failed to save event");
+
+      setAlert({show: true, message: "Event updated successfully!", type: "success"});
+
+      setShowEditModal(false);
+      setEditingEvent(null);
+      resetEventForm();
+      loadEvents();
+
+      setTimeout(() => {
+        setAlert({show: false, message: "", type: ""});
+      }, 3000);
+    } catch (error) {
+      console.error("Error saving event:", error);
+      setAlert({show: true, message: "Error saving event. Please try again.", type: "danger"});
+    }
+  };
+
+  const handleDeleteEvent = async () => {
+    if (!editingEvent) return;
+    if (window.confirm("Are you sure you want to delete this event?")) {
+      try {
+        const response = await fetch(`/api/events?id=${editingEvent.id}`, {
+          method: "DELETE",
+        });
+
+        if (!response.ok) throw new Error("Failed to delete event");
+
+        setAlert({show: true, message: "Event deleted successfully!", type: "success"});
+        setShowEditModal(false);
+        setEditingEvent(null);
+        loadEvents();
+        setTimeout(() => {
+          setAlert({show: false, message: "", type: ""});
+        }, 3000);
+      } catch (error) {
+        console.error("Error deleting event:", error);
+        setAlert({show: true, message: "Error deleting event. Please try again.", type: "danger"});
+      }
+    }
+  };
+
   return (
     <div>
       {/* Hero Section */}
@@ -472,6 +672,15 @@ function Events() {
           </div>
         </Container>
       </section>
+
+      {/* Alert Messages */}
+      <Container className="mt-4">
+        {alert.show && (
+          <Alert variant={alert.type} onClose={() => setAlert({show: false, message: "", type: ""})} dismissible>
+            {alert.message}
+          </Alert>
+        )}
+      </Container>
 
       {/* Calendar Section */}
       <section className="py-5">
@@ -660,7 +869,7 @@ function Events() {
                           RSVP Now
                         </Button>
                         {(isAdmin || isManager) && (
-                          <Button variant="outline-primary" as={Link} to="/manager" state={{editEvent: event}}>
+                          <Button variant="outline-primary" onClick={() => handleEditEvent(event)}>
                             <FaEdit className="me-2" />
                             Edit
                           </Button>
@@ -833,6 +1042,31 @@ function Events() {
               )
             }
           />
+        </Modal.Body>
+      </Modal>
+
+      {/* Edit Event Modal */}
+      <Modal show={showEditModal} onHide={() => setShowEditModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Edit Event</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form onSubmit={handleSaveEvent}>
+            <EventFormFields eventForm={eventForm} setEventForm={setEventForm} handleToggleCapacityLimit={handleToggleCapacityLimit} />
+            <div className="d-flex justify-content-between mt-4">
+              <Button variant="danger" onClick={handleDeleteEvent}>
+                <FaTrash className="me-2" /> Delete Event
+              </Button>
+              <div className="d-flex gap-2">
+                <Button variant="secondary" onClick={() => setShowEditModal(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" type="submit">
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          </Form>
         </Modal.Body>
       </Modal>
 
