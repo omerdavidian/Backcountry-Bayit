@@ -52,6 +52,8 @@ function Events() {
   const [confirmOneTable, setConfirmOneTable] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [showPastEvents, setShowPastEvents] = useState(false);
+  const [pastEventsLoaded, setPastEventsLoaded] = useState(false);
   const calendarRef = useRef(null);
   const monthPickerRef = useRef(null);
 
@@ -125,8 +127,17 @@ function Events() {
 
   const loadEvents = useCallback(async () => {
     try {
-      const eventsCollection = collection(db, 'events');
-      const eventsSnapshot = await getDocs(eventsCollection);
+      // Get today's date in YYYY-MM-DD format for comparison
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${year}-${month}-${day}`;
+
+      // Only fetch upcoming events initially (date >= today)
+      const q = query(collection(db, 'events'), where('date', '>=', todayStr));
+      const eventsSnapshot = await getDocs(q);
+      
       const eventsList = eventsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
@@ -134,7 +145,7 @@ function Events() {
         title: doc.data().title
       }));
 
-      console.log('All events loaded:', eventsList);
+      console.log('Upcoming events loaded:', eventsList);
 
       setEvents(eventsList.sort((a, b) => {
         const dateA = parseEventDate(a.date);
@@ -145,6 +156,66 @@ function Events() {
       console.error('Error loading events:', error);
     }
   }, []);
+
+  const loadPastEvents = async () => {
+    try {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${year}-${month}-${day}`;
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+      const pastYear = thirtyDaysAgo.getFullYear();
+      const pastMonth = String(thirtyDaysAgo.getMonth() + 1).padStart(2, '0');
+      const pastDay = String(thirtyDaysAgo.getDate()).padStart(2, '0');
+      const thirtyDaysAgoStr = `${pastYear}-${pastMonth}-${pastDay}`;
+
+      // Fetch past events from the last 30 days
+      const q = query(collection(db, 'events'), 
+        where('date', '<', todayStr),
+        where('date', '>=', thirtyDaysAgoStr)
+      );
+      
+      const eventsSnapshot = await getDocs(q);
+      const pastEventsList = eventsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        start: doc.data().date,
+        title: doc.data().title
+      }));
+
+      console.log('Past events loaded:', pastEventsList);
+
+      setEvents(prevEvents => {
+        // Merge and deduplicate based on ID
+        const newEvents = [...prevEvents];
+        pastEventsList.forEach(pastEvent => {
+            if (!newEvents.find(e => e.id === pastEvent.id)) {
+                newEvents.push(pastEvent);
+            }
+        });
+        
+        return newEvents.sort((a, b) => {
+            const dateA = parseEventDate(a.date);
+            const dateB = parseEventDate(b.date);
+            return dateA - dateB;
+        });
+      });
+      
+      setPastEventsLoaded(true);
+    } catch (error) {
+      console.error('Error loading past events:', error);
+    }
+  };
+
+  const handleTogglePastEvents = async () => {
+    if (!showPastEvents && !pastEventsLoaded) {
+      await loadPastEvents();
+    }
+    setShowPastEvents(!showPastEvents);
+  };
 
   useEffect(() => {
     loadEvents();
@@ -684,6 +755,33 @@ function Events() {
                 Create New Event
               </Button>
             )}
+
+            {/* 
+              Add BCB Calendar to Google Calendar Button
+              
+              How it works:
+              1. The button links to Google Calendar's subscribe URL with our ICS feed URL as the 'cid' parameter.
+              2. The ICS feed is generated dynamically by the /api/calendar endpoint (serverless function).
+              3. The endpoint fetches the latest events from Firestore every time Google Calendar requests it.
+              4. Google Calendar polls this URL periodically (usually every few hours) to update the user's calendar.
+              
+              Note: The URL must be publicly accessible for Google Calendar to fetch it. 
+              Localhost URLs will not work for the subscription.
+            */}
+            <div className="mt-4">
+              <Button
+                variant="outline-light"
+                href={`https://calendar.google.com/calendar/render?cid=${encodeURIComponent(window.location.origin + '/api/calendar')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <FaCalendarAlt className="me-2" />
+                Add BCB Calendar to Google Calendar
+              </Button>
+              <div className="small mt-2 text-white-50">
+                Automatically stays up to date
+              </div>
+            </div>
           </div>
         </Container>
       </section>
@@ -928,80 +1026,94 @@ function Events() {
       {/* Past Events List */}
       <section className="py-5 bg-light">
         <Container>
-          <h2 className="section-title text-center mb-5">Past Events</h2>
-          {events.filter((e) => isEventPast(e.date)).length === 0 ? (
-            <p className="text-center text-muted">No past events to display.</p>
-          ) : (
-            <Card className="border-0 shadow-sm">
-              <Card.Body className="p-0">
-                <Table responsive hover className="mb-0">
-                  <thead className="bg-light">
-                    <tr>
-                      <th>Event</th>
-                      <th>Date</th>
-                      <th>Time</th>
-                      <th>Location</th>
-                      <th>Description</th>
-                      <th>Capacity</th>
-                      {(isAdmin || isManager) && <th>Actions</th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {events
-                      .filter((e) => isEventPast(e.date))
-                      .sort((a, b) => parseEventDate(b.date) - parseEventDate(a.date))
-                      .map((event) => (
-                        <tr key={event.id} style={{ opacity: 0.7 }}>
-                          <td>
-                            <strong className="text-secondary">{event.title}</strong>
-                          </td>
-                          <td>
-                            <FaCalendarAlt className="me-2 text-secondary" />
-                            {formatEventDate(event.date)}
-                          </td>
-                          <td>
-                            <FaClock className="me-2 text-secondary" />
-                            {event.time}
-                          </td>
-                          <td>
-                            <FaMapMarkerAlt className="me-2 text-secondary" />
-                            {event.location}
-                          </td>
-                          <td style={{ maxWidth: '300px' }}>
-                            {event.description}
-                          </td>
-                          <td>
-                            <FaUsers className="me-2 text-secondary" />
-                            {event.capacity}
-                          </td>
-                          {(isAdmin || isManager) && (
-                            <td>
-                              <div className="d-flex gap-1">
-                                <Button
-                                  variant="outline-primary"
-                                  size="sm"
-                                  onClick={() => handleEditEvent(event)}
-                                  title="Edit Event"
-                                >
-                                  <FaEdit />
-                                </Button>
-                                <Button
-                                  variant="outline-danger"
-                                  size="sm"
-                                  onClick={() => handleDeleteEvent(event.id)}
-                                  title="Delete Event"
-                                >
-                                  <FaTrash />
-                                </Button>
-                              </div>
-                            </td>
-                          )}
+          <h2 className="section-title text-center mb-3">Past Events</h2>
+          
+          <div className="text-center mb-4">
+            <Button 
+                variant="outline-secondary" 
+                onClick={handleTogglePastEvents}
+            >
+                {showPastEvents ? 'Hide Past Events' : 'Show Past Events'}
+            </Button>
+          </div>
+
+          {showPastEvents && (
+            <>
+              {events.filter((e) => isEventPast(e.date)).length === 0 ? (
+                <p className="text-center text-muted">No past events from the last 30 days found.</p>
+              ) : (
+                <Card className="border-0 shadow-sm">
+                  <Card.Body className="p-0">
+                    <Table responsive hover className="mb-0">
+                      <thead className="bg-light">
+                        <tr>
+                          <th>Event</th>
+                          <th>Date</th>
+                          <th>Time</th>
+                          <th>Location</th>
+                          <th>Description</th>
+                          <th>Capacity</th>
+                          {(isAdmin || isManager) && <th>Actions</th>}
                         </tr>
-                      ))}
-                  </tbody>
-                </Table>
-              </Card.Body>
-            </Card>
+                      </thead>
+                      <tbody>
+                        {events
+                          .filter((e) => isEventPast(e.date))
+                          .sort((a, b) => parseEventDate(b.date) - parseEventDate(a.date))
+                          .map((event) => (
+                            <tr key={event.id} style={{ opacity: 0.7 }}>
+                              <td>
+                                <strong className="text-secondary">{event.title}</strong>
+                              </td>
+                              <td>
+                                <FaCalendarAlt className="me-2 text-secondary" />
+                                {formatEventDate(event.date)}
+                              </td>
+                              <td>
+                                <FaClock className="me-2 text-secondary" />
+                                {event.time}
+                              </td>
+                              <td>
+                                <FaMapMarkerAlt className="me-2 text-secondary" />
+                                {event.location}
+                              </td>
+                              <td style={{ maxWidth: '300px' }}>
+                                {event.description}
+                              </td>
+                              <td>
+                                <FaUsers className="me-2 text-secondary" />
+                                {event.capacity}
+                              </td>
+                              {(isAdmin || isManager) && (
+                                <td>
+                                  <div className="d-flex gap-1">
+                                    <Button
+                                      variant="outline-primary"
+                                      size="sm"
+                                      onClick={() => handleEditEvent(event)}
+                                      title="Edit Event"
+                                    >
+                                      <FaEdit />
+                                    </Button>
+                                    <Button
+                                      variant="outline-danger"
+                                      size="sm"
+                                      onClick={() => handleDeleteEvent(event.id)}
+                                      title="Delete Event"
+                                    >
+                                      <FaTrash />
+                                    </Button>
+                                  </div>
+                                </td>
+                              )}
+                            </tr>
+                          ))}
+                      </tbody>
+                    </Table>
+                  </Card.Body>
+                </Card>
+              )}
+            </>
           )}
         </Container>
       </section>
