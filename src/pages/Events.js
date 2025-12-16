@@ -520,6 +520,7 @@ function Events() {
                     initialView="dayGridMonth"
                     events={events}
                     eventClick={handleEventClick}
+                    eventDisplay="block"
                     headerToolbar={{
                       left: "today",
                       center: "title",
