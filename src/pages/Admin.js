@@ -11,7 +11,14 @@ function Admin() {
   const {currentUser, logout, isManager} = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState("users");
+  const [activeTab, setActiveTab] = useState(() => {
+    return sessionStorage.getItem("adminActiveTab") || "events";
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem("adminActiveTab", activeTab);
+  }, [activeTab]);
+
   const [users, setUsers] = useState([]);
   const [events, setEvents] = useState([]);
   const [rsvps, setRSVPs] = useState([]);
@@ -528,15 +535,15 @@ function Admin() {
 
         <Nav variant="tabs" className="mb-4">
           <Nav.Item>
-            <Nav.Link active={activeTab === "users"} onClick={() => setActiveTab("users")}>
-              <FaUsers className="me-2" />
-              Users
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
             <Nav.Link active={activeTab === "events"} onClick={() => setActiveTab("events")}>
               <FaCalendarAlt className="me-2" />
               Events
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === "users"} onClick={() => setActiveTab("users")}>
+              <FaUsers className="me-2" />
+              Users
             </Nav.Link>
           </Nav.Item>
         </Nav>

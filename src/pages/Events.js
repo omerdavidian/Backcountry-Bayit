@@ -265,7 +265,7 @@ function Events() {
         const names = (currentUser.displayName || "").split(" ");
         const firstName = names[0] || "";
         const lastName = names.length > 1 ? names.slice(1).join(" ") : "";
-        
+
         setRSVPData({
           firstName: firstName,
           lastName: lastName,
@@ -297,11 +297,11 @@ function Events() {
 
   const generateGoogleCalendarUrl = (event) => {
     if (!event) return "";
-    
+
     const title = encodeURIComponent(event.title);
     const details = encodeURIComponent(event.description || "");
     const location = encodeURIComponent(event.location || "");
-    
+
     // Format dates for Google Calendar (YYYYMMDDTHHmmss)
     const formatDate = (dateStr) => {
       if (!dateStr) return "";
@@ -311,7 +311,7 @@ function Events() {
 
     const start = formatDate(event.start);
     const end = formatDate(event.end);
-    
+
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&location=${location}&dates=${start}/${end}`;
   };
 
@@ -328,23 +328,9 @@ function Events() {
     const end = formatDate(event.end);
     const now = formatDate(new Date().toISOString());
 
-    const icsContent = [
-      "BEGIN:VCALENDAR",
-      "VERSION:2.0",
-      "PRODID:-//Backcountry Bayit//Events//EN",
-      "BEGIN:VEVENT",
-      `UID:${event.id}@backcountrybayit.com`,
-      `DTSTAMP:${now}`,
-      `DTSTART:${start}`,
-      `DTEND:${end}`,
-      `SUMMARY:${event.title}`,
-      `DESCRIPTION:${event.description || ""}`,
-      `LOCATION:${event.location || ""}`,
-      "END:VEVENT",
-      "END:VCALENDAR"
-    ].join("\r\n");
+    const icsContent = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Backcountry Bayit//Events//EN", "BEGIN:VEVENT", `UID:${event.id}@backcountrybayit.com`, `DTSTAMP:${now}`, `DTSTART:${start}`, `DTEND:${end}`, `SUMMARY:${event.title}`, `DESCRIPTION:${event.description || ""}`, `LOCATION:${event.location || ""}`, "END:VEVENT", "END:VCALENDAR"].join("\r\n");
 
-    const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+    const blob = new Blob([icsContent], {type: "text/calendar;charset=utf-8"});
     const link = document.createElement("a");
     link.href = window.URL.createObjectURL(blob);
     link.setAttribute("download", `${event.title.replace(/\s+/g, "_")}.ics`);
@@ -1058,12 +1044,7 @@ function Events() {
               <h4 className="mb-4">RSVP Confirmed!</h4>
               <p className="mb-4">Add this event to your calendar:</p>
               <div className="d-flex justify-content-center gap-3 mb-4">
-                <Button
-                  variant="outline-primary"
-                  href={generateGoogleCalendarUrl(selectedEvent)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="d-flex align-items-center">
+                <Button variant="outline-primary" href={generateGoogleCalendarUrl(selectedEvent)} target="_blank" rel="noopener noreferrer" className="d-flex align-items-center">
                   <FaGoogle className="me-2" /> Google Calendar
                 </Button>
                 <Button variant="outline-secondary" onClick={() => downloadICS(selectedEvent)} className="d-flex align-items-center">
