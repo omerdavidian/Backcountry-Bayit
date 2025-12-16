@@ -1,5 +1,5 @@
-import {google} from "googleapis";
-import {DateTime} from "luxon";
+const {google} = require("googleapis");
+const {DateTime} = require("luxon");
 
 // Calendar ID extracted from the public ICS URL
 const CALENDAR_ID = "c_8d4665aa1fe4810f58bcc8c8bbb4be5d6dc14824ea33016fbab9e18fb8172382@group.calendar.google.com";
@@ -88,7 +88,7 @@ const stringifyDescription = (data) => {
   return desc;
 };
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   const calendar = getCalendarClient();
 
   try {
@@ -196,4 +196,4 @@ export default async function handler(req, res) {
     console.error("Google Calendar API Error:", error);
     return res.status(500).json({error: error.message});
   }
-}
+};

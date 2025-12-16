@@ -1,6 +1,6 @@
 import React, {useState, useEffect} from "react";
 import {Container, Card, Button, Table, Modal, Form, Alert, Badge, Nav} from "react-bootstrap";
-import {useNavigate} from "react-router-dom";
+import {useNavigate, useLocation} from "react-router-dom";
 import {useAuth} from "../utils/AuthContext";
 import {collection, getDocs, addDoc, updateDoc, deleteDoc, doc} from "firebase/firestore";
 import {db} from "../config/firebase";
@@ -10,6 +10,7 @@ import EventFormFields from "../components/EventFormFields";
 function Manager() {
   const {currentUser, logout, isManager, userRole} = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [events, setEvents] = useState([]);
   const [rsvps, setRSVPs] = useState([]);
   const [showEventModal, setShowEventModal] = useState(false);
@@ -45,6 +46,15 @@ function Manager() {
       loadRSVPs();
     }
   }, [currentUser, isManager]);
+
+  // Handle edit request from other pages
+  useEffect(() => {
+    if (location.state?.editEvent) {
+      handleEditEvent(location.state.editEvent);
+      // Clear state to prevent reopening on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const loadEvents = async () => {
     try {

@@ -1,9 +1,10 @@
 import React, {useState, useEffect, useRef} from "react";
 import {Container, Row, Col, Card, Button, Modal} from "react-bootstrap";
 import {Link} from "react-router-dom";
-import {FaStar, FaCalendarAlt, FaHeart, FaUsers, FaMapMarkerAlt, FaClock} from "react-icons/fa";
+import {FaStar, FaCalendarAlt, FaHeart, FaUsers, FaMapMarkerAlt, FaClock, FaEdit} from "react-icons/fa";
 import {collection, getDocs, query, orderBy, where, addDoc, updateDoc, deleteDoc, doc, serverTimestamp} from "firebase/firestore";
 import {db} from "../config/firebase";
+import {useAuth} from "../utils/AuthContext";
 import RSVPForm from "../components/RSVPForm";
 
 // ScrollingGallery component for continuous leftward movement with infinite loop
@@ -75,6 +76,7 @@ const ScrollingGallery = () => {
 };
 
 function Home() {
+  const {isAdmin, isManager} = useAuth();
   // Hero slider state
   const heroImages = ["/images/IMG-20240905-WA0003.webp", "/images/20241227_183542.webp", "/images/20241227_183548.webp", "/images/20241226_213824.webp"];
   const [heroIndex, setHeroIndex] = useState(0);
@@ -794,6 +796,12 @@ function Home() {
                                 }}>
                                 View Details & RSVP
                               </Button>
+                              {(isAdmin || isManager) && (
+                                <Button variant="outline-primary" as={Link} to="/manager" state={{editEvent: event}} className="w-100 mt-2">
+                                  <FaEdit className="me-2" />
+                                  Edit
+                                </Button>
+                              )}
                             </div>
                           </Card.Body>
                         </Card>

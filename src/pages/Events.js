@@ -1,9 +1,10 @@
 import React, {useState, useEffect, useRef, useCallback} from "react";
 import {Container, Row, Col, Card, Button, Modal, Alert, Table} from "react-bootstrap";
+import {Link} from "react-router-dom";
 import {collection, getDocs, doc, query, where, updateDoc, addDoc, serverTimestamp, deleteDoc} from "firebase/firestore";
 import {db} from "../config/firebase";
 import {useAuth} from "../utils/AuthContext";
-import {FaCalendarAlt, FaUsers, FaClock, FaMapMarkerAlt} from "react-icons/fa";
+import {FaCalendarAlt, FaUsers, FaClock, FaMapMarkerAlt, FaEdit} from "react-icons/fa";
 import {sendRSVPConfirmationEmail} from "../utils/emailService";
 import RSVPForm from "../components/RSVPForm";
 import FullCalendar from "@fullcalendar/react";
@@ -521,6 +522,12 @@ function Events() {
                     events={events}
                     eventClick={handleEventClick}
                     eventDisplay="block"
+                    eventContent={(eventInfo) => (
+                      <div style={{padding: "1px 2px", overflow: "hidden"}}>
+                        {eventInfo.timeText && <div style={{fontSize: "0.75em", fontWeight: "bold", lineHeight: "1"}}>{eventInfo.timeText}</div>}
+                        <div style={{fontSize: "0.9em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"}}>{eventInfo.event.title}</div>
+                      </div>
+                    )}
                     headerToolbar={{
                       left: "today",
                       center: "title",
@@ -652,6 +659,12 @@ function Events() {
                           }}>
                           RSVP Now
                         </Button>
+                        {(isAdmin || isManager) && (
+                          <Button variant="outline-primary" as={Link} to="/manager" state={{editEvent: event}}>
+                            <FaEdit className="me-2" />
+                            Edit
+                          </Button>
+                        )}
                       </div>
                     </Card.Body>
                   </Card>
