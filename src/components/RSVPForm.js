@@ -13,7 +13,11 @@ function RSVPForm({
   rsvpStatus,
   eventInfoDisplay,
   confirmOneTable,
-  setConfirmOneTable
+  setConfirmOneTable,
+  addToCalendar,
+  setAddToCalendar,
+  rememberMe,
+  setRememberMe
 }) {
   
   const handleRemoveAttendee = (index) => {
@@ -199,6 +203,32 @@ function RSVPForm({
             placeholder="Please let us know about any dietary restrictions or allergies..."
           />
         </Form.Group>
+
+        {/* Remember Me Checkbox */}
+        {setRememberMe && (
+          <Form.Group className="mb-2">
+            <Form.Check
+              type="checkbox"
+              id="rememberMe"
+              label="Remember my details for next time"
+              checked={rememberMe || false}
+              onChange={(e) => setRememberMe(e.target.checked)}
+            />
+          </Form.Group>
+        )}
+
+        {/* Add to Calendar Checkbox */}
+        {setAddToCalendar && (
+          <Form.Group className="mb-4">
+            <Form.Check
+              type="checkbox"
+              id="addToCalendar"
+              label="Add this event to my calendar after RSVP"
+              checked={addToCalendar || false}
+              onChange={(e) => setAddToCalendar(e.target.checked)}
+            />
+          </Form.Group>
+        )}
 
         {/* Action Buttons */}
         <div className="d-flex gap-2">

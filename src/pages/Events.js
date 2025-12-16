@@ -4,7 +4,7 @@ import {Link} from "react-router-dom";
 import {collection, getDocs, doc, query, where, updateDoc, addDoc, serverTimestamp, deleteDoc} from "firebase/firestore";
 import {db} from "../config/firebase";
 import {useAuth} from "../utils/AuthContext";
-import {FaCalendarAlt, FaUsers, FaClock, FaMapMarkerAlt, FaEdit, FaTrash} from "react-icons/fa";
+import {FaCalendarAlt, FaUsers, FaClock, FaMapMarkerAlt, FaEdit, FaTrash, FaGoogle, FaFileDownload, FaCheckCircle} from "react-icons/fa";
 import {sendRSVPConfirmationEmail} from "../utils/emailService";
 import RSVPForm from "../components/RSVPForm";
 import EventFormFields from "../components/EventFormFields";
@@ -13,7 +13,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 
 function Events() {
-  const {isAdmin, isManager} = useAuth();
+  const {isAdmin, isManager, currentUser} = useAuth();
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showRSVPModal, setShowRSVPModal] = useState(false);
@@ -26,11 +26,14 @@ function Events() {
     attendees: [],
     dietaryRestrictions: "",
   });
+  const [rememberMe, setRememberMe] = useState(true);
   const [rsvpStatus, setRsvpStatus] = useState({show: false, message: "", type: ""});
   const [confirmOneTable, setConfirmOneTable] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [showPastEvents, setShowPastEvents] = useState(false);
+  const [addToCalendar, setAddToCalendar] = useState(false);
+  const [showCalendarOptions, setShowCalendarOptions] = useState(false);
 
   // Edit Event State
   const [showEditModal, setShowEditModal] = useState(false);
@@ -161,7 +164,10 @@ function Events() {
       });
 
       console.log("All events loaded from Google Calendar:", allEvents);
-      console.log("Past events check:", allEvents.map(e => ({title: e.title, date: e.date, isPast: isEventPast(e.date)})));
+      console.log(
+        "Past events check:",
+        allEvents.map((e) => ({title: e.title, date: e.date, isPast: isEventPast(e.date)}))
+      );
 
       setEvents(allEvents);
     } catch (error) {
@@ -232,6 +238,8 @@ function Events() {
       setSelectedEvent(event);
       setExistingRSVP(null); // Reset existing RSVP when opening modal
       setRsvpStatus({show: false, message: "", type: ""}); // Reset status messages
+      setAddToCalendar(false);
+      setShowCalendarOptions(false);
       // Load saved user info from localStorage
       loadSavedUserInfo();
       setShowRSVPModal(true);
@@ -250,6 +258,21 @@ function Events() {
           email: userInfo.email || "",
           phone: userInfo.phone || "",
           attendees: [],
+          dietaryRestrictions: "",
+        });
+      } else if (currentUser) {
+        // Fallback to logged-in user info if no local storage
+        const names = (currentUser.displayName || "").split(" ");
+        const firstName = names[0] || "";
+        const lastName = names.length > 1 ? names.slice(1).join(" ") : "";
+        
+        setRSVPData({
+          firstName: firstName,
+          lastName: lastName,
+          email: currentUser.email || "",
+          phone: currentUser.phoneNumber || "",
+          attendees: [],
+          dietaryRestrictions: "",
         });
       }
     } catch (error) {
@@ -270,6 +293,64 @@ function Events() {
     } catch (error) {
       console.error("Error saving user info:", error);
     }
+  };
+
+  const generateGoogleCalendarUrl = (event) => {
+    if (!event) return "";
+    
+    const title = encodeURIComponent(event.title);
+    const details = encodeURIComponent(event.description || "");
+    const location = encodeURIComponent(event.location || "");
+    
+    // Format dates for Google Calendar (YYYYMMDDTHHmmss)
+    const formatDate = (dateStr) => {
+      if (!dateStr) return "";
+      const date = new Date(dateStr);
+      return date.toISOString().replace(/-|:|\.\d\d\d/g, "");
+    };
+
+    const start = formatDate(event.start);
+    const end = formatDate(event.end);
+    
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&location=${location}&dates=${start}/${end}`;
+  };
+
+  const downloadICS = (event) => {
+    if (!event) return;
+
+    const formatDate = (dateStr) => {
+      if (!dateStr) return "";
+      const date = new Date(dateStr);
+      return date.toISOString().replace(/-|:|\.\d\d\d/g, "");
+    };
+
+    const start = formatDate(event.start);
+    const end = formatDate(event.end);
+    const now = formatDate(new Date().toISOString());
+
+    const icsContent = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Backcountry Bayit//Events//EN",
+      "BEGIN:VEVENT",
+      `UID:${event.id}@backcountrybayit.com`,
+      `DTSTAMP:${now}`,
+      `DTSTART:${start}`,
+      `DTEND:${end}`,
+      `SUMMARY:${event.title}`,
+      `DESCRIPTION:${event.description || ""}`,
+      `LOCATION:${event.location || ""}`,
+      "END:VEVENT",
+      "END:VCALENDAR"
+    ].join("\r\n");
+
+    const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = window.URL.createObjectURL(blob);
+    link.setAttribute("download", `${event.title.replace(/\s+/g, "_")}.ics`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleRSVPSubmit = async (e) => {
@@ -384,7 +465,11 @@ function Events() {
       }
 
       // Save user info to localStorage for future RSVPs
-      saveUserInfo(rsvpData);
+      if (rememberMe) {
+        saveUserInfo(rsvpData);
+      } else {
+        localStorage.removeItem("bcb_user_info");
+      }
 
       // Send confirmation email
       let emailWarning;
@@ -415,10 +500,14 @@ function Events() {
 
       setExistingRSVP(null);
 
-      setTimeout(() => {
-        setShowRSVPModal(false);
-        setRsvpStatus({show: false, message: "", type: ""});
-      }, 4000);
+      if (addToCalendar) {
+        setShowCalendarOptions(true);
+      } else {
+        setTimeout(() => {
+          setShowRSVPModal(false);
+          setRsvpStatus({show: false, message: "", type: ""});
+        }, 4000);
+      }
     } catch (error) {
       console.error("Error submitting RSVP:", error);
 
@@ -963,85 +1052,118 @@ function Events() {
           <Modal.Title>RSVP for {selectedEvent?.title}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <RSVPForm
-            selectedEvent={selectedEvent}
-            rsvpData={rsvpData}
-            setRSVPData={setRSVPData}
-            handleRSVPSubmit={handleRSVPSubmit}
-            existingRSVP={existingRSVP}
-            handleUnregister={handleUnregister}
-            onCancel={() => {
-              setShowRSVPModal(false);
-              setExistingRSVP(null);
-              setRsvpStatus({show: false, message: "", type: ""});
-            }}
-            rsvpStatus={rsvpStatus}
-            confirmOneTable={confirmOneTable}
-            setConfirmOneTable={setConfirmOneTable}
-            eventInfoDisplay={
-              selectedEvent && (
-                <div className="mb-4 bg-light rounded overflow-hidden">
-                  {selectedEvent.imageUrl && (
-                    <div
-                      style={{
-                        width: "100%",
-                        height: "200px",
-                        overflow: "hidden",
-                        cursor: "pointer",
-                        position: "relative",
-                      }}
-                      onClick={() => {
-                        setSelectedImage({url: selectedEvent.imageUrl, title: selectedEvent.title});
-                        setShowImageModal(true);
-                      }}>
-                      <img
-                        src={selectedEvent.imageUrl}
-                        alt={selectedEvent.title}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          objectPosition: `center ${selectedEvent.imagePosition || 50}%`,
-                        }}
-                      />
+          {showCalendarOptions ? (
+            <div className="text-center py-4">
+              <FaCheckCircle className="text-success mb-3" size={50} />
+              <h4 className="mb-4">RSVP Confirmed!</h4>
+              <p className="mb-4">Add this event to your calendar:</p>
+              <div className="d-flex justify-content-center gap-3 mb-4">
+                <Button
+                  variant="outline-primary"
+                  href={generateGoogleCalendarUrl(selectedEvent)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="d-flex align-items-center">
+                  <FaGoogle className="me-2" /> Google Calendar
+                </Button>
+                <Button variant="outline-secondary" onClick={() => downloadICS(selectedEvent)} className="d-flex align-items-center">
+                  <FaFileDownload className="me-2" /> Download ICS
+                </Button>
+              </div>
+              <Button
+                variant="link"
+                onClick={() => {
+                  setShowRSVPModal(false);
+                  setShowCalendarOptions(false);
+                }}>
+                Close
+              </Button>
+            </div>
+          ) : (
+            <RSVPForm
+              selectedEvent={selectedEvent}
+              rsvpData={rsvpData}
+              setRSVPData={setRSVPData}
+              handleRSVPSubmit={handleRSVPSubmit}
+              existingRSVP={existingRSVP}
+              handleUnregister={handleUnregister}
+              onCancel={() => {
+                setShowRSVPModal(false);
+                setExistingRSVP(null);
+                setRsvpStatus({show: false, message: "", type: ""});
+              }}
+              rsvpStatus={rsvpStatus}
+              confirmOneTable={confirmOneTable}
+              setConfirmOneTable={setConfirmOneTable}
+              addToCalendar={addToCalendar}
+              setAddToCalendar={setAddToCalendar}
+              rememberMe={rememberMe}
+              setRememberMe={setRememberMe}
+              eventInfoDisplay={
+                selectedEvent && (
+                  <div className="mb-4 bg-light rounded overflow-hidden">
+                    {selectedEvent.imageUrl && (
                       <div
                         style={{
-                          position: "absolute",
-                          bottom: "8px",
-                          right: "8px",
-                          backgroundColor: "rgba(0,0,0,0.6)",
-                          color: "white",
-                          padding: "4px 8px",
-                          borderRadius: "4px",
-                          fontSize: "0.75rem",
+                          width: "100%",
+                          height: "200px",
+                          overflow: "hidden",
+                          cursor: "pointer",
+                          position: "relative",
+                        }}
+                        onClick={() => {
+                          setSelectedImage({url: selectedEvent.imageUrl, title: selectedEvent.title});
+                          setShowImageModal(true);
                         }}>
-                        Click to view full image
-                      </div>
-                    </div>
-                  )}
-                  <div className="p-3">
-                    <h5 className="mb-3">{selectedEvent.title}</h5>
-                    <p className="mb-1">
-                      <strong>Date:</strong> {formatEventDate(selectedEvent.date)}
-                    </p>
-                    <p className="mb-1">
-                      <strong>Time:</strong> {selectedEvent.time}
-                    </p>
-                    <p className="mb-0">
-                      <strong>Location:</strong> {selectedEvent.location}
-                    </p>
-                    {selectedEvent?.oneTableLink && (
-                      <div className="mt-2">
-                        <a href={selectedEvent.oneTableLink} target="_blank" rel="noreferrer">
-                          RSVP through OneTable
-                        </a>
+                        <img
+                          src={selectedEvent.imageUrl}
+                          alt={selectedEvent.title}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            objectPosition: `center ${selectedEvent.imagePosition || 50}%`,
+                          }}
+                        />
+                        <div
+                          style={{
+                            position: "absolute",
+                            bottom: "8px",
+                            right: "8px",
+                            backgroundColor: "rgba(0,0,0,0.6)",
+                            color: "white",
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            fontSize: "0.75rem",
+                          }}>
+                          Click to view full image
+                        </div>
                       </div>
                     )}
+                    <div className="p-3">
+                      <h5 className="mb-3">{selectedEvent.title}</h5>
+                      <p className="mb-1">
+                        <strong>Date:</strong> {formatEventDate(selectedEvent.date)}
+                      </p>
+                      <p className="mb-1">
+                        <strong>Time:</strong> {selectedEvent.time}
+                      </p>
+                      <p className="mb-0">
+                        <strong>Location:</strong> {selectedEvent.location}
+                      </p>
+                      {selectedEvent?.oneTableLink && (
+                        <div className="mt-2">
+                          <a href={selectedEvent.oneTableLink} target="_blank" rel="noreferrer">
+                            RSVP through OneTable
+                          </a>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )
-            }
-          />
+                )
+              }
+            />
+          )}
         </Modal.Body>
       </Modal>
 
