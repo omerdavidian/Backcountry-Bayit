@@ -1,12 +1,12 @@
-import React from 'react';
-import { Autocomplete, useJsApiLoader } from '@react-google-maps/api';
-import { Form } from 'react-bootstrap';
+import React from "react";
+import {Autocomplete, useJsApiLoader} from "@react-google-maps/api";
+import {Form} from "react-bootstrap";
 
-const libraries = ['places'];
+const libraries = ["places"];
 
-function LocationAutocomplete({ value, onChange, required = true }) {
-  const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '',
+function LocationAutocomplete({value, onChange, required = true}) {
+  const {isLoaded, loadError} = useJsApiLoader({
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY || "",
     libraries,
   });
 
@@ -29,28 +29,11 @@ function LocationAutocomplete({ value, onChange, required = true }) {
 
   // If Google Maps API key is not configured or loading failed, show regular input
   if (loadError || !process.env.REACT_APP_GOOGLE_MAPS_API_KEY) {
-    return (
-      <Form.Control
-        type="text"
-        required={required}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="e.g., BCB Community House, Frisco, CO"
-      />
-    );
+    return <Form.Control type="text" required={required} value={value} onChange={(e) => onChange(e.target.value)} placeholder="e.g., BCB Community House, Frisco, CO" />;
   }
 
   if (!isLoaded) {
-    return (
-      <Form.Control
-        type="text"
-        required={required}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Loading Google Maps..."
-        disabled
-      />
-    );
+    return <Form.Control type="text" required={required} value={value} onChange={(e) => onChange(e.target.value)} placeholder="Loading Google Maps..." disabled />;
   }
 
   return (
@@ -58,17 +41,10 @@ function LocationAutocomplete({ value, onChange, required = true }) {
       onLoad={onLoad}
       onPlaceChanged={onPlaceChanged}
       options={{
-        types: ['establishment', 'geocode'],
-        componentRestrictions: { country: 'us' },
-      }}
-    >
-      <Form.Control
-        type="text"
-        required={required}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="e.g., BCB Community House, Frisco, CO"
-      />
+        types: ["establishment", "geocode"],
+        componentRestrictions: {country: "us"},
+      }}>
+      <Form.Control type="text" required={required} value={value} onChange={(e) => onChange(e.target.value)} placeholder="e.g., BCB Community House, Frisco, CO" />
     </Autocomplete>
   );
 }

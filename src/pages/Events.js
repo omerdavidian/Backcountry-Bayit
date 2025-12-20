@@ -606,8 +606,6 @@ function Events() {
     setShowEditModal(true);
   };
 
-
-
   const handleToggleCapacityLimit = (enabled) => {
     setEventForm((prev) => ({
       ...prev,

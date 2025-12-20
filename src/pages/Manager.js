@@ -4,8 +4,9 @@ import {useNavigate, useLocation} from "react-router-dom";
 import {useAuth} from "../utils/AuthContext";
 import {collection, getDocs, addDoc, updateDoc, deleteDoc, doc} from "firebase/firestore";
 import {db} from "../config/firebase";
-import {FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaDownload} from "react-icons/fa";
+import {FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaDownload, FaEnvelope} from "react-icons/fa";
 import EventFormFields from "../components/EventFormFields";
+import EmailRSVPsModal from "../components/EmailRSVPsModal";
 
 function Manager() {
   const {currentUser, logout, isManager, userRole} = useAuth();
@@ -14,6 +15,8 @@ function Manager() {
   const [events, setEvents] = useState([]);
   const [rsvps, setRSVPs] = useState([]);
   const [showEventModal, setShowEventModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [selectedEventForEmail, setSelectedEventForEmail] = useState(null);
   const [editingEvent, setEditingEvent] = useState(null);
   const [alert, setAlert] = useState({show: false, message: "", type: ""});
   const [eventForm, setEventForm] = useState({
@@ -43,7 +46,6 @@ function Manager() {
   useEffect(() => {
     if (currentUser && isManager) {
       loadEvents();
-      loadRSVPs();
     }
   }, [currentUser, isManager]);
 
@@ -100,21 +102,64 @@ function Manager() {
         console.error("Error fetching Firestore events:", err);
       }
 
-      // 3. Merge lists with deduplication (Prefer Firestore to keep RSVPs)
+      // 3. Fetch RSVPs for Smart Deduplication
+      let rsvpsList = [];
+      try {
+        const rsvpsCollection = collection(db, "rsvps");
+        const rsvpsSnapshot = await getDocs(rsvpsCollection);
+        rsvpsList = rsvpsSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setRSVPs(rsvpsList);
+      } catch (err) {
+        console.error("Error fetching RSVPs:", err);
+      }
+
+      // 4. Merge lists with smart deduplication
+      // Strategy: If an event exists in both (matching Title and Date), check which one has RSVPs.
+      // Prefer the one with RSVPs. If neither or both have RSVPs, prefer Google (API).
+
       const firestoreMap = new Map();
-      firestoreEvents.forEach(e => {
+      firestoreEvents.forEach((e) => {
         const key = `${e.date}_${e.title}`.toLowerCase();
         firestoreMap.set(key, e);
       });
 
-      const uniqueApiEvents = apiEvents.filter(e => {
-        const key = `${e.date}_${e.title}`.toLowerCase();
-        return !firestoreMap.has(key);
+      const mergedEvents = [];
+      const processedKeys = new Set();
+
+      // Process API events
+      apiEvents.forEach((apiEvent) => {
+        const key = `${apiEvent.date}_${apiEvent.title}`.toLowerCase();
+        if (firestoreMap.has(key)) {
+          // Collision! Check RSVPs
+          const firestoreEvent = firestoreMap.get(key);
+          const apiRSVPCount = rsvpsList.filter((r) => r.eventId === apiEvent.id).length;
+          const firestoreRSVPCount = rsvpsList.filter((r) => r.eventId === firestoreEvent.id).length;
+
+          // If Firestore has RSVPs and API doesn't (or has fewer), prefer Firestore (Legacy data)
+          // Otherwise prefer API (New data)
+          if (firestoreRSVPCount > apiRSVPCount) {
+            mergedEvents.push(firestoreEvent);
+          } else {
+            mergedEvents.push(apiEvent);
+          }
+          processedKeys.add(key);
+        } else {
+          mergedEvents.push(apiEvent);
+        }
       });
 
-      const allEvents = [...uniqueApiEvents, ...firestoreEvents];
+      // Add remaining Firestore events
+      firestoreEvents.forEach((fsEvent) => {
+        const key = `${fsEvent.date}_${fsEvent.title}`.toLowerCase();
+        if (!processedKeys.has(key)) {
+          mergedEvents.push(fsEvent);
+        }
+      });
 
-      setEvents(allEvents.sort((a, b) => new Date(a.date) - new Date(b.date)));
+      setEvents(mergedEvents.sort((a, b) => new Date(a.date) - new Date(b.date)));
     } catch (error) {
       console.error("Error loading events:", error);
       setAlert({show: true, message: "Error loading events. Please refresh the page.", type: "danger"});
@@ -269,12 +314,12 @@ function Manager() {
         if (editingEvent.source === "firestore") {
           // Legacy update: Update in Firestore
           const legacyData = {
-             ...eventData,
-             date: eventForm.date,
-             time: `${eventForm.hour}:${eventForm.minute} ${eventForm.period}`,
+            ...eventData,
+            date: eventForm.date,
+            time: `${eventForm.hour}:${eventForm.minute} ${eventForm.period}`,
           };
           await updateDoc(doc(db, "events", editingEvent.id), legacyData);
-          response = { ok: true };
+          response = {ok: true};
         } else {
           // Google Calendar update
           response = await fetch("/api/events", {
@@ -381,17 +426,17 @@ function Manager() {
   const handleDeleteEvent = async (eventId) => {
     if (window.confirm("Are you sure you want to delete this event?")) {
       try {
-        const eventToDelete = events.find(e => e.id === eventId);
-        
+        const eventToDelete = events.find((e) => e.id === eventId);
+
         if (eventToDelete && eventToDelete.source === "firestore") {
-           // Delete from Firestore
-           await deleteDoc(doc(db, "events", eventId));
+          // Delete from Firestore
+          await deleteDoc(doc(db, "events", eventId));
         } else {
-           // Delete from Google Calendar API
-           const response = await fetch(`/api/events?id=${eventId}`, {
-             method: "DELETE",
-           });
-           if (!response.ok) throw new Error("Failed to delete event");
+          // Delete from Google Calendar API
+          const response = await fetch(`/api/events?id=${eventId}`, {
+            method: "DELETE",
+          });
+          if (!response.ok) throw new Error("Failed to delete event");
         }
 
         setAlert({show: true, message: "Event deleted successfully!", type: "success"});
@@ -511,6 +556,17 @@ function Manager() {
                       <Button variant="outline-success" size="sm" className="ms-2" onClick={() => handleDownloadCSV(event)}>
                         <FaDownload />
                       </Button>
+                      <Button
+                        variant="outline-secondary"
+                        size="sm"
+                        className="ms-2"
+                        onClick={() => {
+                          setSelectedEventForEmail(event);
+                          setShowEmailModal(true);
+                        }}
+                        title="Email Guests">
+                        <FaEnvelope />
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -578,6 +634,17 @@ function Manager() {
                           <Button variant="outline-success" size="sm" className="ms-2" onClick={() => handleDownloadCSV(event)}>
                             <FaDownload />
                           </Button>
+                          <Button
+                            variant="outline-secondary"
+                            size="sm"
+                            className="ms-2"
+                            onClick={() => {
+                              setSelectedEventForEmail(event);
+                              setShowEmailModal(true);
+                            }}
+                            title="Email Guests">
+                            <FaEnvelope />
+                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -590,6 +657,30 @@ function Manager() {
           </Card>
         </div>
       </Container>
+
+      {/* Email Modal */}
+      <EmailRSVPsModal
+        show={showEmailModal}
+        onHide={() => {
+          setShowEmailModal(false);
+          setSelectedEventForEmail(null);
+        }}
+        event={selectedEventForEmail}
+        recipients={
+          selectedEventForEmail
+            ? getRSVPsForEvent(selectedEventForEmail.id)
+                .filter((r) => r.status !== "rejected")
+                .map((r) => ({
+                  email: r.email,
+                  name: r.firstName ? `${r.firstName} ${r.lastName}` : r.name,
+                }))
+                .filter((v, i, a) => a.findIndex((t) => t.email === v.email) === i)
+            : []
+        }
+        onSuccess={() => {
+          setAlert({show: true, message: "Emails sent successfully!", type: "success"});
+        }}
+      />
 
       {/* Event Modal */}
       <Modal show={showEventModal} onHide={() => setShowEventModal(false)} size="lg">

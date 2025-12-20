@@ -48,7 +48,7 @@ function EventRSVPs() {
           try {
             const eventDoc = await getDoc(doc(db, "events", eventId));
             if (eventDoc.exists()) {
-              foundEvent = { id: eventDoc.id, ...eventDoc.data() };
+              foundEvent = {id: eventDoc.id, ...eventDoc.data()};
             }
           } catch (e) {
             console.error("Error fetching legacy event from Firestore:", e);
