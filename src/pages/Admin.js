@@ -91,31 +91,69 @@ function Admin() {
 
   const loadEvents = async () => {
     try {
-      const response = await fetch("/api/events");
-      if (!response.ok) throw new Error("Failed to fetch events");
-      const data = await response.json();
+      // 1. Fetch from Google Calendar (New System)
+      let apiEvents = [];
+      try {
+        const response = await fetch("/api/events");
+        if (response.ok) {
+          const data = await response.json();
+          apiEvents = data.events.map((event) => {
+            const startDate = new Date(event.start);
+            const dateStr = event.start.split("T")[0];
+            const timeStr = startDate.toLocaleTimeString("en-US", {
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            });
+            return {
+              ...event,
+              date: dateStr,
+              time: timeStr,
+              capacity: event.capacity || 40,
+              rsvpSources: event.rsvpSources || {website: true, oneTable: false},
+              source: "google", // Mark as Google Calendar event
+            };
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching API events:", err);
+      }
 
-      const eventsList = data.events.map((event) => {
-        // Convert ISO start to date and time strings for compatibility
-        const startDate = new Date(event.start);
-        const dateStr = event.start.split("T")[0];
-        const timeStr = startDate.toLocaleTimeString("en-US", {
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        });
+      // 2. Fetch from Firestore (Legacy System)
+      let firestoreEvents = [];
+      try {
+        const eventsCollection = collection(db, "events");
+        const eventsSnapshot = await getDocs(eventsCollection);
+        firestoreEvents = eventsSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          source: "firestore", // Mark as Firestore event
+        }));
+      } catch (err) {
+        console.error("Error fetching Firestore events:", err);
+      }
 
-        return {
-          ...event,
-          date: dateStr,
-          time: timeStr,
-          // Ensure metadata fields are present
-          capacity: event.capacity || 40,
-          rsvpSources: event.rsvpSources || {website: true, oneTable: false},
-        };
+      // 3. Merge lists with deduplication
+      // Strategy: If an event exists in both (matching Title and Date), prefer the Firestore version
+      // because it likely has the RSVPs attached to its ID.
+      
+      // Create a map of Firestore events for quick lookup
+      const firestoreMap = new Map();
+      firestoreEvents.forEach(e => {
+        const key = `${e.date}_${e.title}`.toLowerCase();
+        firestoreMap.set(key, e);
       });
 
-      setEvents(eventsList.sort((a, b) => new Date(a.date) - new Date(b.date)));
+      // Filter API events: Only keep those that DON'T have a match in Firestore
+      const uniqueApiEvents = apiEvents.filter(e => {
+        const key = `${e.date}_${e.title}`.toLowerCase();
+        return !firestoreMap.has(key);
+      });
+
+      // Combine: Unique API events + All Firestore events
+      const allEvents = [...uniqueApiEvents, ...firestoreEvents];
+
+      setEvents(allEvents.sort((a, b) => new Date(a.date) - new Date(b.date)));
     } catch (error) {
       console.error("Error loading events:", error);
       setAlert({show: true, message: "Error loading events. Please refresh the page.", type: "danger"});
@@ -178,13 +216,37 @@ function Admin() {
       if (editingEvent) {
         // Update existing event
         console.log("Updating event with ID:", editingEvent.id);
-        response = await fetch("/api/events", {
-          method: "PUT",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({id: editingEvent.id, ...eventData}),
-        });
+        
+        if (editingEvent.source === "firestore") {
+          // Legacy update: Update in Firestore
+          // Note: We need to convert back to the format Firestore expects if it differs, 
+          // but here we are just updating fields.
+          // However, the old schema used 'date' and 'time' strings, not 'start'/'end' ISO.
+          // Let's try to maintain compatibility or migrate?
+          // Safest is to update the fields we know about.
+          
+          const legacyData = {
+             ...eventData,
+             // Add back legacy fields if needed, or just rely on the new ones if the app supports it.
+             // The app seems to read 'date' and 'time' from 'start' in loadEvents, so we should probably save 'start'/'end'
+             // But the old app saved 'date' (YYYY-MM-DD) and 'time' (H:MM AM/PM).
+             date: eventForm.date,
+             time: `${eventForm.hour}:${eventForm.minute} ${eventForm.period}`,
+          };
+          
+          await updateDoc(doc(db, "events", editingEvent.id), legacyData);
+          // Mock response for consistency
+          response = { ok: true };
+        } else {
+          // Google Calendar update
+          response = await fetch("/api/events", {
+            method: "PUT",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({id: editingEvent.id, ...eventData}),
+          });
+        }
       } else {
-        // Create new event
+        // Create new event - ALWAYS use Google Calendar now
         console.log("Creating new event");
         response = await fetch("/api/events", {
           method: "POST",
@@ -209,12 +271,19 @@ function Admin() {
   const handleDeleteEvent = async (eventId) => {
     if (window.confirm("Are you sure you want to delete this event? This will also delete all associated RSVPs.")) {
       try {
-        // Delete the event
-        const response = await fetch(`/api/events?id=${eventId}`, {
-          method: "DELETE",
-        });
-
-        if (!response.ok) throw new Error("Failed to delete event");
+        // Find the event to check its source
+        const eventToDelete = events.find(e => e.id === eventId);
+        
+        if (eventToDelete && eventToDelete.source === "firestore") {
+           // Delete from Firestore
+           await deleteDoc(doc(db, "events", eventId));
+        } else {
+           // Delete from Google Calendar API
+           const response = await fetch(`/api/events?id=${eventId}`, {
+             method: "DELETE",
+           });
+           if (!response.ok) throw new Error("Failed to delete event");
+        }
 
         // Delete all RSVPs for this event
         const eventRSVPs = rsvps.filter((rsvp) => rsvp.eventId === eventId);

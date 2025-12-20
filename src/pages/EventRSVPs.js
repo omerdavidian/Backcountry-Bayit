@@ -30,14 +30,33 @@ function EventRSVPs() {
   useEffect(() => {
     const fetchEventAndRSVPs = async () => {
       try {
-        // Fetch all events from API (Google Calendar)
-        const response = await fetch("/api/events");
-        if (response.ok) {
-          const data = await response.json();
-          const foundEvent = data.events.find((e) => e.id === eventId);
-          if (foundEvent) {
-            setEvent(foundEvent);
+        let foundEvent = null;
+
+        // 1. Try fetching from API (Google Calendar)
+        try {
+          const response = await fetch("/api/events");
+          if (response.ok) {
+            const data = await response.json();
+            foundEvent = data.events.find((e) => e.id === eventId);
           }
+        } catch (e) {
+          console.warn("Failed to fetch from API, trying Firestore fallback...");
+        }
+
+        // 2. If not found, try fetching from Firestore (Legacy)
+        if (!foundEvent) {
+          try {
+            const eventDoc = await getDoc(doc(db, "events", eventId));
+            if (eventDoc.exists()) {
+              foundEvent = { id: eventDoc.id, ...eventDoc.data() };
+            }
+          } catch (e) {
+            console.error("Error fetching legacy event from Firestore:", e);
+          }
+        }
+
+        if (foundEvent) {
+          setEvent(foundEvent);
         }
 
         // Fetch RSVPs for this event
