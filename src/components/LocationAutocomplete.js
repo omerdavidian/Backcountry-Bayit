@@ -35,7 +35,7 @@ function LocationAutocomplete({ value, onChange, required = true }) {
         required={required}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="e.g., BCB Community Center, Frisco, CO"
+        placeholder="e.g., BCB Community House, Frisco, CO"
       />
     );
   }
@@ -67,7 +67,7 @@ function LocationAutocomplete({ value, onChange, required = true }) {
         required={required}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="e.g., BCB Community Center, Frisco, CO"
+        placeholder="e.g., BCB Community House, Frisco, CO"
       />
     </Autocomplete>
   );

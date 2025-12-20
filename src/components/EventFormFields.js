@@ -149,7 +149,7 @@ function EventFormFields({ eventForm, setEventForm, showCapacityToggle = true, h
           required
           value={eventForm.location}
           onChange={(e) => setEventForm({ ...eventForm, location: e.target.value })}
-          placeholder="e.g., BCB Community Center, Frisco, CO"
+          placeholder="e.g., BCB Community House, Frisco, CO"
         />
       </Form.Group>
 

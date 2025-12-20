@@ -4,7 +4,7 @@ import {Link} from "react-router-dom";
 import {collection, getDocs, doc, query, where, updateDoc, addDoc, serverTimestamp, deleteDoc} from "firebase/firestore";
 import {db} from "../config/firebase";
 import {useAuth} from "../utils/AuthContext";
-import {FaCalendarAlt, FaUsers, FaClock, FaMapMarkerAlt, FaEdit, FaTrash, FaGoogle, FaFileDownload, FaCheckCircle} from "react-icons/fa";
+import {FaCalendarAlt, FaUsers, FaClock, FaMapMarkerAlt, FaEdit, FaTrash, FaGoogle, FaFileDownload, FaCheckCircle, FaPlus} from "react-icons/fa";
 import {sendRSVPConfirmationEmail} from "../utils/emailService";
 import RSVPForm from "../components/RSVPForm";
 import EventFormFields from "../components/EventFormFields";
@@ -45,7 +45,7 @@ function Events() {
     hour: "6",
     minute: "30",
     period: "PM",
-    location: "BCB Community Center, Frisco",
+    location: "BCB Community House, Frisco",
     description: "",
     capacity: 40,
     rsvpSources: {website: true, oneTable: false},
@@ -606,14 +606,24 @@ function Events() {
     setShowEditModal(true);
   };
 
+
+
+  const handleToggleCapacityLimit = (enabled) => {
+    setEventForm((prev) => ({
+      ...prev,
+      limitCapacity: enabled,
+    }));
+  };
+
   const resetEventForm = () => {
+    setEditingEvent(null);
     setEventForm({
       title: "",
       date: "",
       hour: "6",
       minute: "30",
       period: "PM",
-      location: "BCB Community Center, Frisco",
+      location: "BCB Community House, Frisco",
       description: "",
       capacity: 40,
       rsvpSources: {website: true, oneTable: false},
@@ -623,13 +633,6 @@ function Events() {
       imageUrl: "",
       imagePosition: 50,
     });
-  };
-
-  const handleToggleCapacityLimit = (enabled) => {
-    setEventForm((prev) => ({
-      ...prev,
-      limitCapacity: enabled,
-    }));
   };
 
   const handleSaveEvent = async (e) => {
@@ -744,6 +747,21 @@ function Events() {
               </Button>
               <div className="small mt-2 text-white-50">Automatically stays up to date</div>
             </div>
+
+            {(isAdmin || isManager) && (
+              <div className="mt-4">
+                <Button
+                  variant="light"
+                  size="lg"
+                  onClick={() => {
+                    resetEventForm();
+                    setShowEditModal(true);
+                  }}>
+                  <FaPlus className="me-2" />
+                  Create New Event
+                </Button>
+              </div>
+            )}
           </div>
         </Container>
       </section>

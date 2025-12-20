@@ -22,7 +22,7 @@ function Manager() {
     hour: "6",
     minute: "30",
     period: "PM",
-    location: "BCB Community Center, Frisco",
+    location: "BCB Community House, Frisco",
     description: "",
     capacity: 40,
     rsvpSources: {website: true, oneTable: false},
@@ -91,12 +91,14 @@ function Manager() {
 
   const loadRSVPs = async () => {
     try {
+      console.log("Loading RSVPs in Manager dashboard...");
       const rsvpsCollection = collection(db, "rsvps");
       const rsvpsSnapshot = await getDocs(rsvpsCollection);
       const rsvpsList = rsvpsSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
+      console.log(`Loaded ${rsvpsList.length} RSVPs`);
       setRSVPs(rsvpsList);
     } catch (error) {
       console.error("Error loading RSVPs:", error);
@@ -312,7 +314,7 @@ function Manager() {
       hour: "6",
       minute: "30",
       period: "PM",
-      location: "BCB Community Center, Frisco",
+      location: "BCB Community House, Frisco",
       description: "",
       capacity: 40,
       rsvpSources: {website: true, oneTable: false},
