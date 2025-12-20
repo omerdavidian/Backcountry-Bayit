@@ -310,10 +310,28 @@ function EventRSVPs() {
         event={event}
         recipients={rsvps
           .filter((r) => r.status !== "rejected") // Exclude rejected
-          .map((r) => ({
-            email: r.email,
-            name: r.firstName ? `${r.firstName} ${r.lastName}` : r.name,
-          }))
+          .flatMap((r) => {
+            const list = [];
+            // Primary
+            if (r.email) {
+              list.push({
+                email: r.email,
+                name: r.firstName ? `${r.firstName} ${r.lastName}` : r.name,
+              });
+            }
+            // Attendees
+            if (Array.isArray(r.attendees)) {
+              r.attendees.forEach((att) => {
+                if (att.email) {
+                  list.push({
+                    email: att.email,
+                    name: att.firstName ? `${att.firstName} ${att.lastName}` : "Guest",
+                  });
+                }
+              });
+            }
+            return list;
+          })
           .filter((v, i, a) => a.findIndex((t) => t.email === v.email) === i)} // Unique emails
         onSuccess={() => {
           setStatusMessage({show: true, message: "Emails sent successfully!", type: "success"});

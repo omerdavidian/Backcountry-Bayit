@@ -670,10 +670,28 @@ function Manager() {
           selectedEventForEmail
             ? getRSVPsForEvent(selectedEventForEmail.id)
                 .filter((r) => r.status !== "rejected")
-                .map((r) => ({
-                  email: r.email,
-                  name: r.firstName ? `${r.firstName} ${r.lastName}` : r.name,
-                }))
+                .flatMap((r) => {
+                  const list = [];
+                  // Primary
+                  if (r.email) {
+                    list.push({
+                      email: r.email,
+                      name: r.firstName ? `${r.firstName} ${r.lastName}` : r.name,
+                    });
+                  }
+                  // Attendees
+                  if (Array.isArray(r.attendees)) {
+                    r.attendees.forEach((att) => {
+                      if (att.email) {
+                        list.push({
+                          email: att.email,
+                          name: att.firstName ? `${att.firstName} ${att.lastName}` : "Guest",
+                        });
+                      }
+                    });
+                  }
+                  return list;
+                })
                 .filter((v, i, a) => a.findIndex((t) => t.email === v.email) === i)
             : []
         }
