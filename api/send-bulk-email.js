@@ -54,11 +54,14 @@ module.exports = async function handler(req, res) {
     errors: [],
   };
 
-  // Send emails in parallel (with some caution)
-  // For larger lists, we might want to batch this, but for < 100 guests, Promise.all is likely fine.
-  // We'll send individually to allow personalization and better deliverability.
+  // TEMPORARY THROTTLING SOLUTION
+  // Requirement: Send emails sequentially at 1 email per second to avoid Resend rate limits.
+  // This is a temporary workaround and should be replaced with a proper queue system later.
+  
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const sendResults = [];
 
-  const emailPromises = recipients.map(async (recipient) => {
+  for (const [index, recipient] of recipients.entries()) {
     try {
       const {email, name} = recipient;
 
@@ -96,20 +99,23 @@ module.exports = async function handler(req, res) {
         console.error(`Failed to send to ${email}:`, error);
         results.failed++;
         results.errors.push({email, error});
-        return {email, status: "failed", error};
+        sendResults.push({email, status: "failed", error});
+      } else {
+        results.success++;
+        sendResults.push({email, status: "sent", id: data.id});
       }
-
-      results.success++;
-      return {email, status: "sent", id: data.id};
     } catch (err) {
-      console.error(`Exception sending to ${email}:`, err);
+      console.error(`Exception sending to ${recipient.email}:`, err);
       results.failed++;
       results.errors.push({email: recipient.email, error: err.message});
-      return {email: recipient.email, status: "error", error: err.message};
+      sendResults.push({email: recipient.email, status: "error", error: err.message});
     }
-  });
 
-  const sendResults = await Promise.all(emailPromises);
+    // Throttle: Wait 1 second before next email (unless it's the last one)
+    if (index < recipients.length - 1) {
+      await sleep(1000);
+    }
+  }
 
   // Log to Firestore
   try {
