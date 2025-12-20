@@ -445,19 +445,19 @@ function Home() {
       }
 
       // 3. Merge and Deduplicate
-      // Prefer Firestore if duplicates exist (to keep legacy RSVPs visible if any)
-      const firestoreMap = new Map();
-      firestoreEvents.forEach((e) => {
+      // Prefer API events if duplicates exist (to ensure fresh data from Google Calendar)
+      const apiMap = new Map();
+      apiEvents.forEach((e) => {
         const key = `${e.date}_${e.title}`.toLowerCase();
-        firestoreMap.set(key, e);
+        apiMap.set(key, e);
       });
 
-      const uniqueApiEvents = apiEvents.filter((e) => {
+      const uniqueFirestoreEvents = firestoreEvents.filter((e) => {
         const key = `${e.date}_${e.title}`.toLowerCase();
-        return !firestoreMap.has(key);
+        return !apiMap.has(key);
       });
 
-      let allEvents = [...uniqueApiEvents, ...firestoreEvents];
+      let allEvents = [...apiEvents, ...uniqueFirestoreEvents];
 
       // 4. Filter for upcoming only (API returns all events, so we must filter here)
       allEvents = allEvents.filter((event) => {
