@@ -397,15 +397,91 @@ function Home() {
 
   const loadUpcomingEvents = async () => {
     try {
-      const today = new Date().toISOString().split("T")[0];
-      const eventsCollection = collection(db, "events");
-      const q = query(eventsCollection, where("date", ">=", today), orderBy("date", "asc"));
-      const querySnapshot = await getDocs(q);
-      const events = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setUpcomingEvents(events);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // 1. Fetch from Google Calendar API
+      let apiEvents = [];
+      try {
+        const response = await fetch("/api/events");
+        if (response.ok) {
+          const data = await response.json();
+          apiEvents = data.events.map((event) => {
+            const startDate = new Date(event.start);
+            const dateStr = event.start.split("T")[0];
+            const timeStr = startDate.toLocaleTimeString("en-US", {
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            });
+            return {
+              ...event,
+              date: dateStr,
+              time: timeStr,
+              capacity: event.capacity || 40,
+              rsvpSources: event.rsvpSources || {website: true, oneTable: false},
+              source: "google",
+            };
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching API events:", err);
+      }
+
+      // 2. Fetch from Firestore (Legacy)
+      let firestoreEvents = [];
+      try {
+        const todayStr = today.toISOString().split("T")[0];
+        const eventsCollection = collection(db, "events");
+        const q = query(eventsCollection, where("date", ">=", todayStr), orderBy("date", "asc"));
+        const querySnapshot = await getDocs(q);
+        firestoreEvents = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          source: "firestore",
+        }));
+      } catch (err) {
+        console.error("Error fetching Firestore events:", err);
+      }
+
+      // 3. Merge and Deduplicate
+      // Prefer Firestore if duplicates exist (to keep legacy RSVPs visible if any)
+      const firestoreMap = new Map();
+      firestoreEvents.forEach((e) => {
+        const key = `${e.date}_${e.title}`.toLowerCase();
+        firestoreMap.set(key, e);
+      });
+
+      const uniqueApiEvents = apiEvents.filter((e) => {
+        const key = `${e.date}_${e.title}`.toLowerCase();
+        return !firestoreMap.has(key);
+      });
+
+      let allEvents = [...uniqueApiEvents, ...firestoreEvents];
+
+      // 4. Filter for upcoming only (API returns all events, so we must filter here)
+      allEvents = allEvents.filter((event) => {
+        if (!event.date) return false;
+
+        // Parse date as local time to avoid timezone issues
+        let eventDate;
+        if (typeof event.date === "string" && event.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          const [y, m, d] = event.date.split("-").map(Number);
+          eventDate = new Date(y, m - 1, d);
+        } else {
+          eventDate = new Date(event.date);
+        }
+        
+        // Set to midnight for comparison
+        eventDate.setHours(0, 0, 0, 0);
+        
+        return eventDate >= today;
+      });
+
+      // 5. Sort by date
+      allEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      setUpcomingEvents(allEvents);
     } catch (error) {
       console.error("Error loading events:", error);
     } finally {
