@@ -129,16 +129,28 @@ function About() {
           <h2 className="section-title text-center mb-5">Our Community in Action</h2>
           <Row className="g-3">
             <Col md={3} sm={6}>
-              <img src="/images/IMG-20240905-WA0003.webp" alt="BCB Event" className="img-fluid rounded shadow" />
+              <img src="/images/2024-25_season/BCB_2024-25_15.webp" alt="BCB Event" className="img-fluid rounded shadow" />
             </Col>
             <Col md={3} sm={6}>
-              <img src="/images/IMG-20240905-WA0010.webp" alt="BCB Event" className="img-fluid rounded shadow" />
+              <img src="/images/2024-25_season/BCB_2024-25_22.webp" alt="BCB Event" className="img-fluid rounded shadow" />
             </Col>
             <Col md={3} sm={6}>
-              <img src="/images/IMG-20240905-WA0015.webp" alt="BCB Event" className="img-fluid rounded shadow" />
+              <img src="/images/2024-25_season/BCB_2024-25_27.webp" alt="BCB Event" className="img-fluid rounded shadow" />
             </Col>
             <Col md={3} sm={6}>
-              <img src="/images/IMG-20240905-WA0018.webp" alt="BCB Event" className="img-fluid rounded shadow" />
+              <img src="/images/2024-25_season/BCB_2024-25_30.webp" alt="BCB Event" className="img-fluid rounded shadow" />
+            </Col>
+            <Col md={3} sm={6}>
+              <img src="/images/2025-26_season/BCB_2025-26_1.webp" alt="BCB Event" className="img-fluid rounded shadow" />
+            </Col>
+            <Col md={3} sm={6}>
+              <img src="/images/2025-26_season/BCB_2025-26_4.webp" alt="BCB Event" className="img-fluid rounded shadow" />
+            </Col>
+            <Col md={3} sm={6}>
+              <img src="/images/2025-26_season/BCB_2025-26_7.webp" alt="BCB Event" className="img-fluid rounded shadow" />
+            </Col>
+            <Col md={3} sm={6}>
+              <img src="/images/2025-26_season/BCB_2025-26_10.webp" alt="BCB Event" className="img-fluid rounded shadow" />
             </Col>
           </Row>
         </Container>

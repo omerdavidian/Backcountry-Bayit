@@ -1148,6 +1148,11 @@ function Events() {
                       <p className="mb-0">
                         <strong>Location:</strong> {selectedEvent.location}
                       </p>
+                      {selectedEvent.description && (
+                        <p className="mt-2 mb-0" style={{whiteSpace: "pre-wrap"}}>
+                          {selectedEvent.description}
+                        </p>
+                      )}
                       {selectedEvent?.oneTableLink && (
                         <div className="mt-2">
                           <a href={selectedEvent.oneTableLink} target="_blank" rel="noreferrer">

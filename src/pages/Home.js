@@ -9,39 +9,108 @@ import RSVPForm from "../components/RSVPForm";
 
 // ScrollingGallery component for continuous leftward movement with infinite loop
 const ScrollingGallery = () => {
-  const images = ["/images/20241227_183542.webp", "/images/20241227_183548.webp", "/images/20241226_213824.webp", "/images/IMG-20240905-WA0003.webp", "/images/24_-25_ Photos/1316b9d3-ed59-4451-980a-3922b731fa00.webp", "/images/24_-25_ Photos/3484d020-59ea-4bc1-98ee-7a57ecce7840.webp", "/images/24_-25_ Photos/3aab03dc-8518-4c6b-925a-0a1c512f76c1.webp", "/images/24_-25_ Photos/75583FE6-C880-47E2-A23B-AB561CC979BC.webp", "/images/24_-25_ Photos/c22077c8-e9b8-4265-a5f9-175a5e5ba9a5.webp"];
+  const images = [
+    "/images/2024-25_season/BCB_2024-25_1.webp",
+    "/images/2024-25_season/BCB_2024-25_7.webp",
+    "/images/2024-25_season/BCB_2024-25_8.webp",
+    "/images/2024-25_season/BCB_2024-25_15.webp",
+    "/images/2024-25_season/BCB_2024-25_22.webp",
+    "/images/2024-25_season/BCB_2024-25_27.webp",
+    "/images/2024-25_season/BCB_2024-25_50.webp",
+    "/images/2025-26_season/BCB_2025-26_1.webp",
+    "/images/2025-26_season/BCB_2025-26_2.webp",
+    "/images/2025-26_season/BCB_2025-26_3.webp",
+    "/images/2025-26_season/BCB_2025-26_4.webp",
+    "/images/2025-26_season/BCB_2025-26_5.webp"
+  ];
   const [offset, setOffset] = useState(0);
-  const speed = 0.5; // Increased speed for smoother appearance
+  const [isScrollingDragging, setIsScrollingDragging] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [prevOffset, setPrevOffset] = useState(0);
+  
+  const speed = 0.5;
   const galleryRef = useRef();
 
   useEffect(() => {
     let animationFrame;
     function animate() {
-      setOffset((prev) => {
-        const gallery = galleryRef.current;
-        if (!gallery) return prev;
+      if (!isScrollingDragging) {
+        setOffset((prev) => {
+          const gallery = galleryRef.current;
+          if (!gallery) return prev;
 
-        // Calculate single set width (9 images + gaps)
-        const singleSetWidth = gallery.scrollWidth / 3; // Divided by 3 because we repeat 3 times
-
-        // Reset when we've scrolled past one full set
-        if (Math.abs(prev) >= singleSetWidth) {
-          return prev + singleSetWidth;
-        }
-
-        return prev - speed;
-      });
+          const singleSetWidth = gallery.scrollWidth / 3;
+          
+          let nextOffset = prev - speed;
+          if (Math.abs(nextOffset) >= singleSetWidth) {
+            nextOffset += singleSetWidth;
+          }
+          return nextOffset;
+        });
+      }
       animationFrame = requestAnimationFrame(animate);
     }
     animationFrame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animationFrame);
-  }, []);
+  }, [isScrollingDragging]);
+
+  const handleDragStart = (e) => {
+    setIsScrollingDragging(true);
+    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    setDragStartX(clientX);
+    setPrevOffset(offset);
+  };
+
+  const handleDragMove = (e) => {
+    if (!isScrollingDragging) return;
+    
+    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    const diff = clientX - dragStartX;
+    
+    setOffset(() => {
+      const gallery = galleryRef.current;
+      if (!gallery) return prevOffset + diff;
+
+      const singleSetWidth = gallery.scrollWidth / 3;
+      let nextOffset = prevOffset + diff;
+
+      // Handle infinite loop logic while dragging
+      if (nextOffset > 0) {
+        nextOffset -= singleSetWidth;
+      } else if (Math.abs(nextOffset) >= singleSetWidth) {
+        nextOffset += singleSetWidth;
+      }
+      
+      return nextOffset;
+    });
+  };
+
+  const handleDragEnd = () => {
+    setIsScrollingDragging(false);
+  };
 
   // Triple the images for seamless infinite scroll
   const allImages = [...images, ...images, ...images];
 
   return (
-    <div style={{width: "100vw", overflow: "hidden", position: "relative", height: 220, margin: 0, padding: 0}}>
+    <div 
+      style={{
+        width: "100vw", 
+        overflow: "hidden", 
+        position: "relative", 
+        height: 220, 
+        margin: 0, 
+        padding: 0,
+        cursor: isScrollingDragging ? "grabbing" : "grab"
+      }}
+      onMouseDown={handleDragStart}
+      onMouseMove={handleDragMove}
+      onMouseUp={handleDragEnd}
+      onMouseLeave={handleDragEnd}
+      onTouchStart={handleDragStart}
+      onTouchMove={handleDragMove}
+      onTouchEnd={handleDragEnd}
+    >
       <div
         ref={galleryRef}
         style={{
@@ -52,18 +121,23 @@ const ScrollingGallery = () => {
           willChange: "transform",
           paddingLeft: "2rem",
           paddingRight: "2rem",
+          pointerEvents: "none", // Prevent image dragging/saving from interfering
+          userSelect: "none",
+          WebkitUserSelect: "none"
         }}>
         {allImages.map((src, idx) => (
           <img
             key={idx}
             src={src}
             alt={`Community Moment ${(idx % images.length) + 1}`}
+            draggable="false"
             style={{
               height: 200,
               width: "auto",
               borderRadius: 16,
               boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
               objectFit: "cover",
+              objectPosition: src.includes("BCB_2025-26_3.webp") ? "top" : "center",
               background: "#eee",
               minWidth: 320,
               flexShrink: 0,
@@ -78,7 +152,7 @@ const ScrollingGallery = () => {
 function Home() {
   const {isAdmin, isManager} = useAuth();
   // Hero slider state
-  const heroImages = ["/images/IMG-20240905-WA0003.webp", "/images/20241227_183542.webp", "/images/20241227_183548.webp", "/images/20241226_213824.webp"];
+  const heroImages = ["/images/2024-25_season/BCB_2024-25_15.webp", "/images/2024-25_season/BCB_2024-25_38.webp", "/images/2024-25_season/BCB_2024-25_10.webp", "/images/2024-25_season/BCB_2024-25_7.webp", "/images/2025-26_season/BCB_2025-26_12.webp"];
   const [heroIndex, setHeroIndex] = useState(0);
   // Auto-slide every 10 seconds
   useEffect(() => {
@@ -471,10 +545,10 @@ function Home() {
         } else {
           eventDate = new Date(event.date);
         }
-        
+
         // Set to midnight for comparison
         eventDate.setHours(0, 0, 0, 0);
-        
+
         return eventDate >= today;
       });
 
@@ -786,7 +860,7 @@ function Home() {
         <Container>
           <Row className="align-items-center">
             <Col md={6} className="mb-4 mb-md-0">
-              <img src="/images/IMG-20240905-WA0003.webp" alt="BCB Community" className="img-fluid rounded shadow-lg" />
+              <img src="/images/2024-25_season/BCB_2024-25_15.webp" alt="BCB Community" className="img-fluid rounded shadow-lg" />
             </Col>
             <Col md={6}>
               <h2 className="section-title text-start">About Backcountry Bayit</h2>
@@ -998,6 +1072,11 @@ function Home() {
                   <p className="mb-0">
                     <strong>Location:</strong> {selectedEvent.location}
                   </p>
+                  {selectedEvent.description && (
+                    <p className="mt-2 mb-0" style={{whiteSpace: "pre-wrap"}}>
+                      {selectedEvent.description}
+                    </p>
+                  )}
                   {selectedEvent?.rsvpSources?.oneTable && selectedEvent?.oneTableLink && (
                     <div className="mt-2">
                       <a href={selectedEvent.oneTableLink} target="_blank" rel="noreferrer">
