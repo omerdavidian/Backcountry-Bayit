@@ -1,7 +1,7 @@
-import React from 'react';
-import { Container, Row, Col, Card } from 'react-bootstrap';
-import { FaHeart, FaHandHoldingHeart, FaUsers, FaUtensils, FaStar } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
+import React from "react";
+import {Container, Row, Col, Card} from "react-bootstrap";
+import {FaHeart, FaHandHoldingHeart, FaUsers, FaUtensils, FaStar, FaEnvelope} from "react-icons/fa";
+import {Link} from "react-router-dom";
 
 function Donate() {
   return (
@@ -12,9 +12,7 @@ function Donate() {
           <div className="text-center py-4">
             <FaHeart size={60} className="mb-3" />
             <h1 className="display-4 fw-bold">Support Our Community</h1>
-            <p className="lead">
-              Your generosity helps us continue building Jewish life in the Colorado mountains
-            </p>
+            <p className="lead">Your generosity helps us continue building Jewish life in the Colorado mountains</p>
             <div className="star-decoration">✡</div>
           </div>
         </Container>
@@ -26,53 +24,40 @@ function Donate() {
           <h2 className="section-title text-center mb-5">Why Your Support Matters</h2>
           <Row className="justify-content-center">
             <Col lg={10}>
-              <p className="lead text-center mb-5">
-                As a 501(c)(3) non-profit organization, Backcountry Bayit relies on the
-                generosity of our community to continue hosting meaningful gatherings,
-                celebrating holidays, and building connections.
-              </p>
+              <p className="lead text-center mb-5">As a 501(c)(3) non-profit organization, Backcountry Bayit relies on the generosity of our community to continue hosting meaningful gatherings, celebrating holidays, and building connections.</p>
             </Col>
           </Row>
           <Row className="g-4">
             <Col md={4}>
               <Card className="h-100 text-center border-0 shadow-sm card-hover">
                 <Card.Body className="p-4">
-                  <div className="mb-3" style={{ fontSize: '3rem', color: 'var(--bcb-blue)' }}>
+                  <div className="mb-3" style={{fontSize: "3rem", color: "var(--bcb-blue)"}}>
                     <FaUtensils />
                   </div>
                   <h4>Shabbat Dinners</h4>
-                  <p>
-                    Your donations help us provide delicious, home-cooked meals,
-                    wine, and challah for our weekly Shabbat gatherings.
-                  </p>
+                  <p>Your donations help us provide delicious, home-cooked meals, wine, and challah for our weekly Shabbat gatherings.</p>
                 </Card.Body>
               </Card>
             </Col>
             <Col md={4}>
               <Card className="h-100 text-center border-0 shadow-sm card-hover">
                 <Card.Body className="p-4">
-                  <div className="mb-3" style={{ fontSize: '3rem', color: 'var(--bcb-blue)' }}>
+                  <div className="mb-3" style={{fontSize: "3rem", color: "var(--bcb-blue)"}}>
                     <FaStar />
                   </div>
                   <h4>Holiday Celebrations</h4>
-                  <p>
-                    From Chanukah menorahs to Passover Seders, your support makes
-                    our holiday celebrations special and memorable.
-                  </p>
+                  <p>From Chanukah menorahs to Passover Seders, your support makes our holiday celebrations special and memorable.</p>
                 </Card.Body>
               </Card>
             </Col>
             <Col md={4}>
               <Card className="h-100 text-center border-0 shadow-sm card-hover">
                 <Card.Body className="p-4">
-                  <div className="mb-3" style={{ fontSize: '3rem', color: 'var(--bcb-blue)' }}>
+                  <div className="mb-3" style={{fontSize: "3rem", color: "var(--bcb-blue)"}}>
                     <FaUsers />
                   </div>
                   <h4>Community Growth</h4>
-                  <p>
-                    Help us expand our programs, reach more people, and strengthen
-                    Jewish life in Summit County.
-                  </p>
+                  <p>Help us expand our programs, reach more people, and strengthen Jewish life in Summit County.</p>
                 </Card.Body>
               </Card>
             </Col>
@@ -89,10 +74,7 @@ function Donate() {
                 <Card.Body className="p-5 text-center">
                   <FaHandHoldingHeart size={50} className="text-primary mb-4" />
                   <h2 className="mb-4">Make a Donation</h2>
-                  <p className="lead mb-4">
-                    Every contribution, large or small, makes a difference in our ability
-                    to serve the Jewish community in the Colorado backcountry.
-                  </p>
+                  <p className="lead mb-4">Every contribution, large or small, makes a difference in our ability to serve the Jewish community in the Colorado backcountry.</p>
                   <p className="mb-4">
                     <strong>Backcountry Bayit is a registered 501(c)(3) non-profit organization.</strong>
                     <br />
@@ -102,21 +84,16 @@ function Donate() {
                   {/* Donation Buttons */}
                   <div className="d-flex flex-wrap justify-content-center gap-3 mb-4">
                     {/* PayPal */}
-                    <form
-                      action="https://www.paypal.com/donate"
-                      method="post"
-                      target="_blank"
-                    >
+                    <form action="https://www.paypal.com/donate" method="post" target="_blank">
                       <input type="hidden" name="hosted_button_id" value="JXQT492LBPVXC" />
                       <button
                         type="submit"
                         className="donate-btn"
                         style={{
-                          border: 'none',
-                          cursor: 'pointer',
-                          backgroundColor: '#0070ba'
-                        }}
-                      >
+                          border: "none",
+                          cursor: "pointer",
+                          backgroundColor: "#0070ba",
+                        }}>
                         <FaHeart className="me-2" />
                         Donate via PayPal
                       </button>
@@ -129,11 +106,10 @@ function Donate() {
                       rel="noopener noreferrer"
                       className="donate-btn text-decoration-none"
                       style={{
-                        backgroundColor: '#008CFF',
-                        display: 'inline-flex',
-                        alignItems: 'center'
-                      }}
-                    >
+                        backgroundColor: "#008CFF",
+                        display: "inline-flex",
+                        alignItems: "center",
+                      }}>
                       <FaHeart className="me-2" />
                       Donate via Venmo
                     </a>
@@ -143,21 +119,31 @@ function Donate() {
                       to="/zelle"
                       className="donate-btn text-decoration-none"
                       style={{
-                        backgroundColor: '#6D1ED4',
-                        display: 'inline-flex',
-                        alignItems: 'center'
-                      }}
-                    >
+                        backgroundColor: "#6D1ED4",
+                        display: "inline-flex",
+                        alignItems: "center",
+                      }}>
                       <FaHeart className="me-2" />
                       Donate via Zelle
                     </Link>
                   </div>
 
                   <p className="text-muted mb-0">
-                    <small>
-                      Choose your preferred payment method. All donations are tax-deductible.
-                    </small>
+                    <small>Choose your preferred payment method. All donations are tax-deductible.</small>
                   </p>
+                  <div className="mt-3 mb-0">
+                    <h5 className="mb-2 d-flex align-items-center justify-content-center">
+                      <FaEnvelope className="me-2 text-primary" />
+                      Mail a Check
+                    </h5>
+                    <address className="fs-6 mb-0">
+                      <strong>Backcountry Bayit</strong>
+                      <br />
+                      PO Box 4531
+                      <br />
+                      Frisco, CO 80443
+                    </address>
+                  </div>
                 </Card.Body>
               </Card>
             </Col>
@@ -175,10 +161,7 @@ function Donate() {
               <Card className="border-0 shadow-sm mb-4">
                 <Card.Body className="p-4">
                   <h4 className="text-primary mb-3">Volunteer Your Time</h4>
-                  <p>
-                    Help us set up events, cook meals, or lead services. Your time and
-                    talents are invaluable to our community.
-                  </p>
+                  <p>Help us set up events, cook meals, or lead services. Your time and talents are invaluable to our community.</p>
                 </Card.Body>
               </Card>
 
@@ -186,9 +169,7 @@ function Donate() {
                 <Card.Body className="p-4">
                   <h4 className="text-primary mb-3">Sponsor an Event</h4>
                   <p>
-                    Sponsor a Shabbat dinner or holiday celebration in honor or memory
-                    of a loved one. Contact us at{' '}
-                    <a href="mailto:info@bcbayit.org">info@bcbayit.org</a> for more information.
+                    Sponsor a Shabbat dinner or holiday celebration in honor or memory of a loved one. Contact us at <a href="mailto:info@bcbayit.org">info@bcbayit.org</a> for more information.
                   </p>
                 </Card.Body>
               </Card>
@@ -196,10 +177,7 @@ function Donate() {
               <Card className="border-0 shadow-sm mb-4">
                 <Card.Body className="p-4">
                   <h4 className="text-primary mb-3">Spread the Word</h4>
-                  <p>
-                    Share our website and social media pages with friends, family, and
-                    anyone who might be interested in joining our mountain Jewish community.
-                  </p>
+                  <p>Share our website and social media pages with friends, family, and anyone who might be interested in joining our mountain Jewish community.</p>
                 </Card.Body>
               </Card>
             </Col>
@@ -214,11 +192,7 @@ function Donate() {
             <Col lg={8}>
               <h2 className="display-5 fw-bold mb-4">Thank You</h2>
               <div className="star-decoration mb-4">✡</div>
-              <p className="lead mb-0">
-                Your support helps us continue the tradition of Jewish hospitality and
-                community building in the beautiful Colorado Rockies. From all of us at
-                Backcountry Bayit, toda raba (thank you so much)!
-              </p>
+              <p className="lead mb-0">Your support helps us continue the tradition of Jewish hospitality and community building in the beautiful Colorado Rockies. From all of us at Backcountry Bayit, toda raba (thank you so much)!</p>
             </Col>
           </Row>
         </Container>
