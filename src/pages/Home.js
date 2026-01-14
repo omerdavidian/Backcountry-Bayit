@@ -151,7 +151,13 @@ const ScrollingGallery = () => {
 function Home() {
   const {isAdmin, isManager} = useAuth();
   // Hero slider state
-  const heroImages = ["/images/2024-25_season/BCB_2024-25_15.webp", "/images/2024-25_season/BCB_2024-25_38.webp", "/images/2024-25_season/BCB_2024-25_10.webp", "/images/2024-25_season/BCB_2024-25_7.webp", "/images/2025-26_season/BCB_2025-26_12.webp"];
+  const heroImages = [
+    "/images/2024-25_season/BCB_2024-25_15.webp", 
+    "/images/2024-25_season/BCB_2024-25_38.webp", 
+    "/images/2024-25_season/BCB_2024-25_10.webp", 
+    "/images/2024-25_season/BCB_2024-25_6.webp", 
+    "/images/2025-26_season/BCB_2025-26_12.webp"
+  ];
   const [heroIndex, setHeroIndex] = useState(0);
   // Auto-slide every 10 seconds
   useEffect(() => {
