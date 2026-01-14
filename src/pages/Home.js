@@ -873,6 +873,29 @@ function Home() {
         </Container>
       </section>
 
+      {/* Memorial Section */}
+      <section className="py-5" style={{background: "#fdfbf7"}}>
+        <Container>
+          <Row className="justify-content-center">
+            <Col lg={8} className="text-center">
+              <div className="mb-4">
+                <img src="/images/Arielle.webp" alt="Arielle Clynes" className="img-fluid rounded-circle shadow-lg" style={{maxWidth: "300px", height: "300px", objectFit: "cover", border: "5px solid white"}} />
+              </div>
+              <h2 className="section-title mb-4">In Loving Memory of Arielle Clynes</h2>
+              <div className="star-decoration mb-4">✡</div>
+              <p className="lead mb-4" style={{fontStyle: "italic", color: "#444"}}>
+                Arielle Clynes was a deeply loved member of our community. She lived with curiosity, courage, and a smile that stayed with you long after the moment passed. Arielle was always chasing the next adventure, embracing life fully, and bringing light and laughter wherever she went.
+              </p>
+              <p className="mb-4">We are heartbroken by her passing in an avalanche in Japan, and our thoughts are with her family and loved ones during this incredibly difficult time.</p>
+              <p className="mb-4 text-muted">We choose to remember Arielle as she lived. Smiling. Adventurous. Kind. Fearlessly exploring the world and inspiring those around her to do the same.</p>
+              <p className="mt-4" style={{fontSize: "1.2rem", fontWeight: "500", color: "var(--bcb-blue)"}}>
+                May her memory be a blessing, and may her spirit continue to travel with us on every journey. <span style={{whiteSpace: "nowrap"}}>ת.נ.צ.ב.ה</span>
+              </p>
+            </Col>
+          </Row>
+        </Container>
+      </section>
+
       {/* Upcoming Events Carousel - moved below About Section */}
       {!loading && upcomingEvents.length > 0 && (
         <section className="py-5">
