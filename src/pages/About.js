@@ -1,8 +1,35 @@
-import React from "react";
-import {Container, Row, Col, Card} from "react-bootstrap";
+import React, {useState} from "react";
+import {Container, Row, Col, Card, Button} from "react-bootstrap";
 import {FaMountain, FaStar, FaHandsHelping, FaHome} from "react-icons/fa";
 
 function About() {
+  const [showAllPhotos, setShowAllPhotos] = useState(false);
+
+  const allPhotos = [
+    "/images/2024-25_season/BCB_2024-25_15.webp",
+    "/images/2025-26_season/BCB_2025-26_3.webp",
+    "/images/2024-25_season/BCB_2024-25_22.webp",
+    "/images/2025-26_season/BCB_2025-26_1.webp",
+    "/images/2024-25_season/BCB_2024-25_27.webp",
+    "/images/2025-26_season/BCB_2025-26_4.webp",
+    "/images/2024-25_season/BCB_2024-25_30.webp",
+    "/images/2025-26_season/BCB_2025-26_10.webp",
+    "/images/2024-25_season/BCB_2024-25_1.webp",
+    "/images/2025-26_season/BCB_2025-26_10.webp",
+    "/images/2024-25_season/BCB_2024-25_5.webp",
+    "/images/2025-26_season/BCB_2025-26_2.webp",
+    "/images/2024-25_season/BCB_2024-25_8.webp",
+    "/images/2025-26_season/BCB_2025-26_5.webp",
+    "/images/2025-26_season/BCB_2025-26_12.webp",
+    "/images/2024-25_season/BCB_2024-25_10.webp",
+    "/images/2024-25_season/BCB_2024-25_38.webp",
+    "/images/2024-25_season/BCB_2024-25_50.webp",
+    "/images/2025-26_season/BCB_2025-26_14.webp",
+    "/images/2024-25_season/BCB_2024-25_20.webp",
+  ];
+
+  const visiblePhotos = showAllPhotos ? allPhotos : allPhotos.slice(0, 8);
+
   return (
     <div>
       {/* Hero Section */}
@@ -123,36 +150,26 @@ function About() {
         </Container>
       </section>
 
-      {/* Community Photos */}
+      {/* Community Photos Gallery */}
       <section className="py-5 bg-light">
         <Container>
           <h2 className="section-title text-center mb-5">Our Community in Action</h2>
-          <Row className="g-3">
-            <Col md={3} sm={6}>
-              <img src="/images/2024-25_season/BCB_2024-25_15.webp" alt="BCB Event" className="img-fluid rounded shadow" />
-            </Col>
-            <Col md={3} sm={6}>
-              <img src="/images/2024-25_season/BCB_2024-25_22.webp" alt="BCB Event" className="img-fluid rounded shadow" />
-            </Col>
-            <Col md={3} sm={6}>
-              <img src="/images/2024-25_season/BCB_2024-25_27.webp" alt="BCB Event" className="img-fluid rounded shadow" />
-            </Col>
-            <Col md={3} sm={6}>
-              <img src="/images/2024-25_season/BCB_2024-25_30.webp" alt="BCB Event" className="img-fluid rounded shadow" />
-            </Col>
-            <Col md={3} sm={6}>
-              <img src="/images/2025-26_season/BCB_2025-26_1.webp" alt="BCB Event" className="img-fluid rounded shadow" />
-            </Col>
-            <Col md={3} sm={6}>
-              <img src="/images/2025-26_season/BCB_2025-26_4.webp" alt="BCB Event" className="img-fluid rounded shadow" />
-            </Col>
-            <Col md={3} sm={6}>
-              <img src="/images/2025-26_season/BCB_2025-26_7.webp" alt="BCB Event" className="img-fluid rounded shadow" />
-            </Col>
-            <Col md={3} sm={6}>
-              <img src="/images/2025-26_season/BCB_2025-26_10.webp" alt="BCB Event" className="img-fluid rounded shadow" />
-            </Col>
-          </Row>
+
+          <div className="masonry-gallery">
+            {visiblePhotos.map((src, index) => (
+              <div key={index} className="masonry-item">
+                <img src={src} alt={`BCB Community Moment ${index + 1}`} loading="lazy" />
+              </div>
+            ))}
+          </div>
+
+          {!showAllPhotos && (
+            <div className="text-center mt-5">
+              <Button variant="primary" size="lg" onClick={() => setShowAllPhotos(true)} className="px-5 shadow-sm">
+                View More Photos
+              </Button>
+            </div>
+          )}
         </Container>
       </section>
 

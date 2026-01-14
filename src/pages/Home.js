@@ -9,25 +9,25 @@ import RSVPForm from "../components/RSVPForm";
 
 // ScrollingGallery component for continuous leftward movement with infinite loop
 const ScrollingGallery = () => {
-  const images = [
-    "/images/2024-25_season/BCB_2024-25_1.webp",
-    "/images/2024-25_season/BCB_2024-25_7.webp",
-    "/images/2024-25_season/BCB_2024-25_8.webp",
-    "/images/2024-25_season/BCB_2024-25_15.webp",
-    "/images/2024-25_season/BCB_2024-25_22.webp",
-    "/images/2024-25_season/BCB_2024-25_27.webp",
-    "/images/2024-25_season/BCB_2024-25_50.webp",
-    "/images/2025-26_season/BCB_2025-26_1.webp",
-    "/images/2025-26_season/BCB_2025-26_2.webp",
-    "/images/2025-26_season/BCB_2025-26_3.webp",
-    "/images/2025-26_season/BCB_2025-26_4.webp",
-    "/images/2025-26_season/BCB_2025-26_5.webp"
+  const galleryImages = [
+    {src: "/images/2024-25_season/BCB_2024-25_1.webp", pos: "center 73%"},
+    {src: "/images/2024-25_season/BCB_2024-25_7.webp"},
+    {src: "/images/2025-26_season/BCB_2025-26_2.webp"},
+    {src: "/images/2024-25_season/BCB_2024-25_15.webp"},
+    {src: "/images/2024-25_season/BCB_2024-25_22.webp", pos: "center 30%"},
+    {src: "/images/2024-25_season/BCB_2024-25_27.webp", pos: "center 90%"},
+    {src: "/images/2024-25_season/BCB_2024-25_50.webp", pos: "center 80%"},
+    {src: "/images/2025-26_season/BCB_2025-26_1.webp"},
+    {src: "/images/2025-26_season/BCB_2025-26_2.webp"},
+    {src: "/images/2025-26_season/BCB_2025-26_3.webp", pos: "center 30%"}, // Using percentage for vertical alignment
+    {src: "/images/2025-26_season/BCB_2025-26_4.webp", pos: "center 25%"},
+    {src: "/images/2025-26_season/BCB_2025-26_5.webp", pos: "center 80%"},
   ];
   const [offset, setOffset] = useState(0);
   const [isScrollingDragging, setIsScrollingDragging] = useState(false);
   const [dragStartX, setDragStartX] = useState(0);
   const [prevOffset, setPrevOffset] = useState(0);
-  
+
   const speed = 0.5;
   const galleryRef = useRef();
 
@@ -40,7 +40,7 @@ const ScrollingGallery = () => {
           if (!gallery) return prev;
 
           const singleSetWidth = gallery.scrollWidth / 3;
-          
+
           let nextOffset = prev - speed;
           if (Math.abs(nextOffset) >= singleSetWidth) {
             nextOffset += singleSetWidth;
@@ -56,17 +56,17 @@ const ScrollingGallery = () => {
 
   const handleDragStart = (e) => {
     setIsScrollingDragging(true);
-    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    const clientX = e.type.includes("touch") ? e.touches[0].clientX : e.clientX;
     setDragStartX(clientX);
     setPrevOffset(offset);
   };
 
   const handleDragMove = (e) => {
     if (!isScrollingDragging) return;
-    
-    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+
+    const clientX = e.type.includes("touch") ? e.touches[0].clientX : e.clientX;
     const diff = clientX - dragStartX;
-    
+
     setOffset(() => {
       const gallery = galleryRef.current;
       if (!gallery) return prevOffset + diff;
@@ -80,7 +80,7 @@ const ScrollingGallery = () => {
       } else if (Math.abs(nextOffset) >= singleSetWidth) {
         nextOffset += singleSetWidth;
       }
-      
+
       return nextOffset;
     });
   };
@@ -90,18 +90,18 @@ const ScrollingGallery = () => {
   };
 
   // Triple the images for seamless infinite scroll
-  const allImages = [...images, ...images, ...images];
+  const allImages = [...galleryImages, ...galleryImages, ...galleryImages];
 
   return (
-    <div 
+    <div
       style={{
-        width: "100vw", 
-        overflow: "hidden", 
-        position: "relative", 
-        height: 220, 
-        margin: 0, 
+        width: "100vw",
+        overflow: "hidden",
+        position: "relative",
+        height: 220,
+        margin: 0,
         padding: 0,
-        cursor: isScrollingDragging ? "grabbing" : "grab"
+        cursor: isScrollingDragging ? "grabbing" : "grab",
       }}
       onMouseDown={handleDragStart}
       onMouseMove={handleDragMove}
@@ -109,8 +109,7 @@ const ScrollingGallery = () => {
       onMouseLeave={handleDragEnd}
       onTouchStart={handleDragStart}
       onTouchMove={handleDragMove}
-      onTouchEnd={handleDragEnd}
-    >
+      onTouchEnd={handleDragEnd}>
       <div
         ref={galleryRef}
         style={{
@@ -123,13 +122,13 @@ const ScrollingGallery = () => {
           paddingRight: "2rem",
           pointerEvents: "none", // Prevent image dragging/saving from interfering
           userSelect: "none",
-          WebkitUserSelect: "none"
+          WebkitUserSelect: "none",
         }}>
-        {allImages.map((src, idx) => (
+        {allImages.map((img, idx) => (
           <img
             key={idx}
-            src={src}
-            alt={`Community Moment ${(idx % images.length) + 1}`}
+            src={img.src}
+            alt={`Community Moment ${(idx % galleryImages.length) + 1}`}
             draggable="false"
             style={{
               height: 200,
@@ -137,7 +136,7 @@ const ScrollingGallery = () => {
               borderRadius: 16,
               boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
               objectFit: "cover",
-              objectPosition: src.includes("BCB_2025-26_3.webp") ? "top" : "center",
+              objectPosition: img.pos || "center",
               background: "#eee",
               minWidth: 320,
               flexShrink: 0,
