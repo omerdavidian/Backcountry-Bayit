@@ -2,7 +2,7 @@ import React, {useState, useEffect} from "react";
 import {Container, Card, Button, Table, Modal, Form, Alert, Nav} from "react-bootstrap";
 import {useNavigate, useLocation} from "react-router-dom";
 import {useAuth} from "../utils/AuthContext";
-import {collection, getDocs, addDoc, updateDoc, deleteDoc, doc} from "firebase/firestore";
+import {collection, getDocs, updateDoc, deleteDoc, doc} from "firebase/firestore";
 import {db} from "../config/firebase";
 import {FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaSort, FaSortUp, FaSortDown, FaUserPlus, FaUsers, FaDownload, FaEnvelope} from "react-icons/fa";
 import EventFormFields from "../components/EventFormFields";
@@ -76,7 +76,7 @@ function Admin() {
     if (location?.state && location.state.fromTab) {
       setActiveTab(location.state.fromTab);
     }
-  }, [currentUser, isManager]);
+  }, [currentUser, isManager, location.state]);
 
   const loadUsers = async () => {
     try {

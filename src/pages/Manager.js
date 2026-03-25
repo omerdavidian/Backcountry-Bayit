@@ -2,7 +2,7 @@ import React, {useState, useEffect} from "react";
 import {Container, Card, Button, Table, Modal, Form, Alert, Badge, Nav} from "react-bootstrap";
 import {useNavigate, useLocation} from "react-router-dom";
 import {useAuth} from "../utils/AuthContext";
-import {collection, getDocs, addDoc, updateDoc, deleteDoc, doc} from "firebase/firestore";
+import {collection, getDocs, updateDoc, deleteDoc, doc} from "firebase/firestore";
 import {db} from "../config/firebase";
 import {FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaDownload, FaEnvelope} from "react-icons/fa";
 import EventFormFields from "../components/EventFormFields";
@@ -163,22 +163,6 @@ function Manager() {
     } catch (error) {
       console.error("Error loading events:", error);
       setAlert({show: true, message: "Error loading events. Please refresh the page.", type: "danger"});
-    }
-  };
-
-  const loadRSVPs = async () => {
-    try {
-      console.log("Loading RSVPs in Manager dashboard...");
-      const rsvpsCollection = collection(db, "rsvps");
-      const rsvpsSnapshot = await getDocs(rsvpsCollection);
-      const rsvpsList = rsvpsSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      console.log(`Loaded ${rsvpsList.length} RSVPs`);
-      setRSVPs(rsvpsList);
-    } catch (error) {
-      console.error("Error loading RSVPs:", error);
     }
   };
 
