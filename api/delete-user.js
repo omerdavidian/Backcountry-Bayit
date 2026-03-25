@@ -1,17 +1,6 @@
-import admin from 'firebase-admin';
+const {initAdmin} = require("./firebase-admin");
 
-// Initialize Firebase Admin if not already initialized
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
-    })
-  });
-}
-
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -23,6 +12,8 @@ export default async function handler(req, res) {
   }
 
   try {
+    const admin = initAdmin();
+
     // Delete the user from Firebase Authentication
     await admin.auth().deleteUser(userId);
 

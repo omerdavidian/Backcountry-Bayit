@@ -1,7 +1,7 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-require("dotenv").config();
+require("dotenv").config({path: ".env.local"});
 
 const app = express();
 const PORT = process.env.SERVER_PORT || 3001;
@@ -12,6 +12,10 @@ app.use(bodyParser.json());
 
 // API Routes
 const eventsHandler = require("./api/events");
+const listUsersHandler = require("./api/list-users");
+const createManagerHandler = require("./api/create-manager");
+const deleteUserHandler = require("./api/delete-user");
+const sendBulkEmailHandler = require("./api/send-bulk-email");
 
 // Wrapper to adapt Vercel/Next.js handler (req, res) to Express
 const adaptHandler = (handler) => async (req, res) => {
@@ -26,6 +30,10 @@ const adaptHandler = (handler) => async (req, res) => {
 };
 
 app.all("/api/events", adaptHandler(eventsHandler));
+app.all("/api/list-users", adaptHandler(listUsersHandler));
+app.all("/api/create-manager", adaptHandler(createManagerHandler));
+app.all("/api/delete-user", adaptHandler(deleteUserHandler));
+app.all("/api/send-bulk-email", adaptHandler(sendBulkEmailHandler));
 
 // Start server
 app.listen(PORT, () => {

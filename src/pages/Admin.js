@@ -605,6 +605,25 @@ function Admin() {
     });
   };
 
+  const formatUserDate = (dateString) => {
+    if (!dateString) {
+      return "Never";
+    }
+
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) {
+      return "Never";
+    }
+
+    return date.toLocaleString("en-US", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
+
   const handleEventSort = (key) => {
     let direction = "asc";
     if (eventSortConfig.key === key && eventSortConfig.direction === "asc") {
@@ -716,6 +735,7 @@ function Admin() {
                       <th>Email</th>
                       <th>Role</th>
                       <th>Created</th>
+                      <th>Last Signed In</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
@@ -730,6 +750,7 @@ function Admin() {
                           <span className={`badge ${user.customClaims?.admin ? "bg-danger" : "bg-primary"}`}>{user.customClaims?.admin ? "Admin" : "Manager"}</span>
                         </td>
                         <td>{new Date(user.metadata.creationTime).toLocaleDateString()}</td>
+                        <td>{formatUserDate(user.metadata.lastSignInTime)}</td>
                         <td>
                           <Button variant="outline-danger" size="sm" onClick={() => handleDeleteUser(user.uid, user.email)} disabled={user.email === currentUser.email} title={user.email === currentUser.email ? "Cannot delete your own account" : "Delete user"}>
                             <FaTrash />

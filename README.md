@@ -1,23 +1,28 @@
 # Backcountry Bayit Website
 
-A modern, responsive website for Backcountry Bayit - a vibrant Jewish community in Frisco, Colorado. Built with React, Bootstrap, and Firebase.
+A modern, responsive website for Backcountry Bayit - a vibrant Jewish community
+in Frisco, Colorado. Built with React, Bootstrap, and Firebase.
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This project was bootstrapped with
+[Create React App](https://github.com/facebook/create-react-app).
 
 ## ✨ Features
 
 - **Home Page**: Hero section with stunning imagery and call-to-action buttons
 - **About Page**: Community story, mission, and values
-- **Events Calendar**: Interactive calendar with FullCalendar integration and RSVP functionality
+- **Events Calendar**: Interactive calendar with FullCalendar integration and
+  RSVP functionality
 - **Donate Page**: Integrated PayPal donation system (501c3 non-profit)
 - **Contact Page**: Contact form with email integration
-- **Admin Panel**: Secure login for managers to create/edit events and view RSVPs
+- **Admin Panel**: Secure login for managers to create/edit events and view
+  RSVPs
 - **Responsive Design**: Mobile-friendly Bootstrap design with custom BCB theme
 - **Social Media Integration**: Links to Facebook and Instagram
 
 ## 🎨 Design
 
 The website features a custom theme inspired by:
+
 - Israeli flag colors (blue and white)
 - Colorado flag colors (blue, red, gold)
 - Mountain Jewish heritage
@@ -38,57 +43,78 @@ You may also see any lint errors in the console.
 ### `npm test`
 
 Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+See the section about
+[running tests](https://facebook.github.io/create-react-app/docs/running-tests)
+for more information.
 
 ### `npm run build`
 
 Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+It correctly bundles React in production mode and optimizes the build for the
+best performance.
 
 The build is minified and the filenames include the hashes.\
 Your app is ready to be deployed!
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+See the section about
+[deployment](https://facebook.github.io/create-react-app/docs/deployment) for
+more information.
 
 ### `npm run eject`
 
 **Note: this is a one-way operation. Once you `eject`, you can't go back!**
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+If you aren't satisfied with the build tool and configuration choices, you can
+`eject` at any time. This command will remove the single build dependency from
+your project.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+Instead, it will copy all the configuration files and the transitive
+dependencies (webpack, Babel, ESLint, etc) right into your project so you have
+full control over them. All of the commands except `eject` will still work, but
+they will point to the copied scripts so you can tweak them. At this point
+you're on your own.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+You don't have to ever use `eject`. The curated feature set is suitable for
+small and middle deployments, and you shouldn't feel obligated to use this
+feature. However we understand that this tool wouldn't be useful if you couldn't
+customize it when you are ready for it.
 
 ## Learn More
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+You can learn more in the
+[Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
 To learn React, check out the [React documentation](https://reactjs.org/).
 
 ### Code Splitting
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+This section has moved here:
+[https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
 
 ### Analyzing the Bundle Size
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+This section has moved here:
+[https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
 
 ### Making a Progressive Web App
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+This section has moved here:
+[https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
 
 ### Advanced Configuration
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+This section has moved here:
+[https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
 
 ### Deployment
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+This section has moved here:
+[https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
 
 ### `npm run build` fails to minify
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+This section has moved here:
+[https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
 
 ---
 
@@ -104,34 +130,47 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/t
 ### Installation Steps
 
 1. **Install dependencies** (already done)
+
    ```bash
    npm install
    ```
 
 2. **Set up environment variables**
 
-   Copy `.env.example` to `.env`:
-   ```bash
-   cp .env.example .env
-   ```
+Put your local values in `.env.local`. This project uses `.env.local` as the
+main local environment file.
 
-   Update `.env` with your Firebase configuration and optional EmailJS settings.
+`.env.example` stays in the repo as a template so you can see which values are
+required without exposing secrets.
 
 3. **Run the development server**
    ```bash
    npm start
    ```
 
+This starts both the React app and the local API server, so admin features like
+the users table work in development.
+
 ## 🔥 Firebase Setup
 
-1. **Create a Firebase project** at [Firebase Console](https://console.firebase.google.com/)
+1. **Create a Firebase project** at
+   [Firebase Console](https://console.firebase.google.com/)
 2. Enable **Authentication** (Email/Password)
 3. Enable **Firestore Database**
 4. Update `src/config/firebase.js` with your credentials
 5. Create Firestore collections: `events`, `rsvps`, `users`
-6. Add admin users in Authentication and create corresponding documents in `users` collection with role: "admin" or "manager"
+6. Add admin users in Authentication and create corresponding documents in
+   `users` collection with role: "admin" or "manager"
+7. Add Firebase Admin SDK values to your local `.env` so `/api/list-users`,
+   `/api/create-manager`, and `/api/delete-user` can read Auth data in
+   development:
+
+- `FIREBASE_PROJECT_ID`
+- `FIREBASE_CLIENT_EMAIL`
+- `FIREBASE_PRIVATE_KEY`
 
 **Firestore Security Rules:**
+
 ```javascript
 rules_version = '2';
 service cloud.firestore {
@@ -159,6 +198,7 @@ service cloud.firestore {
 ## 🌐 Deployment to Vercel
 
 1. **Push to GitHub**
+
    ```bash
    git init
    git add .
@@ -188,7 +228,7 @@ bcb-website/
 │   ├── utils/          # AuthContext
 │   ├── styles/         # Custom theme
 │   └── App.js
-├── .env.example
+├── .env.local
 ├── vercel.json
 └── README.md
 ```
