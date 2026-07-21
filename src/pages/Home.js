@@ -775,6 +775,15 @@ function Home() {
               <FaHeart className="me-2" />
               Support Our Community
             </Button>
+            {/* Temporary: 2026-27 resident application */}
+            <Button
+              href="#application"
+              size="md"
+              className="px-3 py-2 fw-bold"
+              style={{background: "linear-gradient(90deg, #0074d9, #00a8ff)", border: "none"}}>
+              <FaEdit className="me-2" />
+              2026-27 Application
+            </Button>
           </div>
           {/* Modern Navigation dots */}
           <div
@@ -879,27 +888,105 @@ function Home() {
         </Container>
       </section>
 
-      {/* Memorial Section */}
-      <section className="py-5" style={{background: "#fdfbf7"}}>
+      {/* Resident Application Section */}
+      <section id="application" className="py-5" style={{background: "linear-gradient(135deg, #eaf2ff 0%, #fdfbf7 60%)"}}>
         <Container>
-          <Row className="justify-content-center">
-            <Col lg={8} className="text-center">
-              <div className="mb-4">
-                <img src="/images/Arielle.webp" alt="Arielle Clynes" className="img-fluid rounded-circle shadow-lg" style={{maxWidth: "300px", height: "300px", objectFit: "cover", border: "5px solid white"}} />
-              </div>
-              <h2 className="section-title mb-4">In Loving Memory of Arielle Clynes</h2>
-              <div className="star-decoration mb-4">✡</div>
-              <p className="lead mb-4" style={{fontStyle: "italic", color: "#444"}}>
-                Arielle Clynes was a deeply loved member of our community. She lived with curiosity, courage, and a smile that stayed with you long after the moment passed. Arielle was always chasing the next adventure, embracing life fully, and bringing light and laughter wherever she went.
-              </p>
-              <p className="mb-4">We are heartbroken by her passing in an avalanche in Japan, and our thoughts are with her family and loved ones during this incredibly difficult time.</p>
-              <p className="mb-4 text-muted">We choose to remember Arielle as she lived. Smiling. Adventurous. Kind. Fearlessly exploring the world and inspiring those around her to do the same.</p>
-              <p className="mt-4" style={{fontSize: "1.2rem", fontWeight: "500", color: "var(--bcb-blue)"}}>
-                May her memory be a blessing, and may her spirit continue to travel with us on every journey. <span style={{whiteSpace: "nowrap"}}>ת.נ.צ.ב.ה</span>
-              </p>
-            </Col>
-          </Row>
+          <div
+            className="application-card overflow-hidden rounded-4"
+            style={{
+              background: "#fff",
+              boxShadow: "0 24px 60px rgba(0, 36, 84, 0.18)",
+              border: "1px solid rgba(0, 116, 217, 0.12)",
+            }}>
+            <Row className="g-0 align-items-stretch">
+              <Col lg={6} className="p-4 p-md-5 d-flex flex-column justify-content-center">
+                <span
+                  className="align-self-start d-inline-flex align-items-center mb-3"
+                  style={{
+                    background: "linear-gradient(90deg, #0074d9, #00a8ff)",
+                    color: "white",
+                    fontSize: "0.8rem",
+                    fontWeight: 700,
+                    letterSpacing: "0.08em",
+                    padding: "0.45rem 1rem",
+                    borderRadius: "999px",
+                    boxShadow: "0 4px 12px rgba(0, 116, 217, 0.35)",
+                  }}>
+                  <span className="application-pulse" />
+                  NOW ACCEPTING APPLICATIONS
+                </span>
+                <h2 className="text-start mb-3" style={{fontWeight: 800, color: "#001f54", lineHeight: 1.15}}>
+                  Live at the Bayit
+                  <br />
+                  <span style={{color: "var(--bcb-blue)"}}>2026&ndash;2027 Season</span>
+                </h2>
+                <p className="lead mb-3">
+                  We&apos;re looking for community-oriented individuals or couples to call the Backcountry Bayit in Frisco, Colorado home for the winter season.
+                </p>
+                <p className="mb-4 text-muted">
+                  As a resident, you&apos;ll help create a warm and welcoming environment by hosting weekly Shabbat dinners, holiday celebrations, and outdoor adventures with our community of young Jewish adults in the mountains.
+                </p>
+                <Row className="g-3 mb-4">
+                  <Col xs={6}>
+                    <div className="h-100 p-3 rounded-3" style={{background: "#f4f8ff"}}>
+                      <FaCalendarAlt className="mb-2" style={{color: "var(--bcb-blue)", fontSize: "1.4rem"}} />
+                      <div className="fw-bold" style={{fontSize: "0.95rem"}}>Season Dates</div>
+                      <div className="text-muted" style={{fontSize: "0.9rem"}}>Nov 1, 2026 &ndash; Apr 30, 2027</div>
+                    </div>
+                  </Col>
+                  <Col xs={6}>
+                    <div className="h-100 p-3 rounded-3" style={{background: "#f4f8ff"}}>
+                      <FaMapMarkerAlt className="mb-2" style={{color: "var(--bcb-blue)", fontSize: "1.4rem"}} />
+                      <div className="fw-bold" style={{fontSize: "0.95rem"}}>Location</div>
+                      <div className="text-muted" style={{fontSize: "0.9rem"}}>Frisco, Colorado</div>
+                    </div>
+                  </Col>
+                </Row>
+                <div className="d-flex flex-wrap gap-3">
+                  <Button
+                    href="https://docs.google.com/forms/d/1NUueH0-xPTwAIZIZuZk_X-s1kyB61NQfP5RQRbCT77Q/viewform"
+                    target="_blank"
+                    rel="noreferrer"
+                    variant="primary"
+                    size="lg"
+                    className="px-4 fw-bold">
+                    <FaEdit className="me-2" />
+                    Apply Now
+                  </Button>
+                  <Button as={Link} to="/about" variant="outline-primary" size="lg" className="px-4">
+                    Learn More
+                  </Button>
+                </div>
+              </Col>
+              <Col lg={6} className="position-relative" style={{minHeight: "340px"}}>
+                <img
+                  src="/images/BCB_Backyard.webp"
+                  alt="The Backcountry Bayit backyard in Frisco, Colorado"
+                  className="w-100 h-100"
+                  style={{objectFit: "cover", display: "block"}}
+                />
+              </Col>
+            </Row>
+          </div>
         </Container>
+
+        <style>{`
+          .application-pulse {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #fff;
+            margin-right: 0.55rem;
+            box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.8);
+            animation: applicationPulse 1.8s infinite;
+          }
+          @keyframes applicationPulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(255, 255, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+          }
+        `}</style>
       </section>
 
       {/* Upcoming Events Carousel - moved below About Section */}

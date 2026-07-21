@@ -80,6 +80,15 @@ function Navigation() {
                 <Nav.Link as={Link} to="/contact" className={isActive("/contact") ? "active" : ""} onClick={handleNavClick}>
                   Contact
                 </Nav.Link>
+                {/* Temporary: 2026-27 resident application */}
+                <Button
+                  href="/#application"
+                  size="sm"
+                  className="ms-lg-2 my-1 fw-bold application-nav-btn"
+                  style={{background: "linear-gradient(90deg, #0074d9, #00a8ff)", border: "none", borderRadius: "999px", padding: "0.4rem 1rem"}}
+                  onClick={() => setExpanded(false)}>
+                  2026-27 Application
+                </Button>
               </Nav>
             </div>
 
