@@ -129,6 +129,7 @@ const ScrollingGallery = () => {
             key={idx}
             src={img.src}
             alt={`Community Moment ${(idx % galleryImages.length) + 1}`}
+            loading="lazy"
             draggable="false"
             style={{
               height: 200,
@@ -964,6 +965,7 @@ function Home() {
                 <img
                   src="/images/BCB_Backyard.webp"
                   alt="The Backcountry Bayit backyard in Frisco, Colorado"
+                  loading="lazy"
                   className="w-100 h-100"
                   style={{objectFit: "cover", display: "block"}}
                 />
@@ -996,7 +998,7 @@ function Home() {
         <Container>
           <Row className="align-items-center">
             <Col md={6} className="mb-4 mb-md-0">
-              <img src="/images/2024-25_season/BCB_2024-25_15.webp" alt="BCB Community" className="img-fluid rounded shadow-lg" />
+              <img src="/images/2024-25_season/BCB_2024-25_15.webp" alt="BCB Community" loading="lazy" className="img-fluid rounded shadow-lg" />
             </Col>
             <Col md={6}>
               <h2 className="section-title text-start">About Backcountry Bayit</h2>

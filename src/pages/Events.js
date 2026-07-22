@@ -5,6 +5,7 @@ import {db} from "../config/firebase";
 import {useAuth} from "../utils/AuthContext";
 import {FaCalendarAlt, FaUsers, FaClock, FaMapMarkerAlt, FaEdit, FaTrash, FaGoogle, FaFileDownload, FaCheckCircle, FaPlus} from "react-icons/fa";
 import {sendRSVPConfirmationEmail} from "../utils/emailService";
+import {authorizedFetch} from "../utils/apiClient";
 import RSVPForm from "../components/RSVPForm";
 import EventFormFields from "../components/EventFormFields";
 import FullCalendar from "@fullcalendar/react";
@@ -667,14 +668,14 @@ function Events() {
 
       let response;
       if (editingEvent) {
-        response = await fetch("/api/events", {
+        response = await authorizedFetch("/api/events", {
           method: "PUT",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify({id: editingEvent.id, ...eventData}),
         });
       } else {
         // Should not happen in edit mode, but good to have
-        response = await fetch("/api/events", {
+        response = await authorizedFetch("/api/events", {
           method: "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify(eventData),
@@ -703,7 +704,7 @@ function Events() {
     if (!editingEvent) return;
     if (window.confirm("Are you sure you want to delete this event?")) {
       try {
-        const response = await fetch(`/api/events?id=${editingEvent.id}`, {
+        const response = await authorizedFetch(`/api/events?id=${editingEvent.id}`, {
           method: "DELETE",
         });
 
@@ -884,6 +885,7 @@ function Events() {
                         <img
                           src={event.imageUrl}
                           alt={event.title}
+                          loading="lazy"
                           style={{
                             width: "100%",
                             height: "100%",

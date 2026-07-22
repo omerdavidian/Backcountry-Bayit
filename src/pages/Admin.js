@@ -7,6 +7,7 @@ import {db} from "../config/firebase";
 import {FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaSort, FaSortUp, FaSortDown, FaUserPlus, FaUsers, FaDownload, FaEnvelope} from "react-icons/fa";
 import EventFormFields from "../components/EventFormFields";
 import EmailRSVPsModal from "../components/EmailRSVPsModal";
+import {authorizedFetch} from "../utils/apiClient";
 
 function Admin() {
   const {currentUser, logout, isManager} = useAuth();
@@ -80,7 +81,7 @@ function Admin() {
 
   const loadUsers = async () => {
     try {
-      const response = await fetch("/api/list-users");
+      const response = await authorizedFetch("/api/list-users");
       const result = await response.json();
       if (response.ok) {
         setUsers(result.users || []);
@@ -279,7 +280,7 @@ function Admin() {
           response = {ok: true};
         } else {
           // Google Calendar update
-          response = await fetch("/api/events", {
+          response = await authorizedFetch("/api/events", {
             method: "PUT",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({id: editingEvent.id, ...eventData}),
@@ -288,7 +289,7 @@ function Admin() {
       } else {
         // Create new event - ALWAYS use Google Calendar now
         console.log("Creating new event");
-        response = await fetch("/api/events", {
+        response = await authorizedFetch("/api/events", {
           method: "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify(eventData),
@@ -319,7 +320,7 @@ function Admin() {
           await deleteDoc(doc(db, "events", eventId));
         } else {
           // Delete from Google Calendar API
-          const response = await fetch(`/api/events?id=${eventId}`, {
+          const response = await authorizedFetch(`/api/events?id=${eventId}`, {
             method: "DELETE",
           });
           if (!response.ok) throw new Error("Failed to delete event");
@@ -438,7 +439,7 @@ function Admin() {
     try {
       setAlert({show: true, message: "Creating manager account...", type: "info"});
 
-      const response = await fetch("/api/create-manager", {
+      const response = await authorizedFetch("/api/create-manager", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -471,7 +472,7 @@ function Admin() {
       try {
         setAlert({show: true, message: "Deleting user...", type: "info"});
 
-        const response = await fetch("/api/delete-user", {
+        const response = await authorizedFetch("/api/delete-user", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

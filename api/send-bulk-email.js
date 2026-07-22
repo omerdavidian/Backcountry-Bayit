@@ -1,28 +1,10 @@
 const {Resend} = require("resend");
 const admin = require("firebase-admin");
-
-// Initialize Firebase Admin if not already initialized
-if (!admin.apps.length) {
-  try {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n") : undefined,
-      }),
-    });
-  } catch (error) {
-    console.error("Firebase admin initialization error:", error);
-  }
-}
-
-const db = admin.firestore();
+const {applyCors, requireManager} = require("./_auth");
 
 module.exports = async function handler(req, res) {
-  // Enable CORS
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  // Restrictive CORS (only allow-listed origins)
+  applyCors(req, res);
 
   if (req.method === "OPTIONS") {
     return res.status(200).end();
@@ -31,6 +13,16 @@ module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({error: "Method not allowed"});
   }
+
+  // Sending bulk email to guests requires an authenticated manager/admin
+  let ctx;
+  try {
+    ctx = await requireManager(req);
+  } catch (e) {
+    return res.status(e.status || 401).json({error: e.message || "Unauthorized"});
+  }
+
+  const db = ctx.admin.firestore();
 
   const {recipients, subject, message, eventId, eventTitle} = req.body;
 

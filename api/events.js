@@ -1,5 +1,6 @@
 const {google} = require("googleapis");
 const {DateTime} = require("luxon");
+const {requireManager} = require("./_auth");
 
 // Calendar ID extracted from the public ICS URL
 const CALENDAR_ID = "c_8d4665aa1fe4810f58bcc8c8bbb4be5d6dc14824ea33016fbab9e18fb8172382@group.calendar.google.com";
@@ -90,6 +91,15 @@ const stringifyDescription = (data) => {
 
 module.exports = async function handler(req, res) {
   const calendar = getCalendarClient();
+
+  // GET (listing events) is public; all mutations require an authenticated manager/admin.
+  if (req.method === "POST" || req.method === "PUT" || req.method === "DELETE") {
+    try {
+      await requireManager(req);
+    } catch (e) {
+      return res.status(e.status || 401).json({error: e.message || "Unauthorized"});
+    }
+  }
 
   try {
     if (req.method === "GET") {
@@ -194,6 +204,6 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({error: "Method not allowed"});
   } catch (error) {
     console.error("Google Calendar API Error:", error);
-    return res.status(500).json({error: error.message});
+    return res.status(500).json({error: "Failed to process the event request"});
   }
 };

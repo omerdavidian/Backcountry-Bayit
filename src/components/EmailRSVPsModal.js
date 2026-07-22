@@ -1,5 +1,6 @@
 import React, {useState} from "react";
 import {Modal, Button, Form, Alert, Spinner} from "react-bootstrap";
+import {authorizedFetch} from "../utils/apiClient";
 
 const EmailRSVPsModal = ({show, onHide, event, recipients, onSuccess}) => {
   const [subject, setSubject] = useState("");
@@ -30,7 +31,7 @@ const EmailRSVPsModal = ({show, onHide, event, recipients, onSuccess}) => {
     setStatus({show: false, message: "", type: ""});
 
     try {
-      const response = await fetch("/api/send-bulk-email", {
+      const response = await authorizedFetch("/api/send-bulk-email", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

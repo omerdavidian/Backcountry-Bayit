@@ -23,6 +23,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Local dev server logs
+bcb-local.log
+bcb-local-error.log
+local-server.log
+local-server-error.log
+
 # Firebase
 .firebase
 .firebaserc

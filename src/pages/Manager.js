@@ -7,6 +7,7 @@ import {db} from "../config/firebase";
 import {FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaDownload, FaEnvelope} from "react-icons/fa";
 import EventFormFields from "../components/EventFormFields";
 import EmailRSVPsModal from "../components/EmailRSVPsModal";
+import {authorizedFetch} from "../utils/apiClient";
 
 function Manager() {
   const {currentUser, logout, isManager, userRole} = useAuth();
@@ -306,7 +307,7 @@ function Manager() {
           response = {ok: true};
         } else {
           // Google Calendar update
-          response = await fetch("/api/events", {
+          response = await authorizedFetch("/api/events", {
             method: "PUT",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({id: editingEvent.id, ...eventData}),
@@ -314,7 +315,7 @@ function Manager() {
         }
       } else {
         // Create new event - ALWAYS use Google Calendar now
-        response = await fetch("/api/events", {
+        response = await authorizedFetch("/api/events", {
           method: "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify(eventData),
@@ -417,7 +418,7 @@ function Manager() {
           await deleteDoc(doc(db, "events", eventId));
         } else {
           // Delete from Google Calendar API
-          const response = await fetch(`/api/events?id=${eventId}`, {
+          const response = await authorizedFetch(`/api/events?id=${eventId}`, {
             method: "DELETE",
           });
           if (!response.ok) throw new Error("Failed to delete event");
