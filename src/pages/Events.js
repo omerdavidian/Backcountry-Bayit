@@ -724,7 +724,7 @@ function Events() {
   };
 
   return (
-    <div>
+    <div className="events-page">
       {/* Hero Section */}
       <section className="bg-gradient-primary text-white py-5">
         <Container>

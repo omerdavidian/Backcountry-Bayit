@@ -190,6 +190,26 @@ function Home() {
     loadUpcomingEvents();
   }, []);
 
+  // Smoothly scroll to the resident-application section and keep the URL hash in sync
+  const scrollToApplication = (e) => {
+    if (e) e.preventDefault();
+    const el = document.getElementById("application");
+    if (el) {
+      el.scrollIntoView({behavior: "smooth", block: "start"});
+      window.history.replaceState(null, "", "#application");
+    }
+  };
+
+  // If the user lands on the homepage with #application in the URL
+  // (e.g. clicking the nav button from another page), scroll to it once rendered.
+  useEffect(() => {
+    if (window.location.hash === "#application") {
+      requestAnimationFrame(() => {
+        document.getElementById("application")?.scrollIntoView({behavior: "smooth", block: "start"});
+      });
+    }
+  }, []);
+
   const handleRSVPSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -778,6 +798,7 @@ function Home() {
             {/* Temporary: 2026-27 resident application */}
             <Button
               href="#application"
+              onClick={scrollToApplication}
               size="md"
               className="px-3 py-2 fw-bold"
               style={{background: "linear-gradient(90deg, #0074d9, #00a8ff)", border: "none"}}>
@@ -867,25 +888,6 @@ function Home() {
             }
           }
         `}</style>
-      </section>
-
-      {/* About Section - moved above Upcoming Events */}
-      <section className="py-5 bg-light">
-        <Container>
-          <Row className="align-items-center">
-            <Col md={6} className="mb-4 mb-md-0">
-              <img src="/images/2024-25_season/BCB_2024-25_15.webp" alt="BCB Community" className="img-fluid rounded shadow-lg" />
-            </Col>
-            <Col md={6}>
-              <h2 className="section-title text-start">About Backcountry Bayit</h2>
-              <p className="lead">Since 2016, the Backcountry Bayit has been bringing the warmth of Jewish tradition to the Colorado mountains.</p>
-              <p>We create meaningful connections through shared meals, holiday celebrations, and community gatherings. Whether you're a local resident or visiting for the ski season, you'll find a welcoming home away from home.</p>
-              <Button as={Link} to="/about" variant="primary" size="lg" className="mt-3">
-                Learn More About Us
-              </Button>
-            </Col>
-          </Row>
-        </Container>
       </section>
 
       {/* Resident Application Section */}
@@ -989,7 +991,26 @@ function Home() {
         `}</style>
       </section>
 
-      {/* Upcoming Events Carousel - moved below About Section */}
+      {/* About Section */}
+      <section className="py-5 bg-light">
+        <Container>
+          <Row className="align-items-center">
+            <Col md={6} className="mb-4 mb-md-0">
+              <img src="/images/2024-25_season/BCB_2024-25_15.webp" alt="BCB Community" className="img-fluid rounded shadow-lg" />
+            </Col>
+            <Col md={6}>
+              <h2 className="section-title text-start">About Backcountry Bayit</h2>
+              <p className="lead">Since 2016, the Backcountry Bayit has been bringing the warmth of Jewish tradition to the Colorado mountains.</p>
+              <p>We create meaningful connections through shared meals, holiday celebrations, and community gatherings. Whether you're a local resident or visiting for the ski season, you'll find a welcoming home away from home.</p>
+              <Button as={Link} to="/about" variant="primary" size="lg" className="mt-3">
+                Learn More About Us
+              </Button>
+            </Col>
+          </Row>
+        </Container>
+      </section>
+
+      {/* Upcoming Events Carousel */}
       {!loading && upcomingEvents.length > 0 && (
         <section className="py-5">
           <Container>

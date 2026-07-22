@@ -32,6 +32,19 @@ function Navigation() {
     window.scrollTo(0, 0); // Scroll to top
   };
 
+  // Application CTA: scroll in place when already on the homepage,
+  // otherwise navigate home with the hash so Home can scroll on mount.
+  const handleApplicationClick = (e) => {
+    e.preventDefault();
+    setExpanded(false);
+    if (location.pathname === "/") {
+      document.getElementById("application")?.scrollIntoView({behavior: "smooth", block: "start"});
+      window.history.replaceState(null, "", "#application");
+    } else {
+      navigate("/#application");
+    }
+  };
+
   const getAdminPath = () => {
     if (isAdmin) return "/admin";
     if (userRole === "manager") return "/manager";
@@ -86,7 +99,7 @@ function Navigation() {
                   size="sm"
                   className="ms-lg-2 my-1 fw-bold application-nav-btn"
                   style={{background: "linear-gradient(90deg, #0074d9, #00a8ff)", border: "none", borderRadius: "999px", padding: "0.4rem 1rem"}}
-                  onClick={() => setExpanded(false)}>
+                  onClick={handleApplicationClick}>
                   2026-27 Application
                 </Button>
               </Nav>
