@@ -901,6 +901,9 @@ function Home() {
               boxShadow: "0 24px 60px rgba(0, 36, 84, 0.18)",
               border: "1px solid rgba(0, 116, 217, 0.12)",
             }}>
+            <div className="application-mobile-photo" aria-hidden="true">
+              <img src="/images/BCB_Backyard.webp" alt="" loading="lazy" />
+            </div>
             <Row className="g-0 align-items-stretch">
               <Col lg={6} className="p-4 p-md-5 d-flex flex-column justify-content-center">
                 <span
@@ -961,7 +964,7 @@ function Home() {
                   </Button>
                 </div>
               </Col>
-              <Col lg={6} className="position-relative" style={{minHeight: "340px"}}>
+              <Col lg={6} className="application-desktop-photo position-relative" style={{minHeight: "340px"}}>
                 <img
                   src="/images/BCB_Backyard.webp"
                   alt="The Backcountry Bayit backyard in Frisco, Colorado"
@@ -989,6 +992,30 @@ function Home() {
             0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
             70% { box-shadow: 0 0 0 8px rgba(255, 255, 255, 0); }
             100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+          }
+          .application-mobile-photo {
+            display: none;
+          }
+          @media (max-width: 576px) {
+            #application {
+              padding-top: 1.25rem !important;
+            }
+            .application-mobile-photo {
+              display: block;
+              height: 180px;
+              overflow: hidden;
+              width: 100%;
+            }
+            .application-mobile-photo img {
+              display: block;
+              height: 100%;
+              object-fit: cover;
+              object-position: center 58%;
+              width: 100%;
+            }
+            .application-desktop-photo {
+              display: none;
+            }
           }
         `}</style>
       </section>

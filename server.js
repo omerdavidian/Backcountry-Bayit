@@ -4,7 +4,8 @@ const cors = require("cors");
 require("dotenv").config({path: ".env.local"});
 
 const app = express();
-const PORT = process.env.SERVER_PORT || 3001;
+// Keep 3001 available for Create React App when its default port (3000) is busy.
+const PORT = process.env.SERVER_PORT || 3002;
 
 // Middleware
 app.use(cors());

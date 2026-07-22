@@ -678,9 +678,9 @@ function Admin() {
   };
 
   return (
-    <div className="bg-light min-vh-100 py-5">
+    <div className="admin-page bg-light min-vh-100 py-5">
       <Container fluid>
-        <div className="d-flex justify-content-between align-items-center mb-4">
+        <div className="admin-page-header d-flex justify-content-between align-items-center mb-4">
           <div>
             <h1 className="fw-bold">Admin Dashboard</h1>
             <p className="text-muted mb-0">Welcome, {currentUser.email}</p>

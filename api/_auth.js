@@ -5,7 +5,7 @@ const {initAdmin} = require("./firebase-admin");
 
 // Origins allowed to call the privileged endpoints via CORS.
 // Set ALLOWED_ORIGINS in the environment (comma-separated) to override in production.
-const DEFAULT_ORIGINS = ["https://backcountrybayit.com", "https://www.backcountrybayit.com", "http://localhost:3000"];
+const DEFAULT_ORIGINS = ["https://backcountrybayit.com", "https://www.backcountrybayit.com", "http://localhost:3000", "http://localhost:3001"];
 
 const getAllowedOrigins = () => {
   if (process.env.ALLOWED_ORIGINS) {

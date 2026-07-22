@@ -174,10 +174,10 @@ function EventRSVPs() {
   });
 
   return (
-    <Container className="mt-5 py-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
+    <Container className="admin-page admin-rsvps mt-5 py-4">
+      <div className="admin-page-header d-flex justify-content-between align-items-center mb-4">
         <h1 className="fw-bold">RSVPs for {event?.title || "Loading..."}</h1>
-        <div className="d-flex align-items-center">
+        <div className="admin-header-actions d-flex align-items-center">
           <div className="me-3 text-muted small">
             Approved guests: <strong>{approvedGuestsCount}</strong>
           </div>
