@@ -1,186 +1,84 @@
-// Vercel Serverless Function to send RSVP confirmation emails using Resend
-// Note: Resend is required lazily so local dry-run tests can run without
-// installing the production dependency.
+// RSVP email sending is a privileged action. Keeping it behind manager
+// authentication prevents this API from being abused as a phishing relay.
+const {applyCors, requireManager} = require("./_auth");
+
+const escapeHtml = (value) => String(value || "")
+  .replace(/&/g, "&amp;")
+  .replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;")
+  .replace(/\"/g, "&quot;")
+  .replace(/'/g, "&#39;");
+
+const validEmail = (value) => typeof value === "string" &&
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 254;
+
 module.exports = async function handler(req, res) {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  // Handle preflight request
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  // Only allow POST requests
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  applyCors(req, res);
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST") return res.status(405).json({error: "Method not allowed"});
 
   try {
-    // Log for debugging
-    console.log('Received request body:', req.body);
-    console.log('RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
-
-  const { rsvpData, eventData, status } = req.body;
-
-    // Validate required fields
-    if (!rsvpData || !eventData || !status) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-
-    // Collect all recipient emails (primary + attendees)
-    const recipients = new Set();
-    if (rsvpData.email) recipients.add(rsvpData.email);
-    if (Array.isArray(rsvpData.attendees)) {
-      rsvpData.attendees.forEach(a => {
-        if (a && a.email) recipients.add(a.email);
-      });
-    }
-    const to = Array.from(recipients);
-
-    const totalGuests = 1 + (Array.isArray(rsvpData.attendees) ? rsvpData.attendees.length : 0);
-
-  // Get primary registrant name
-  const primaryName = `${(rsvpData.firstName || '').trim()} ${(rsvpData.lastName || '').trim()}`.trim() || 'Guest';
-
-  // Build attendees HTML block
-  const attendeeLines = [];
-  attendeeLines.push(`<p><strong>Primary registrant:</strong> ${primaryName}${rsvpData.email ? ` &nbsp;(${rsvpData.email})` : ''}</p>`);
-    if (Array.isArray(rsvpData.attendees) && rsvpData.attendees.length > 0) {
-      attendeeLines.push('<p><strong>Additional attendees:</strong></p>');
-      attendeeLines.push('<ul>');
-      rsvpData.attendees.forEach(att => {
-        const name = `${(att.firstName || '').trim()} ${(att.lastName || '').trim()}`.trim() || 'Guest';
-        const email = att.email ? ` &nbsp;(${att.email})` : '';
-        const phone = att.phone ? ` &nbsp;• ${att.phone}` : '';
-        attendeeLines.push(`<li>${name}${email}${phone}</li>`);
-      });
-      attendeeLines.push('</ul>');
-    }
-
-    let subject = '';
-    let htmlContent = '';
-
-    if (status === 'approved') {
-      subject = `RSVP Confirmed: ${eventData.title}`;
-      htmlContent = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #2c5282;">RSVP Confirmed</h2>
-          <p>Dear ${primaryName},</p>
-          <p>Your RSVP has been confirmed for:</p>
-
-          <div style="background-color: #f7fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <p><strong>Event:</strong> ${eventData.title}</p>
-            <p><strong>Date:</strong> ${eventData.date}</p>
-            <p><strong>Time:</strong> ${eventData.time}</p>
-            <p><strong>Location:</strong> ${eventData.location}</p>
-            <p><strong>Number of Guests:</strong> ${totalGuests}</p>
-            ${rsvpData.dietaryRestrictions ? `<p><strong>Dietary Restrictions:</strong> ${rsvpData.dietaryRestrictions}</p>` : ''}
-            ${attendeeLines.join('\n')}
-          </div>
-
-          <p>We look forward to seeing you!</p>
-          <p>If you need to make any changes, please contact us directly.</p>
-
-          <p style="margin-top: 30px;">Shalom,<br/>Backcountry Bayit Team</p>
-        </div>
-      `;
-    } else if (status === 'pending') {
-      subject = `RSVP Received: ${eventData.title}`;
-      htmlContent = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #2c5282;">RSVP Received</h2>
-          <p>Dear ${primaryName},</p>
-          <p>Thank you for your RSVP! We have received your registration for:</p>
-
-          <div style="background-color: #f7fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <p><strong>Event:</strong> ${eventData.title}</p>
-            <p><strong>Date:</strong> ${eventData.date}</p>
-            <p><strong>Time:</strong> ${eventData.time}</p>
-            <p><strong>Location:</strong> ${eventData.location}</p>
-            <p><strong>Number of Guests:</strong> ${totalGuests}</p>
-            ${attendeeLines.join('\n')}
-          </div>
-
-          <p><strong>Your RSVP is currently pending approval.</strong> We will send you a confirmation email once it has been reviewed.</p>
-          <p>If you need to make any changes, please contact us directly.</p>
-
-          <p style="margin-top: 30px;">Shalom,<br/>Backcountry Bayit Team</p>
-        </div>
-      `;
-    } else if (status === 'waitlist') {
-      subject = `Waitlist Confirmation: ${eventData.title}`;
-      htmlContent = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #2c5282;">Waitlist Confirmation</h2>
-          <p>Dear ${primaryName},</p>
-          <p>Thank you for your interest in:</p>
-
-          <div style="background-color: #f7fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <p><strong>Event:</strong> ${eventData.title}</p>
-            <p><strong>Date:</strong> ${eventData.date}</p>
-            <p><strong>Time:</strong> ${eventData.time}</p>
-            <p><strong>Location:</strong> ${eventData.location}</p>
-          </div>
-
-          <p>Unfortunately, this event has reached capacity. You have been added to the waitlist and will be notified if space becomes available.</p>
-          <p><strong>Number of Guests Requested:</strong> ${totalGuests}</p>
-          <p>If you have any questions, please contact us directly.</p>
-
-          <p style="margin-top: 30px;">Shalom,<br/>Backcountry Bayit Team</p>
-        </div>
-      `;
-    }
-
-    // Emergency guard: prevent accidental email sends in production unless explicitly enabled.
-    // To enable sends in production set ALLOW_EMAILS=true in your environment (Vercel project settings).
-    const allowEmails = process.env.ALLOW_EMAILS === 'true';
-    if (process.env.NODE_ENV === 'production' && !allowEmails) {
-      console.warn('Email sending blocked: ALLOW_EMAILS is not set to "true" in production');
-      // Log request details to help trace the caller (avoid logging full PII to production logs in long-term).
-      console.log('Blocked email request summary:', {
-        subjectPreview: eventData && eventData.title ? eventData.title : null,
-        toCount: Array.isArray(rsvpData && rsvpData.attendees) ? 1 + rsvpData.attendees.length : (rsvpData && rsvpData.email) ? 1 : 0,
-        headers: {
-          origin: req.headers && req.headers.origin,
-          referer: req.headers && req.headers.referer,
-          forwardedFor: req.headers && req.headers['x-forwarded-for']
-        },
-      });
-      return res.status(503).json({ error: 'Email sending is disabled in this environment' });
-    }
-
-    // Lazily require Resend so local tests can skip installing the lib.
-    const { Resend } = require('resend');
-    if (!process.env.RESEND_API_KEY) {
-      console.error('RESEND_API_KEY is not configured');
-      return res.status(500).json({ error: 'Email service not configured' });
-    }
-    const resend = new Resend(process.env.RESEND_API_KEY);
-
-    // Build from address. Prefer a verified single-sender email if provided.
-    const senderEmail = process.env.SENDER_EMAIL || 'info@bcbayit.org';
-    const senderName = process.env.SENDER_NAME || 'Backcountry Bayit';
-    const fromAddress = `${senderName} <${senderEmail}>`;
-    console.log('Using from address:', fromAddress);
-
-    // Send email using Resend
-    const data = await resend.emails.send({
-      from: fromAddress,
-      to,
-      subject: subject,
-      html: htmlContent,
-      reply_to: process.env.REPLY_TO || 'info@bcbayit.org'
-    });
-
-    return res.status(200).json({ success: true, data });
+    await requireManager(req);
   } catch (error) {
-    console.error('Error sending email:', error);
-    return res.status(500).json({ 
-      error: 'Failed to send email', 
-      details: error.message 
-    });
+    return res.status(error.status || 401).json({error: error.message || "Unauthorized"});
   }
-}
+
+  const {rsvpData, eventData, status} = req.body || {};
+  if (!rsvpData || !eventData || !["approved", "pending", "waitlist"].includes(status)) {
+    return res.status(400).json({error: "Invalid RSVP email request"});
+  }
+
+  const recipients = new Set([rsvpData.email]);
+  if (Array.isArray(rsvpData.attendees)) {
+    rsvpData.attendees.forEach((attendee) => recipients.add(attendee && attendee.email));
+  }
+  const to = [...recipients].filter(validEmail);
+  if (to.length === 0 || to.length > 12) {
+    return res.status(400).json({error: "A valid recipient list is required"});
+  }
+  if (!process.env.RESEND_API_KEY) {
+    return res.status(500).json({error: "Email service not configured"});
+  }
+
+  const name = `${rsvpData.firstName || ""} ${rsvpData.lastName || ""}`.trim() || "Guest";
+  const event = {
+    title: escapeHtml(eventData.title), date: escapeHtml(eventData.date),
+    time: escapeHtml(eventData.time), location: escapeHtml(eventData.location),
+  };
+  const labels = {
+    approved: ["RSVP Confirmed", "Your RSVP has been confirmed."],
+    pending: ["RSVP Received", "Your RSVP is awaiting approval."],
+    waitlist: ["Waitlist Confirmation", "This event is at capacity and you have been added to the waitlist."],
+  };
+  const [heading, message] = labels[status];
+  const guests = 1 + (Array.isArray(rsvpData.attendees) ? rsvpData.attendees.length : 0);
+  const dietary = rsvpData.dietaryRestrictions
+    ? `<p><strong>Dietary restrictions:</strong> ${escapeHtml(rsvpData.dietaryRestrictions)}</p>` : "";
+  const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+    <h2>${heading}</h2><p>Dear ${escapeHtml(name)},</p><p>${message}</p>
+    <div style="background:#f7fafc;padding:20px;border-radius:8px">
+      <p><strong>Event:</strong> ${event.title}</p><p><strong>Date:</strong> ${event.date}</p>
+      <p><strong>Time:</strong> ${event.time}</p><p><strong>Location:</strong> ${event.location}</p>
+      <p><strong>Number of guests:</strong> ${guests}</p>${dietary}</div>
+    <p>If you need to make changes, please contact us directly.</p><p>Shalom,<br>Backcountry Bayit Team</p></div>`;
+
+  try {
+    const {Resend} = require("resend");
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const senderEmail = process.env.SENDER_EMAIL || "info@bcbayit.org";
+    const senderName = process.env.SENDER_NAME || "Backcountry Bayit";
+    const {data, error} = await resend.emails.send({
+      from: `${senderName} <${senderEmail}>`, to,
+      subject: `${heading}: ${String(eventData.title || "").slice(0, 160)}`,
+      html, reply_to: process.env.REPLY_TO || "info@bcbayit.org",
+    });
+    if (error) {
+      console.error("RSVP email provider error:", error);
+      return res.status(502).json({error: "Email provider rejected the request"});
+    }
+    return res.status(200).json({success: true, id: data && data.id});
+  } catch (error) {
+    console.error("RSVP email error:", error.message);
+    return res.status(500).json({error: "Failed to send email"});
+  }
+};

@@ -1,9 +1,11 @@
+import {authorizedFetch} from './apiClient';
+
 export const sendRSVPConfirmationEmail = async (rsvpData, eventData, status = 'approved') => {
   try {
     // Note: do not log rsvpData/eventData — they contain guest PII (name, email, phone)
 
     // Call Vercel serverless function
-    const response = await fetch('/api/send-rsvp-confirmation', {
+    const response = await authorizedFetch('/api/send-rsvp-confirmation', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

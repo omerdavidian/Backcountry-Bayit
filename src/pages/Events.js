@@ -4,7 +4,6 @@ import {collection, getDocs, doc, query, where, updateDoc, addDoc, serverTimesta
 import {db} from "../config/firebase";
 import {useAuth} from "../utils/AuthContext";
 import {FaCalendarAlt, FaUsers, FaClock, FaMapMarkerAlt, FaEdit, FaTrash, FaGoogle, FaFileDownload, FaCheckCircle, FaPlus} from "react-icons/fa";
-import {sendRSVPConfirmationEmail} from "../utils/emailService";
 import {authorizedFetch} from "../utils/apiClient";
 import RSVPForm from "../components/RSVPForm";
 import EventFormFields from "../components/EventFormFields";
@@ -457,22 +456,10 @@ function Events() {
         localStorage.removeItem("bcb_user_info");
       }
 
-      // Send confirmation email
-      let emailWarning;
-      try {
-        await sendRSVPConfirmationEmail(rsvpData, selectedEvent, rsvpStatus);
-      } catch (emailError) {
-        console.error("Error sending confirmation email:", emailError);
-        emailWarning = emailError.message || "confirmation email could not be sent";
-      }
-
-      const finalMessage = emailWarning ? `${statusMessage} We could not send a confirmation email (${emailWarning}).` : statusMessage;
-      const finalType = emailWarning ? "warning" : statusType;
-
       setRsvpStatus({
         show: true,
-        message: finalMessage,
-        type: finalType,
+        message: statusMessage,
+        type: statusType,
       });
 
       setRSVPData({
