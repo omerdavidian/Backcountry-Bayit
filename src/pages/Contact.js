@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
 import { FaEnvelope, FaFacebook, FaInstagram, FaMapMarkerAlt } from 'react-icons/fa';
-import emailjs from '@emailjs/browser';
 
 function Contact() {
   const [formData, setFormData] = useState({
@@ -18,50 +17,19 @@ function Contact() {
     setIsSubmitting(true);
 
     try {
-      // TODO: Configure EmailJS or use alternative email service
-      // For now, we'll use a simple mailto fallback
+      // Contact mail is intentionally handled by the visitor's mail client.
+      // Do not expose a browser-side email provider here: public credentials
+      // can be abused to send phishing mail through this domain.
       const mailtoLink = `mailto:info@bcbayit.org?subject=${encodeURIComponent(formData.subject)}&body=${encodeURIComponent(
         `Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`
       )}`;
 
-      // Try to send via EmailJS if configured
-      // Otherwise, open mailto link
-      if (process.env.REACT_APP_EMAILJS_SERVICE_ID) {
-        await emailjs.send(
-          process.env.REACT_APP_EMAILJS_SERVICE_ID,
-          process.env.REACT_APP_EMAILJS_TEMPLATE_ID,
-          {
-            from_name: formData.name,
-            from_email: formData.email,
-            subject: formData.subject,
-            message: formData.message,
-            to_email: 'info@bcbayit.org'
-          },
-          process.env.REACT_APP_EMAILJS_PUBLIC_KEY
-        );
-
-        setStatus({
-          show: true,
-          message: 'Thank you for your message! We will get back to you soon.',
-          type: 'success'
-        });
-
-        // Reset form
-        setFormData({
-          name: '',
-          email: '',
-          subject: '',
-          message: ''
-        });
-      } else {
-        // Fallback to mailto
-        window.location.href = mailtoLink;
-        setStatus({
-          show: true,
-          message: 'Opening your email client...',
-          type: 'info'
-        });
-      }
+      window.location.href = mailtoLink;
+      setStatus({
+        show: true,
+        message: 'Opening your email client...',
+        type: 'info'
+      });
     } catch (error) {
       console.error('Error sending message:', error);
       setStatus({
