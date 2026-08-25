@@ -25,11 +25,19 @@ service cloud.firestore {
         request.resource.data.status in ['approved','pending','waitlist'] &&
         request.resource.data.timestamp is timestamp;
       
-      // Allow users to update their own RSVP by email match
+      // Public edits are limited to guest contact details. In particular, a
+      // caller must not be able to approve themselves, move an RSVP to a
+      // different event, or alter the original submission timestamp.
       allow update: if
         request.resource.data.email == resource.data.email &&
         request.resource.data.keys().hasAll(['eventId','firstName','lastName','email','status']) &&
-        request.resource.data.eventId == resource.data.eventId;
+        request.resource.data.eventId == resource.data.eventId &&
+        request.resource.data.status == resource.data.status &&
+        request.resource.data.timestamp == resource.data.timestamp &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'firstName', 'lastName', 'phone', 'attendees',
+          'dietaryRestrictions', 'updatedAt'
+        ]);
       
       // Managers and admins can read, update, delete all RSVPs
       allow read, update, delete: if request.auth != null &&
