@@ -1,3 +1,4 @@
+import {applicationsOpen} from "../config/applications";
 import React, {useState, useEffect, useRef} from "react";
 import {Container, Row, Col, Card, Button, Modal} from "react-bootstrap";
 import {Link} from "react-router-dom";
@@ -784,7 +785,7 @@ function Home() {
               Support Our Community
             </Button>
             {/* Temporary: 2026-27 resident application */}
-            <Button
+            {applicationsOpen && (<Button
               href="#application"
               onClick={scrollToApplication}
               size="md"
@@ -792,7 +793,7 @@ function Home() {
               style={{background: "linear-gradient(90deg, #0074d9, #00a8ff)", border: "none"}}>
               <FaEdit className="me-2" />
               2026-27 Application
-            </Button>
+            </Button>)}
           </div>
           {/* Modern Navigation dots */}
           <div
@@ -879,7 +880,7 @@ function Home() {
       </section>
 
       {/* Resident Application Section */}
-      <section id="application" className="py-5" style={{background: "linear-gradient(135deg, #eaf2ff 0%, #fdfbf7 60%)"}}>
+      {applicationsOpen && (<section id="application" className="py-5" style={{background: "linear-gradient(135deg, #eaf2ff 0%, #fdfbf7 60%)"}}>
         <Container>
           <div
             className="application-card overflow-hidden rounded-4"
@@ -1005,7 +1006,7 @@ function Home() {
             }
           }
         `}</style>
-      </section>
+      </section>)}
 
       {/* About Section */}
       <section className="py-5 bg-light">

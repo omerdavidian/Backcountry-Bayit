@@ -1,3 +1,4 @@
+import {applicationsOpen} from "../config/applications";
 import React, {useState, useEffect} from "react";
 import {Link, useLocation, useNavigate} from "react-router-dom";
 import {Navbar, Nav, Container, Button} from "react-bootstrap";
@@ -94,14 +95,14 @@ function Navigation() {
                   Contact
                 </Nav.Link>
                 {/* Temporary: 2026-27 resident application */}
-                <Button
+                {applicationsOpen && (<Button
                   href="/#application"
                   size="sm"
                   className="ms-lg-2 my-1 fw-bold application-nav-btn"
                   style={{background: "linear-gradient(90deg, #0074d9, #00a8ff)", border: "none", borderRadius: "999px", padding: "0.4rem 1rem"}}
                   onClick={handleApplicationClick}>
                   2026-27 Application
-                </Button>
+                </Button>)}
               </Nav>
             </div>
 
