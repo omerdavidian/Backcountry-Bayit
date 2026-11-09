@@ -1,5 +1,5 @@
 import {applicationsOpen} from "../config/applications";
-import React, {useState, useEffect, useRef, useCallback} from "react";
+import React, {useState, useEffect, useRef} from "react";
 import {Container, Row, Col, Card, Button, Modal} from "react-bootstrap";
 import {Link} from "react-router-dom";
 import {FaStar, FaCalendarAlt, FaHeart, FaUsers, FaMapMarkerAlt, FaClock, FaEdit} from "react-icons/fa";
@@ -160,26 +160,14 @@ function Home() {
     "/images/2024-25_season/BCB_2024-25_6.webp", 
     "/images/2025-26_season/BCB_2025-26_12.webp"
   ];
-  const [heroSlides, setHeroSlides] = useState([{index: 0, sequence: 0, zoomIn: true}]);
-  const activeHeroSlide = heroSlides[heroSlides.length - 1];
-  const heroIndex = activeHeroSlide.index;
-  const selectHeroSlide = useCallback((index) => {
-    setHeroSlides((slides) => {
-      const previous = slides[slides.length - 1];
-      if (index === previous.index) return slides;
-      return [previous, {index, sequence: previous.sequence + 1, zoomIn: !previous.zoomIn}];
-    });
-  }, []);
-  // Keep the outgoing layer mounted through the crossfade so its zoom never resets.
+  const [heroIndex, setHeroIndex] = useState(0);
+  // Auto-slide every 10 seconds
   useEffect(() => {
-    const timer = setTimeout(() => selectHeroSlide((heroIndex + 1) % heroImages.length), 10000);
+    const timer = setTimeout(() => {
+      setHeroIndex((prev) => (prev + 1) % heroImages.length);
+    }, 10000);
     return () => clearTimeout(timer);
-  }, [heroIndex, heroImages.length, selectHeroSlide]);
-  useEffect(() => {
-    heroImages.forEach((src) => {const image = new Image(); image.src = src;});
-    // The hero image list is fixed for this page.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [heroIndex, heroImages.length]);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
@@ -746,16 +734,23 @@ function Home() {
           alignItems: "center",
           justifyContent: "center",
         }}>
-        {heroSlides.map((slide) => (
-          <div key={slide.sequence} className="bcb-hero-layer" aria-hidden="true"
-            data-zoom={slide.zoomIn ? "in" : "out"} data-slide={slide.index}
-            style={{animation: slide.sequence === 0 ? "none" : "bcbHeroFadeIn 800ms ease-in-out both"}}>
-            <div className="bcb-hero-photo" style={{
-              backgroundImage: `url(${heroImages[slide.index]})`,
-              animationName: slide.zoomIn ? "bcbHeroZoomIn" : "bcbHeroZoomOut",
-            }} />
-          </div>
-        ))}
+        {/* Blurred background image for current slide with zoom and fade effect */}
+        <div
+          key={heroIndex}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundImage: `url(${heroImages[heroIndex]})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            filter: "blur(4px)",
+            zIndex: 1,
+            animation: `${heroIndex % 2 === 0 ? "zoomInFade" : "zoomOutFade"} 10s ease-in-out`,
+          }}
+        />
         {/* Semi-transparent overlay for extra contrast */}
         <div
           style={{
@@ -812,7 +807,7 @@ function Home() {
             {heroImages.map((img, idx) => (
               <button
                 key={img}
-                onClick={() => selectHeroSlide(idx)}
+                onClick={() => setHeroIndex(idx)}
                 style={{
                   position: "relative",
                   width: idx === heroIndex ? "40px" : "12px",
@@ -846,14 +841,40 @@ function Home() {
 
         {/* CSS Animation Keyframes */}
         <style>{`
-          .bcb-hero-layer {position:absolute;inset:0;z-index:1;pointer-events:none;}
-          .bcb-hero-photo {position:absolute;inset:0;background-size:cover;background-position:center;filter:blur(4px);animation-duration:11s;animation-timing-function:linear;animation-fill-mode:both;will-change:transform;}
-          @keyframes bcbHeroFadeIn {from {opacity:0} to {opacity:1}}
-          @keyframes bcbHeroZoomIn {from {transform:scale(1.1)} to {transform:scale(1.25)}}
-          @keyframes bcbHeroZoomOut {from {transform:scale(1.25)} to {transform:scale(1.1)}}
-          @media(prefers-reduced-motion:reduce) {
-            .bcb-hero-layer {animation:none!important;}
-            .bcb-hero-photo {animation:none;transform:scale(1.1);}
+          @keyframes zoomInFade {
+            0% {
+              opacity: 0;
+              transform: scale(1.1);
+            }
+            3% {
+              opacity: 1;
+            }
+            97% {
+              opacity: 1;
+              transform: scale(1.25);
+            }
+            100% {
+              opacity: 0;
+              transform: scale(1.25);
+            }
+          }
+          
+          @keyframes zoomOutFade {
+            0% {
+              opacity: 0;
+              transform: scale(1.25);
+            }
+            3% {
+              opacity: 1;
+            }
+            97% {
+              opacity: 1;
+              transform: scale(1.1);
+            }
+            100% {
+              opacity: 0;
+              transform: scale(1.1);
+            }
           }
         `}</style>
       </section>
