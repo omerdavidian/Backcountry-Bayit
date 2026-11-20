@@ -878,12 +878,12 @@ function Events() {
                           ))}
                       </tbody>
                     </Table>
-                    {pastEventLimit < pastEvents.length && (
-                      <div className="p-3 text-center">
-                        <Button size="sm" variant="outline-secondary" onClick={loadMorePastEvents}>Show 10 more</Button>
-                      </div>
-                    )}
                   </Card.Body>
+                  {pastEventLimit < pastEvents.length && (
+                    <Card.Footer className="bg-white p-3 text-center">
+                      <Button size="sm" variant="outline-secondary" onClick={loadMorePastEvents}>Show 10 more</Button>
+                    </Card.Footer>
+                  )}
                 </Card>
               ))}
           </div>
