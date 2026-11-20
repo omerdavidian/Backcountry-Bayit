@@ -1,0 +1,11 @@
+# Calendar and RSVP sandbox
+
+Create a separate Firebase project with manager and admin test accounts, a nonproduction Google Calendar, and a Resend test key or mail sink. Grant the sandbox service account permission to edit only the test calendar. Use synthetic events and reserved test mailboxes.
+
+Set BCB_CALENDAR_ID to the test calendar ID and the FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY and RESEND_API_KEY variables to sandbox values. Set REACT_APP_BCB_SANDBOX=true plus the sandbox Firebase Web app's REACT_APP_FIREBASE_PROJECT_ID, REACT_APP_FIREBASE_API_KEY, REACT_APP_FIREBASE_AUTH_DOMAIN and REACT_APP_FIREBASE_APP_ID in the same environment. Deploy firestore.rules to the sandbox before testing. Set BCB_PUBLIC_ORIGIN to the sandbox URL so generated links stay in the sandbox.
+
+Record test write time and first successful destination observation time in UTC. In both directions, create a test dinner, update the description and location, reschedule overnight, then cancel/delete and confirm the record stays absent after refresh. Repeat with a date-only event and a recurring series from Google. A series and its exceptions are editable in Google Calendar. Compare both the website JSON and ICS projections. Private events and canceled occurrences must be absent from both. Keep private venue details out of all public event fields and verify Google sharing separately. One-event exports are copies. The public feed is a subscription and each calendar client controls its refresh interval.
+
+At a capacity of one, register two separate test parties simultaneously. Confirm one approved RSVP and one waitlist entry, one email per party, no public access to either guest record, and a usable emailed link to read, edit and cancel. Old registrations can request a fresh private link from their event while it is listed. Verify the pending approval path, authorized staff status changes and rejection of over-capacity approval. Do not use real guest accounts.
+
+Before switching production rules, ship the new RSVP client and API together and confirm the public read, aggregate availability and staff dashboard work. Roll back the app and rules as a coordinated release if needed. Keeping the stricter rules while reverting to the old browser-side RSVP code disables the old RSVP path.

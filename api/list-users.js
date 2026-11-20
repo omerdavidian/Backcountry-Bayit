@@ -1,4 +1,4 @@
-const {requireAdmin} = require("./_auth");
+const {requireAdmin, resolveRole} = require("./_auth");
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -19,16 +19,26 @@ module.exports = async function handler(req, res) {
     const listUsersResult = await admin.auth().listUsers();
     
     // Format user data
-    const users = listUsersResult.users.map(user => ({
+    const refs = listUsersResult.users.map(user => admin.firestore().collection("managerInvitations").doc(user.uid));
+    const snapshots = refs.length ? await admin.firestore().getAll(...refs) : [];
+    const users = await Promise.all(listUsersResult.users.map(async (user,index) => {
+      const invite = snapshots[index].data();
+      const role = await resolveRole(admin, {...user.customClaims, uid: user.uid});
+      const invitedAccount = Boolean(invite?.onboarding && user.uid.startsWith("invite-"));
+      return ({
+      managerEligible: Boolean(!user.disabled && user.email && (role === "manager" || (!role && invitedAccount))),
+      invitationStatus: invite?.status === "Pending" && invite.expires <= Date.now() ? "Expired" : invite?.status || "Never sent",
+      lastSent: invite?.lastSent || null,
       uid: user.uid,
       email: user.email,
-      displayName: user.displayName,
+      displayName: user.displayName || invite?.displayName,
+      role: role || (invitedAccount ? "Invited" : "User"),
       customClaims: user.customClaims || {},
       metadata: {
         creationTime: user.metadata.creationTime,
         lastSignInTime: user.metadata.lastSignInTime
       }
-    }));
+    });}));
 
     // Sort by creation time (newest first)
     users.sort((a, b) => new Date(b.metadata.creationTime) - new Date(a.metadata.creationTime));

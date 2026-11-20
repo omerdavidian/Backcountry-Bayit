@@ -4,7 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import { FaLock, FaUser } from 'react-icons/fa';
 
+import {signInWithCustomToken} from "firebase/auth";
+import {auth} from "../config/firebase";
+
 function Login() {
+  const [invite, setInvite] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get("invite"));
+  React.useEffect(() => {
+    if (invite) window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  }, [invite]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -14,7 +21,7 @@ function Login() {
 
   // Redirect if already logged in based on role
   React.useEffect(() => {
-    if (currentUser && userRole) {
+    if (currentUser && userRole && !invite) {
       if (isAdmin) {
         navigate('/admin');
       } else if (userRole === 'manager') {
@@ -23,7 +30,7 @@ function Login() {
         navigate('/');
       }
     }
-  }, [currentUser, userRole, isAdmin, navigate]);
+  }, [currentUser, userRole, isAdmin, navigate, invite]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,6 +39,7 @@ function Login() {
       setError('');
       setLoading(true);
       await login(email, password);
+      setInvite(null);
 
       // Note: The redirect will happen automatically via useEffect
       // when userRole is loaded
@@ -67,8 +75,19 @@ function Login() {
                   </Alert>
                 )}
 
+                {invite && <Button disabled={loading} className="w-100 mb-3" onClick={async () => {
+                  setLoading(true);
+                  try {
+                    const response = await fetch("/api/manager-invitation", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({invite})});
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error);
+                    await signInWithCustomToken(auth, data.token);
+                    navigate("/manager", {replace:true});
+                  } catch (err) {setError(err.message);}
+                  finally {setLoading(false);}
+                }}>Accept invitation and sign in</Button>}
                 <Form onSubmit={handleSubmit}>
-                  <Form.Group className="mb-3">
+                  <Form.Group controlId="login-email" className="mb-3">
                     <Form.Label>
                       <FaUser className="me-2" />
                       Email Address
@@ -83,7 +102,7 @@ function Login() {
                     />
                   </Form.Group>
 
-                  <Form.Group className="mb-4">
+                  <Form.Group controlId="login-password" className="mb-4">
                     <Form.Label>
                       <FaLock className="me-2" />
                       Password

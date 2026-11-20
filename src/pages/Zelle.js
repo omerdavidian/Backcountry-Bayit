@@ -1,9 +1,10 @@
-import React from 'react';
+import React, {useState} from 'react';
 import { Container, Row, Col, Card } from 'react-bootstrap';
 import { FaArrowLeft } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 
 function Zelle() {
+  const [copyStatus, setCopyStatus] = useState("");
   return (
     <div className="bg-light min-vh-100 py-5">
       <Container>
@@ -38,7 +39,16 @@ function Zelle() {
                   <p className="mb-2"><strong>Recipient</strong></p>
                   <h4 className="mb-3">BACKCOUNTRY BAYIT</h4>
                   <p className="mb-2"><strong>Email</strong></p>
-                  <h5 className="text-primary mb-0">info@bcbayit.org</h5>
+                  <p className="text-primary mb-2">info@bcbayit.org</p>
+                  <button type="button" className="btn btn-outline-primary btn-sm" onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText("info@bcbayit.org");
+                      setCopyStatus("Email address copied.");
+                    } catch {
+                      setCopyStatus("Select and copy the email address above.");
+                    }
+                  }}>Copy recipient email</button>
+                  <p role="status" className="small mb-0">{copyStatus}</p>
                 </div>
 
                 <div className="text-start">

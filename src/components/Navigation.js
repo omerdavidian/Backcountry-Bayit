@@ -8,6 +8,7 @@ import {useAuth} from "../utils/AuthContext";
 function Navigation() {
   const [expanded, setExpanded] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const toggleRef = React.useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
   const {currentUser, isAdmin, userRole, logout} = useAuth();
@@ -63,7 +64,12 @@ function Navigation() {
   };
 
   return (
-    <Navbar bg="white" expand="lg" className={`navbar-bcb sticky-top ${scrolled ? "navbar-scrolled" : ""}`} expanded={expanded}>
+    <Navbar bg="white" expand="lg" className={`navbar-bcb sticky-top ${scrolled ? "navbar-scrolled" : ""}`} expanded={expanded} onKeyDown={event => {
+      if (event.key === "Escape" && expanded) {
+        setExpanded(false);
+        toggleRef.current?.focus();
+      }
+    }}>
       <Container fluid className="px-4">
         <div className="navbar-three-section">
           {/* Left Section: Logo */}
@@ -73,7 +79,7 @@ function Navigation() {
             </Navbar.Brand>
           </div>
 
-          <Navbar.Toggle aria-controls="basic-navbar-nav" onClick={() => setExpanded(!expanded)} />
+          <Navbar.Toggle ref={toggleRef} aria-label="Toggle site navigation" aria-controls="basic-navbar-nav" onClick={() => setExpanded(!expanded)} />
 
           <Navbar.Collapse id="basic-navbar-nav">
             {/* Center Section: Main Navigation */}
@@ -109,10 +115,10 @@ function Navigation() {
             {/* Right Section: Social + Admin */}
             <div className="navbar-right">
               <Nav className="align-items-center d-flex flex-row  ">
-                <Nav.Link href="https://www.facebook.com/BackcountryBayit" target="_blank" rel="noopener noreferrer" className="social-link">
+                <Nav.Link aria-label="Backcountry Bayit on Facebook" href="https://www.facebook.com/BackcountryBayit" target="_blank" rel="noopener noreferrer" className="social-link">
                   <FaFacebook size={24} color="#0066CC" />
                 </Nav.Link>
-                <Nav.Link href="https://www.instagram.com/bcbayit/" target="_blank" rel="noopener noreferrer" className="social-link">
+                <Nav.Link aria-label="Backcountry Bayit on Instagram" href="https://www.instagram.com/bcbayit/" target="_blank" rel="noopener noreferrer" className="social-link">
                   <FaInstagram size={24} color="#0066CC" />
                 </Nav.Link>
 

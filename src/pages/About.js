@@ -28,7 +28,8 @@ function About() {
     "/images/2024-25_season/BCB_2024-25_20.webp",
   ];
 
-  const visiblePhotos = showAllPhotos ? allPhotos : allPhotos.slice(0, 8);
+  const photos = [...new Set(allPhotos)];
+  const visiblePhotos = showAllPhotos ? photos : photos.slice(0, 8);
 
   return (
     <div>
@@ -41,7 +42,7 @@ function About() {
               <p className="lead">Backcountry Bayit was founded in 2016 with a simple mission: to create a warm, welcoming Jewish community for young adults in the heart of Colorado's ski country.</p>
             </Col>
             <Col lg={6}>
-              <img src="/images/logo.webp" alt="BCB Logo" className="img-fluid" style={{maxWidth: "400px"}} />
+              <img src="/images/logo.webp" alt="BCB Logo" className="img-fluid" style={{maxWidth: "min(100%, 400px)"}} />
             </Col>
           </Row>
         </Container>

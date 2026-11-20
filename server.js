@@ -31,9 +31,13 @@ const adaptHandler = (handler) => async (req, res) => {
 };
 
 app.all("/api/events", adaptHandler(eventsHandler));
+app.all("/api/rsvp", adaptHandler(require("./api/rsvp")));
+app.all("/api/calendar", adaptHandler(require("./api/calendar")));
 app.all("/api/list-users", adaptHandler(listUsersHandler));
+app.all("/api/manager-invitation", adaptHandler(require("./api/manager-invitation")));
 app.all("/api/create-manager", adaptHandler(createManagerHandler));
 app.all("/api/delete-user", adaptHandler(deleteUserHandler));
+app.all("/api/send-rsvp-confirmation", adaptHandler(require("./api/send-rsvp-confirmation")));
 app.all("/api/send-bulk-email", adaptHandler(sendBulkEmailHandler));
 
 // Start server

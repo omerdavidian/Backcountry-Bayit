@@ -16,6 +16,7 @@ const Donate = lazy(() => import('./pages/Donate'));
 const Contact = lazy(() => import('./pages/Contact'));
 const Login = lazy(() => import('./pages/Login'));
 const Admin = lazy(() => import('./pages/Admin'));
+const ManagerProfile = lazy(() => import('./pages/ManagerProfile'));
 const Manager = lazy(() => import('./pages/Manager'));
 const EventRSVPs = lazy(() => import('./pages/EventRSVPs'));
 const Zelle = lazy(() => import('./pages/Zelle'));
@@ -33,8 +34,12 @@ function App() {
     <AuthProvider>
       <Router>
         <div className="d-flex flex-column min-vh-100">
+          <a className="skip-to-content" href="#main-content" onClick={event => {
+            event.preventDefault();
+            document.getElementById("main-content")?.focus();
+          }}>Skip to content</a>
           <Navigation />
-          <main className="flex-grow-1">
+          <main id="main-content" tabIndex={-1} className="flex-grow-1">
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/" element={<Home />} />
@@ -45,6 +50,7 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/manager" element={<Manager />} />
+                <Route path="/manager/profile" element={<ManagerProfile />} />
                 <Route path="/admin/rsvps/:eventId/:eventName" element={<EventRSVPs />} />
                 <Route path="/zelle" element={<Zelle />} />
               </Routes>

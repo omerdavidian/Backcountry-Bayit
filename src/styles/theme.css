@@ -979,3 +979,44 @@ body {
     width: 100%;
   }
 }
+
+.skip-to-content {position:absolute; z-index:1100; inset-inline-start:1rem; top:0; padding:.65rem 1rem; color:#fff; background:#004080; transform:translateY(-130%)}
+.skip-to-content:focus {transform:translateY(0)}
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {outline:3px solid #004080; outline-offset:3px}
+:where(.footer-bcb,.bg-gradient-primary) :focus-visible {outline-color:#ffd700}
+.fc .fc-daygrid-day-number, .fc .fc-col-header-cell-cushion {color:#004080}
+.fc .fc-day-other .fc-daygrid-day-top {opacity:1}
+.fc .fc-day-other .fc-daygrid-day-number {color:#52667e}
+.fc .fc-button {min-height:44px; min-width:44px}
+@media (max-width: 575px) {
+  .fc .fc-toolbar {flex-wrap:wrap; justify-content:center; gap:.5rem}
+  .fc .fc-toolbar-title {font-size:1.25rem}
+  .fc .fc-toolbar-chunk {max-width:100%}
+}
+
+.event-sort {background:none; border:0; padding:.25rem 0; color:inherit; font:inherit; text-align:left}
+@media (max-width: 640px) {
+  .responsive-event-table {display:block; width:100%}
+  .responsive-event-table tbody {display:block}
+  .responsive-event-table tbody tr {display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.15rem; padding:.5rem; margin-bottom:.75rem; border:1px solid #dce8e7; border-radius:.7rem}
+  .responsive-event-table tbody td {display:block; min-width:0; border:0; overflow-wrap:anywhere}
+  .responsive-event-table tbody td:first-child, .responsive-event-table tbody td:last-child {grid-column:1/-1}
+  .responsive-event-table thead, .responsive-event-table thead tr {display:block}
+  .responsive-event-table thead th {display:inline-block; padding:.35rem}
+  .responsive-event-table thead th:not([aria-sort]) {position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%)}
+  .responsive-event-table tbody td::before {display:block; color:#52667e; font-size:.75rem; font-weight:700}
+  .responsive-event-table tbody td:nth-child(2)::before {content:"Date"}
+  .responsive-event-table tbody td:nth-child(3)::before {content:"Time"}
+  .responsive-event-table tbody td:nth-child(4)::before {content:"Location"}
+  .admin-page .responsive-event-table tbody td:nth-child(5)::before {content:"RSVPs"}
+  .responsive-event-table tbody td:nth-child(6)::before {content:"Capacity"}
+  .responsive-event-table tbody td:has(button) {padding:.45rem .35rem}
+  .responsive-event-table tbody td button {margin-bottom:.3rem; min-height:36px}
+}
+
+.btn-outline-secondary {
+  --bs-btn-color:#53616b;
+  --bs-btn-border-color:#53616b;
+  --bs-btn-hover-bg:#53616b;
+  --bs-btn-hover-border-color:#53616b;
+}

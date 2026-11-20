@@ -1,9 +1,10 @@
+const {createHash} = require("node:crypto");
 const {google} = require("googleapis");
 const {DateTime} = require("luxon");
 const {requireManager} = require("./_auth");
 
 // Calendar ID extracted from the public ICS URL
-const CALENDAR_ID = "c_8d4665aa1fe4810f58bcc8c8bbb4be5d6dc14824ea33016fbab9e18fb8172382@group.calendar.google.com";
+const CALENDAR_ID = process.env.BCB_CALENDAR_ID || "c_8d4665aa1fe4810f58bcc8c8bbb4be5d6dc14824ea33016fbab9e18fb8172382@group.calendar.google.com";
 
 // Initialize Google Calendar API
 const getCalendarClient = () => {
@@ -71,139 +72,189 @@ const parseDescription = (description = "") => {
   return metadata;
 };
 
-// Helper to stringify description metadata
-const stringifyDescription = (data) => {
-  let desc = data.description || "";
-  const meta = [];
+const EVENT_ZONE = "America/Denver";
+const legacyFields = [
+  "title", "date", "time", "start", "end", "location", "description", "capacity",
+  "rsvpSources", "oneTableLink", "rsvpApprovalMode", "limitCapacity", "imageUrl", "imagePosition",
+];
 
-  if (data.capacity) meta.push(`[Capacity: ${data.capacity}]`);
-  if (data.imageUrl) meta.push(`[Image: ${data.imageUrl}]`);
-  if (data.imagePosition) meta.push(`[ImagePosition: ${data.imagePosition}]`);
-  if (data.oneTableLink) meta.push(`[OneTable: ${data.oneTableLink}]`);
-  if (data.rsvpApprovalMode) meta.push(`[Approval: ${data.rsvpApprovalMode}]`);
-  if (data.limitCapacity) meta.push(`[LimitCapacity: ${data.limitCapacity}]`);
+function canModifyEvent(role, start) {
+  if (role === "admin") return true;
+  const eventTime = typeof start === "string"
+    ? DateTime.fromISO(start, {zone: EVENT_ZONE})
+    : DateTime.fromJSDate(start?.toDate?.() ?? new Date(NaN), {zone: EVENT_ZONE});
+  return eventTime.isValid && eventTime.startOf("day") >= DateTime.now().setZone(EVENT_ZONE).startOf("day");
+}
 
-  if (meta.length > 0) {
-    desc += "\n\n" + meta.join(" ");
+async function modifyLegacyEvent(req, res, ctx) {
+  const id = req.method === "PUT" ? req.body?.id : req.query.id;
+  if (typeof id !== "string" || !id || id.includes("/")) {
+    return res.status(400).json({error: "A valid event ID is required."});
   }
-  return desc;
-};
+  const db = ctx.admin.firestore();
+  const ref = db.collection("events").doc(id);
+  const result = await db.runTransaction(async transaction => {
+    const snapshot = await transaction.get(ref);
+    if (!snapshot.exists) return 404;
+    const event = snapshot.data();
+    if (!canModifyEvent(ctx.role, event.start || event.date)) return 403;
+    if (req.method === "DELETE") {
+      transaction.delete(ref);
+    } else {
+      const changes = Object.fromEntries(legacyFields.filter(key => req.body[key] !== undefined).map(key => [key, req.body[key]]));
+      if (!Object.keys(changes).length) return 400;
+      transaction.update(ref, changes);
+    }
+    return 200;
+  });
+  if (result === 403) return res.status(403).json({error: "Only admins can edit or delete past events."});
+  if (result === 404) return res.status(404).json({error: "Event not found."});
+  if (result === 400) return res.status(400).json({error: "No event changes provided."});
+  return res.status(200).json({success: true});
+}
+
+function eventResource(body, existing) {
+  const {title, start, end, location, description} = body || {};
+  if (typeof title !== "string" || !title.trim() || typeof start !== "string" || typeof end !== "string") return null;
+  const dateOnly = value => /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const allDay = dateOnly(start);
+  const from = DateTime.fromISO(start, {zone: EVENT_ZONE});
+  const to = DateTime.fromISO(end, {zone: EVENT_ZONE});
+  if (!from.isValid || !to.isValid || allDay !== dateOnly(end) || from >= to) return null;
+  const when = (raw, time) => allDay ? {date: raw} : {dateTime: time.toISO(), timeZone: EVENT_ZONE};
+  const link = value => typeof value === "string" && /^https?:\/\//i.test(value) ? value.slice(0, 1000) : "";
+  return {
+    summary: title.trim(),
+    location: typeof location === "string" ? location : "",
+    description: typeof description === "string" ? description : "",
+    start: when(start, from), end: when(end, to),
+    extendedProperties: {
+      ...existing?.extendedProperties,
+      private: {
+        ...existing?.extendedProperties?.private,
+        bcbWebsite: String(body.rsvpSources?.website !== false),
+        bcbOneTable: body.rsvpSources?.oneTable === false ? "" : link(body.oneTableLink),
+        bcbCapacity: String(Math.max(1, Number(body.capacity) || 40)),
+        bcbLimit: String(Boolean(body.limitCapacity)),
+        bcbApproval: body.rsvpApprovalMode === "approval" ? "approval" : "immediate",
+        bcbImage: link(body.imageUrl),
+        bcbImagePosition: String(body.imagePosition ?? 50),
+      },
+    },
+  };
+}
 
 module.exports = async function handler(req, res) {
-  const calendar = getCalendarClient();
-
-  // GET (listing events) is public; all mutations require an authenticated manager/admin.
-  if (req.method === "POST" || req.method === "PUT" || req.method === "DELETE") {
+  let ctx;
+  if (["POST", "PUT", "DELETE"].includes(req.method)) {
     try {
-      await requireManager(req);
-    } catch (e) {
-      return res.status(e.status || 401).json({error: e.message || "Unauthorized"});
+      ctx = await requireManager(req);
+    } catch (error) {
+      return res.status(error.status || 401).json({error: error.message || "Unauthorized"});
     }
   }
 
   try {
-    if (req.method === "GET") {
-      // LIST EVENTS
-      const response = await calendar.events.list({
-        calendarId: CALENDAR_ID,
-        // timeMin: new Date().toISOString(), // Removed to allow fetching past events
-        maxResults: 250, // Increased limit to accommodate past events
-        singleEvents: true,
-        orderBy: "startTime",
-      });
-
-      const events = response.data.items.map((item) => {
-        const meta = parseDescription(item.description);
-        return {
-          id: item.id,
-          title: item.summary,
-          start: item.start.dateTime || item.start.date,
-          end: item.end.dateTime || item.end.date,
-          location: item.location,
-          ...meta,
-          // Keep original description for editing if needed, or use cleaned one
-          originalDescription: item.description,
-        };
-      });
-
-      return res.status(200).json({events});
-    } else if (req.method === "POST") {
-      // CREATE EVENT
-      const {title, date, hour, minute, period, location, description, ...meta} = req.body;
-
-      // Construct DateTime
-      // Note: Frontend sends date/hour/minute/period. We need to convert to ISO.
-      // Assuming Mountain Time for simplicity or UTC?
-      // Better to handle timezone on frontend, but let's try to parse here or expect ISO.
-      // For now, let's assume the frontend sends a constructed ISO string or we build it.
-      // Re-using logic from Manager.js might be needed, but let's expect ISO 'start' and 'end' from frontend for cleaner API.
-
-      const {start, end} = req.body; // Expect ISO strings
-
-      const fullDescription = stringifyDescription({description, ...meta});
-
-      const event = {
-        summary: title,
-        location: location,
-        description: fullDescription,
-        start: {
-          dateTime: start,
-          timeZone: "America/Denver", // Hardcoded for BCB based on context
-        },
-        end: {
-          dateTime: end,
-          timeZone: "America/Denver",
-        },
-      };
-
-      const response = await calendar.events.insert({
-        calendarId: CALENDAR_ID,
-        resource: event,
-      });
-
-      return res.status(200).json(response.data);
-    } else if (req.method === "PUT") {
-      // UPDATE EVENT
-      const {id, title, start, end, location, description, ...meta} = req.body;
-
-      const fullDescription = stringifyDescription({description, ...meta});
-
-      const event = {
-        summary: title,
-        location: location,
-        description: fullDescription,
-        start: {
-          dateTime: start,
-          timeZone: "America/Denver",
-        },
-        end: {
-          dateTime: end,
-          timeZone: "America/Denver",
-        },
-      };
-
-      const response = await calendar.events.update({
-        calendarId: CALENDAR_ID,
-        eventId: id,
-        resource: event,
-      });
-
-      return res.status(200).json(response.data);
-    } else if (req.method === "DELETE") {
-      // DELETE EVENT
-      const {id} = req.query;
-
-      await calendar.events.delete({
-        calendarId: CALENDAR_ID,
-        eventId: id,
-      });
-
-      return res.status(200).json({message: "Event deleted"});
+    if (ctx && ["PUT", "DELETE"].includes(req.method) && req.query?.source === "firestore") {
+      return await modifyLegacyEvent(req, res, ctx);
     }
-
+    const calendar = getCalendarClient();
+    if (req.method === "GET") return res.status(200).json({events: await readEvents(calendar), calendarId: CALENDAR_ID});
+    if (req.method === "POST") {
+      const event = eventResource(req.body);
+      if (!event) return res.status(400).json({error: "Enter a valid title, start and end time."});
+      const key = req.body.createKey;
+      if (typeof key === "string" && /^[a-f0-9-]{36}$/i.test(key)) {
+        event.id = createHash("sha256").update(ctx.decoded.uid + ":" + key).digest("hex");
+      }
+      try {
+        const {data} = await calendar.events.insert({calendarId: CALENDAR_ID, resource: event});
+        return res.status(200).json(publicEvent(data));
+      } catch (error) {
+        if (Number(error.code) !== 409 || !event.id) throw error;
+        const {data} = await calendar.events.get({calendarId: CALENDAR_ID, eventId: event.id});
+        if (!publicEvent(data)) return res.status(409).json({error: "This event has already been removed."});
+        return res.status(200).json(publicEvent(data));
+      }
+    }
+    if (req.method === "PUT" || req.method === "DELETE") {
+      const id = req.method === "PUT" ? req.body?.id : req.query?.id;
+      if (typeof id !== "string" || !id) return res.status(400).json({error: "A valid event ID is required."});
+      const params = {calendarId: CALENDAR_ID, eventId: id};
+      const {data: existing} = await calendar.events.get(params);
+      if (!canModifyEvent(ctx.role, existing.start?.dateTime || existing.start?.date)) {
+        return res.status(403).json({error: "Only admins can edit or delete past events."});
+      }
+      if (!publicEvent(existing)) return res.status(404).json({error: "This event is unavailable."});
+      if (existing.recurringEventId || existing.recurrence?.length) {
+        return res.status(409).json({error: "Edit or cancel recurring events in Google Calendar."});
+      }
+      const version = req.method === "PUT" ? req.body.version : req.query?.version;
+      if (version && version !== existing.etag) return res.status(409).json({error: "This event changed. Reload before saving."});
+      const options = existing.etag ? {headers: {"If-Match": existing.etag}} : undefined;
+      if (req.method === "DELETE") {
+        await calendar.events.delete(params, options);
+        return res.status(200).json({message: "Event deleted"});
+      }
+      const event = eventResource(req.body, existing);
+      if (!event) return res.status(400).json({error: "Enter a valid title, start and end time."});
+      const {data} = await calendar.events.patch({...params, resource: event}, options);
+      return res.status(200).json(publicEvent(data));
+    }
     return res.status(405).json({error: "Method not allowed"});
   } catch (error) {
-    console.error("Google Calendar API Error:", error);
+    if (Number(error.code) === 412) return res.status(409).json({error: "This event changed. Reload before saving."});
+    if ([404, 410].includes(Number(error.code))) return res.status(404).json({error: "This event is unavailable."});
+    console.error("Calendar request failed:", error.code);
     return res.status(500).json({error: "Failed to process the event request"});
   }
 };
+
+function publicEvent(item) {
+  if (!item?.start || !item.end || item.status === "cancelled" ||
+      ["private", "confidential"].includes(item.visibility) ||
+      item.extendedProperties?.private?.bcbPrivate === "true") return null;
+  const meta = parseDescription(item.description);
+  const settings = item.extendedProperties?.private || {};
+  const link = settings.bcbOneTable ?? meta.oneTableLink;
+  return {
+    ...meta, id: item.id, uid: item.iCalUID, title: item.summary || "Community event",
+    start: item.start.dateTime || item.start.date, end: item.end.dateTime || item.end.date,
+    location: item.location || "", status: item.status || "confirmed", version: item.etag,
+    recurring: Boolean(item.recurringEventId || item.recurrence?.length), updated: item.updated,
+    capacity: Number(settings.bcbCapacity) || meta.capacity,
+    imageUrl: settings.bcbImage ?? meta.imageUrl,
+    imagePosition: Number(settings.bcbImagePosition ?? meta.imagePosition),
+    limitCapacity: settings.bcbLimit === undefined ? meta.limitCapacity : settings.bcbLimit === "true",
+    rsvpApprovalMode: settings.bcbApproval ?? meta.rsvpApprovalMode,
+    rsvpSources: {website: settings.bcbWebsite !== "false", oneTable: Boolean(link)},
+    oneTableLink: /^https?:\/\//i.test(link) ? link : "",
+  };
+}
+
+async function readEvents(calendar = getCalendarClient()) {
+  const events = [];
+  let pageToken;
+  do {
+    const {data} = await calendar.events.list({
+      calendarId: CALENDAR_ID, maxResults: 250, singleEvents: true, orderBy: "startTime",
+      timeMin: process.env.BCB_CALENDAR_ARCHIVE_START || "2024-01-01T00:00:00Z", pageToken,
+    });
+    events.push(...(data.items || []).map(publicEvent).filter(Boolean));
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+  return events;
+}
+
+async function readEvent(id) {
+  try {
+    const {data} = await getCalendarClient().events.get({calendarId: CALENDAR_ID, eventId: id});
+    return publicEvent(data);
+  } catch (error) {
+    if ([404, 410].includes(Number(error.code))) return null;
+    throw error;
+  }
+}
+
+module.exports.readEvents = readEvents;
+module.exports.readEvent = readEvent;

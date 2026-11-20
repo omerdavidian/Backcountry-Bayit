@@ -1,0 +1,70 @@
+.admin-page {
+  --dashboard-ink: #18383d;
+  --dashboard-muted: #52676a;
+  --dashboard-line: #dce8e7;
+  background: #f1f6f5 !important;
+  color: var(--dashboard-ink);
+}
+.admin-page > .container-fluid {max-width: 1440px; padding-inline: clamp(1rem, 3vw, 3rem)}
+.admin-page-header {
+  padding: clamp(1.25rem, 4vw, 2.6rem);
+  gap: 1rem;
+  background: linear-gradient(120deg, #102e36, #215b58);
+  color: white;
+  border-radius: 1.25rem;
+  flex-wrap: wrap;
+}
+.admin-page-header h1 {font-size: clamp(1.65rem, 4vw, 2.75rem); letter-spacing: -.035em}
+.admin-page-header .text-muted {color: #d6e7e4 !important; overflow-wrap: anywhere}
+.admin-page-header .btn {color: white; border-color: #abc8c3}
+.dashboard-stats {display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 215px), 1fr)); gap: .8rem; margin-bottom: 1.25rem}
+.dashboard-stat {
+  display: flex;
+  align-items: center;
+  gap: .85rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid var(--dashboard-line);
+  border-radius: .95rem;
+}
+.dashboard-stat > svg {width: 2.6rem; height: 2.6rem; padding: .65rem; border-radius: .75rem; color: #225953; background: #e5f2ee; flex: none}
+.dashboard-stat strong {display: block; font-size: 1.5rem; line-height: 1.15; font-variant-numeric: tabular-nums}
+.dashboard-stat span {color: var(--dashboard-muted); font-size: .86rem}
+.dashboard-tabs {gap: .4rem; padding: .35rem; background: #e4eeec; border-radius: .8rem; width: max-content; max-width: 100%}
+.dashboard-tabs .nav-link {color: #254d4d; border-radius: .6rem}
+.dashboard-tabs .nav-link.active {background: #215652}
+.dashboard-toolbar, .dashboard-filters {display: flex; flex-wrap: wrap; gap: .65rem}
+.dashboard-filters > * {flex: 1 1 10rem; min-width: 0; width: auto}
+.dashboard-section-head {display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem}
+.dashboard-section-head h2 {font-size: 1.3rem; font-weight: 700; margin: 0}
+.dashboard-section-head h2 span {font-size: .78rem; color: var(--dashboard-muted); margin-inline-start: .35rem; white-space: nowrap}
+.admin-page .card {border-radius: 1rem; box-shadow: 0 3px 18px #173d4312 !important}
+.admin-page .table {vertical-align: middle; margin-bottom: 0}
+.admin-page .table th {background: #edf4f3; color: #26474a; white-space: nowrap; font-size: .88rem}
+.admin-page .table td {padding-block: .85rem; border-color: var(--dashboard-line)}
+.dashboard-person {display: flex; align-items: center; gap: .65rem; overflow-wrap: anywhere}
+.dashboard-person small {display: block; color: var(--dashboard-muted)}
+.dashboard-initial {display: grid; place-items: center; width: 2.25rem; height: 2.25rem; flex: none; border-radius: .7rem; background: #e2efed; color: #214e4c; font-weight: 700}
+.dashboard-invitation {display: grid; gap: .25rem; justify-items: start}
+.invitation-status {padding: .18rem .6rem; border-radius: 999px; background: #edf1f4; color: #42525d; font-size: .78rem; font-weight: 700; white-space: nowrap}
+.invitation-status[data-status="Pending"], .invitation-status[data-status="Expired"] {background: #fff0ce; color: #744700}
+.invitation-status[data-status="Accepted"] {background: #e0f4e7; color: #185b34}
+.invitation-status[data-status="Failed"] {background: #fbe6e6; color: #922e36}
+.archive-toggle {width: 100%; display: flex; justify-content: space-between; color: #22494b; background: transparent; border: 0; padding: .5rem 0; font: inherit; text-align: left}
+.event-archive {max-height: min(55vh, 32rem); overflow: auto; overscroll-behavior: contain}
+@media (max-width: 760px) {
+  .admin-page .card-body {padding: 1rem !important}
+  .dashboard-filters {width: 100%}
+  .dashboard-users thead {position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%)}
+  .dashboard-users, .dashboard-users tbody {display: block}
+  .dashboard-users tr {display: grid; grid-template-columns: 1fr auto; border: 1px solid var(--dashboard-line); border-radius: .75rem; padding: .7rem; margin-bottom: .65rem}
+  .admin-page .dashboard-users td {display: block; border: 0; padding: .35rem; min-width: 0}
+  .dashboard-users td[data-label] {grid-column: 1 / -1}
+  .dashboard-users td[data-label]::before {content: attr(data-label); display: block; color: var(--dashboard-muted); font-size: .76rem; font-weight: 700}
+  .dashboard-users td:last-child {grid-column: 2; grid-row: 2}
+  .admin-page .d-flex.gap-2 {flex-wrap: wrap}
+}
+
+.manager-invite-form {display: flex; flex: 0 1 32rem; gap: .65rem; align-items: stretch; max-width: 100%}
+.manager-invite-form input {min-width: 0}
+.manager-invite-form button {flex: none; white-space: nowrap}

@@ -1,7 +1,9 @@
+import {rsvpRequest} from "../utils/calendar";
+import {authorizedFetch} from "../utils/apiClient";
 import React, {useState, useEffect} from "react";
 import {useParams, useNavigate, useLocation} from "react-router-dom";
 import {Container, Table, Button, Alert} from "react-bootstrap";
-import {collection, getDocs, getDoc, updateDoc, deleteDoc, doc, query, where} from "firebase/firestore";
+import {collection, getDocs, getDoc, deleteDoc, doc, query, where} from "firebase/firestore";
 import {db} from "../config/firebase";
 import {sendRSVPConfirmationEmail} from "../utils/emailService";
 import {FaSort, FaSortUp, FaSortDown, FaEnvelope} from "react-icons/fa";
@@ -77,7 +79,7 @@ function EventRSVPs() {
 
   const handleApproveRSVP = async (rsvp) => {
     try {
-      await updateDoc(doc(db, "rsvps", rsvp.id), {status: "approved"});
+      await rsvpRequest({action: "staff-status", rsvpId: rsvp.id, status: "approved"}, authorizedFetch);
       setRSVPs((prevRSVPs) => prevRSVPs.map((r) => (r.id === rsvp.id ? {...r, status: "approved"} : r)));
       setStatusMessage({show: true, message: "RSVP approved successfully!", type: "success"});
 
@@ -93,14 +95,14 @@ function EventRSVPs() {
       }, 3000);
     } catch (error) {
       console.error("Error approving RSVP:", error);
-      setStatusMessage({show: true, message: "Error approving RSVP. Please try again.", type: "danger"});
+      setStatusMessage({show: true, message: error.message || "Error approving RSVP. Please try again.", type: "danger"});
     }
   };
 
   const handleRejectRSVP = async (rsvp) => {
     if (window.confirm("Are you sure you want to reject this RSVP?")) {
       try {
-        await updateDoc(doc(db, "rsvps", rsvp.id), {status: "rejected"});
+        await rsvpRequest({action: "staff-status", rsvpId: rsvp.id, status: "rejected"}, authorizedFetch);
         setRSVPs((prevRSVPs) => prevRSVPs.map((r) => (r.id === rsvp.id ? {...r, status: "rejected"} : r)));
         setStatusMessage({show: true, message: "RSVP rejected successfully!", type: "success"});
 
@@ -191,14 +193,10 @@ function EventRSVPs() {
             variant="outline-secondary"
             onClick={() => {
               const fromTab = location?.state?.fromTab;
-              if (fromTab) {
-                navigate("/admin", {state: {fromTab}});
-              } else {
-                // Fallback to history back if no tab info
-                navigate(-1);
-              }
+              const fromManager = location.state?.dashboardPath === "/manager" || !isAdmin;
+              navigate(fromManager ? "/manager" : "/admin", {state: {fromTab: fromTab || "events"}});
             }}>
-            Back to Admin
+            Back to Events
           </Button>
         </div>
       </div>

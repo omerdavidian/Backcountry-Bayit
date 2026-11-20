@@ -1,12 +1,10 @@
 import {applicationsOpen} from "../config/applications";
+import {calendarTimes, todayInMountainTime} from "../utils/calendar";
 import React, {useState, useEffect, useRef} from "react";
-import {Container, Row, Col, Card, Button, Modal} from "react-bootstrap";
+import {Container, Row, Col, Card, Button} from "react-bootstrap";
 import {Link} from "react-router-dom";
 import {FaStar, FaCalendarAlt, FaHeart, FaUsers, FaMapMarkerAlt, FaClock, FaEdit} from "react-icons/fa";
-import {collection, getDocs, query, orderBy, where, addDoc, updateDoc, deleteDoc, doc, serverTimestamp} from "firebase/firestore";
-import {db} from "../config/firebase";
 import {useAuth} from "../utils/AuthContext";
-import RSVPForm from "../components/RSVPForm";
 
 // ScrollingGallery component for continuous leftward movement with infinite loop
 const ScrollingGallery = () => {
@@ -173,19 +171,6 @@ function Home() {
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
-  const [showRSVPModal, setShowRSVPModal] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [existingRSVP, setExistingRSVP] = useState(null);
-  const [confirmOneTable, setConfirmOneTable] = useState(false);
-  const [rsvpData, setRSVPData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    attendees: [],
-    dietaryRestrictions: "",
-  });
-  const [rsvpStatus, setRsvpStatus] = useState({show: false, message: "", type: ""});
   const carouselRef = useRef(null);
 
   useEffect(() => {
@@ -212,240 +197,6 @@ function Home() {
     }
   }, []);
 
-  const handleRSVPSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const rsvpsCollection = collection(db, "rsvps");
-
-      // Website RSVPs are always allowed. If OneTable is enabled, we still require confirmation below.
-
-      // If OneTable is enabled, require user confirmation
-      if (selectedEvent?.rsvpSources?.oneTable && !confirmOneTable) {
-        setRsvpStatus({
-          show: true,
-          message: "Please confirm that you registered through OneTable before submitting your RSVP here.",
-          type: "warning",
-        });
-        return;
-      }
-
-      // Check if this email already has an RSVP for this event (as primary)
-      const q = query(rsvpsCollection, where("eventId", "==", selectedEvent.id), where("email", "==", rsvpData.email));
-      const existingRSVPs = await getDocs(q);
-
-      if (!existingRSVPs.empty && !existingRSVP) {
-        // Found existing RSVP, load it and show update options
-        const existingDoc = existingRSVPs.docs[0];
-        const existingData = existingDoc.data();
-        setExistingRSVP({id: existingDoc.id, ...existingData});
-
-        // Pre-populate the form with existing data
-        setRSVPData({
-          firstName: existingData.firstName || "",
-          lastName: existingData.lastName || "",
-          email: existingData.email || "",
-          phone: existingData.phone || "",
-          attendees: existingData.attendees || [],
-          dietaryRestrictions: existingData.dietaryRestrictions || "",
-        });
-
-        setRsvpStatus({
-          show: true,
-          message: `You already have an RSVP for this event. You can update your information below or unregister.`,
-          type: "info",
-        });
-        return;
-      }
-
-      // Check if this email is registered as an attendee under someone else
-      const allEventRSVPsQuery = query(rsvpsCollection, where("eventId", "==", selectedEvent.id));
-      const allEventRSVPs = await getDocs(allEventRSVPsQuery);
-
-      for (const doc of allEventRSVPs.docs) {
-        const rsvp = doc.data();
-        if (Array.isArray(rsvp.attendees)) {
-          const foundAsAttendee = rsvp.attendees.find((att) => att.email === rsvpData.email);
-          if (foundAsAttendee) {
-            const primaryName = `${rsvp.firstName || ""} ${rsvp.lastName || ""}`.trim() || "Unknown";
-            setRsvpStatus({
-              show: true,
-              message: `This email (${rsvpData.email}) is already registered for this event as an additional guest under ${primaryName} (${rsvp.email}). If you need to make changes, please contact the person who registered you.`,
-              type: "warning",
-            });
-            return;
-          }
-        }
-      }
-
-      const allRSVPsQuery = query(rsvpsCollection, where("eventId", "==", selectedEvent.id));
-      const allRSVPsSnapshot = await getDocs(allRSVPsQuery);
-
-      let totalApprovedGuests = 0;
-      allRSVPsSnapshot.forEach((doc) => {
-        const rsvp = doc.data();
-        // Skip the current user's existing RSVP when calculating capacity
-        if (existingRSVP && doc.id === existingRSVP.id) return;
-
-        if (rsvp.status === "approved" || (rsvp.status === undefined && selectedEvent.rsvpApprovalMode === "immediate")) {
-          totalApprovedGuests += 1 + (rsvp.attendees?.length || 0);
-        }
-      });
-
-      const requestedGuests = 1 + (rsvpData.attendees?.length || 0);
-      const capacity = selectedEvent.capacity || 40;
-      const isOverCapacity = selectedEvent.limitCapacity && totalApprovedGuests + requestedGuests > capacity;
-
-      let rsvpStatus = "approved";
-      let statusMessage = existingRSVP ? "Your RSVP has been updated successfully!" : "Thank you for your RSVP! We look forward to seeing you.";
-      let statusType = "success";
-
-      if (selectedEvent.rsvpApprovalMode === "approval") {
-        rsvpStatus = existingRSVP?.status || "pending";
-        statusMessage = existingRSVP ? "Your RSVP has been updated successfully!" : "Your RSVP has been submitted and is awaiting approval from our team. You will receive confirmation via email.";
-        statusType = "info";
-      } else if (isOverCapacity) {
-        rsvpStatus = "waitlist";
-        statusMessage = `We're sorry, but this event has reached capacity (${capacity} guests). Your RSVP has been added to the waitlist, and you'll be notified if space becomes available.`;
-        statusType = "warning";
-      }
-
-      const rsvpDataToSave = {
-        eventId: selectedEvent.id,
-        eventTitle: selectedEvent.title,
-        eventDate: selectedEvent.date,
-        firstName: rsvpData.firstName,
-        lastName: rsvpData.lastName,
-        email: rsvpData.email,
-        phone: rsvpData.phone,
-        attendees: rsvpData.attendees,
-        dietaryRestrictions: rsvpData.dietaryRestrictions || "",
-        status: rsvpStatus,
-        timestamp: existingRSVP ? existingRSVP.timestamp : serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
-
-      if (existingRSVP) {
-        // Update existing RSVP
-        await updateDoc(doc(db, "rsvps", existingRSVP.id), rsvpDataToSave);
-      } else {
-        // Create new RSVP
-        await addDoc(rsvpsCollection, rsvpDataToSave);
-      }
-
-      setRsvpStatus({
-        show: true,
-        message: statusMessage,
-        type: statusType,
-      });
-
-      setRSVPData({
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        attendees: [],
-        dietaryRestrictions: "",
-      });
-
-      setExistingRSVP(null);
-
-      setTimeout(() => {
-        setShowRSVPModal(false);
-        setRsvpStatus({show: false, message: "", type: ""});
-      }, 4000);
-    } catch (error) {
-      console.error("Error submitting RSVP:", error);
-
-      // If permission denied, store a pending RSVP locally so user doesn't lose data.
-      let shortMsg = error?.message ? `There was an error submitting your RSVP: ${error.message}` : "There was an error submitting your RSVP. Please try again or contact us directly.";
-      if (error?.code === "permission-denied") {
-        try {
-          const pendingKey = "bcb_pending_rsvps";
-          const existing = JSON.parse(localStorage.getItem(pendingKey) || "[]");
-          existing.push({
-            savedAt: new Date().toISOString(),
-            eventId: selectedEvent?.id,
-            eventTitle: selectedEvent?.title,
-            eventDate: selectedEvent?.date,
-            ...rsvpData,
-          });
-          localStorage.setItem(pendingKey, JSON.stringify(existing));
-          shortMsg = "Permissions error: your RSVP was saved locally and will need to be resubmitted once our system permissions are updated. Please try again later or contact us directly.";
-        } catch (storageError) {
-          console.error("Failed to store pending RSVP locally:", storageError);
-        }
-      }
-
-      setRsvpStatus({
-        show: true,
-        message: shortMsg,
-        type: "danger",
-      });
-    }
-  };
-
-  const handleUnregister = async () => {
-    if (!existingRSVP) return;
-
-    if (window.confirm("Are you sure you want to unregister from this event?")) {
-      try {
-        await deleteDoc(doc(db, "rsvps", existingRSVP.id));
-
-        setRsvpStatus({
-          show: true,
-          message: "You have been successfully unregistered from this event.",
-          type: "success",
-        });
-
-        setRSVPData({
-          firstName: "",
-          lastName: "",
-          email: "",
-          phone: "",
-          attendees: [],
-          dietaryRestrictions: "",
-        });
-
-        setExistingRSVP(null);
-
-        setTimeout(() => {
-          setShowRSVPModal(false);
-          setRsvpStatus({show: false, message: "", type: ""});
-        }, 2000);
-      } catch (error) {
-        console.error("Error unregistering:", error);
-        setRsvpStatus({
-          show: true,
-          message: "Error unregistering. Please try again or contact us directly.",
-          type: "danger",
-        });
-      }
-    }
-  };
-
-  // Load saved user information from localStorage
-  const loadSavedUserInfo = () => {
-    try {
-      const savedInfo = localStorage.getItem("bcb_user_info");
-      if (savedInfo) {
-        const userInfo = JSON.parse(savedInfo);
-        setRSVPData({
-          firstName: userInfo.firstName || "",
-          lastName: userInfo.lastName || "",
-          email: userInfo.email || "",
-          phone: userInfo.phone || "",
-          attendees: [],
-          dietaryRestrictions: "",
-        });
-      }
-    } catch (error) {
-      console.error("Error loading saved user info:", error);
-    }
-  };
-
-  // Intentionally no saveUserInfo function; we no longer persist user info from this form.
-
-  // Mouse/Touch drag handlers
   const handleMouseDown = (e) => {
     setIsDragging(true);
     setStartX(e.pageX - carouselRef.current.offsetLeft);
@@ -485,91 +236,10 @@ function Home() {
 
   const loadUpcomingEvents = async () => {
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      // 1. Fetch from Google Calendar API
-      let apiEvents = [];
-      try {
-        const response = await fetch("/api/events");
-        if (response.ok) {
-          const data = await response.json();
-          apiEvents = data.events.map((event) => {
-            const startDate = new Date(event.start);
-            const dateStr = event.start.split("T")[0];
-            const timeStr = startDate.toLocaleTimeString("en-US", {
-              hour: "numeric",
-              minute: "2-digit",
-              hour12: true,
-            });
-            return {
-              ...event,
-              date: dateStr,
-              time: timeStr,
-              capacity: event.capacity || 40,
-              rsvpSources: event.rsvpSources || {website: true, oneTable: false},
-              source: "google",
-            };
-          });
-        }
-      } catch (err) {
-        console.error("Error fetching API events:", err);
-      }
-
-      // 2. Fetch from Firestore (Legacy)
-      let firestoreEvents = [];
-      try {
-        const todayStr = today.toISOString().split("T")[0];
-        const eventsCollection = collection(db, "events");
-        const q = query(eventsCollection, where("date", ">=", todayStr), orderBy("date", "asc"));
-        const querySnapshot = await getDocs(q);
-        firestoreEvents = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-          source: "firestore",
-        }));
-      } catch (err) {
-        console.error("Error fetching Firestore events:", err);
-      }
-
-      // 3. Merge and Deduplicate
-      // Prefer API events if duplicates exist (to ensure fresh data from Google Calendar)
-      const apiMap = new Map();
-      apiEvents.forEach((e) => {
-        const key = `${e.date}_${e.title}`.toLowerCase();
-        apiMap.set(key, e);
-      });
-
-      const uniqueFirestoreEvents = firestoreEvents.filter((e) => {
-        const key = `${e.date}_${e.title}`.toLowerCase();
-        return !apiMap.has(key);
-      });
-
-      let allEvents = [...apiEvents, ...uniqueFirestoreEvents];
-
-      // 4. Filter for upcoming only (API returns all events, so we must filter here)
-      allEvents = allEvents.filter((event) => {
-        if (!event.date) return false;
-
-        // Parse date as local time to avoid timezone issues
-        let eventDate;
-        if (typeof event.date === "string" && event.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-          const [y, m, d] = event.date.split("-").map(Number);
-          eventDate = new Date(y, m - 1, d);
-        } else {
-          eventDate = new Date(event.date);
-        }
-
-        // Set to midnight for comparison
-        eventDate.setHours(0, 0, 0, 0);
-
-        return eventDate >= today;
-      });
-
-      // 5. Sort by date
-      allEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-      setUpcomingEvents(allEvents);
+      const response = await fetch("/api/events");
+      if (!response.ok) throw new Error("Could not load events");
+      const {events} = await response.json();
+      setUpcomingEvents(events.map(calendarTimes).filter(event => event.date >= todayInMountainTime()));
     } catch (error) {
       console.error("Error loading events:", error);
     } finally {
@@ -1089,14 +759,8 @@ function Home() {
                               <Button
                                 variant="primary"
                                 className="w-100"
-                                onClick={() => {
-                                  setSelectedEvent(event);
-                                  setExistingRSVP(null);
-                                  setRsvpStatus({show: false, message: "", type: ""});
-                                  loadSavedUserInfo();
-                                  setConfirmOneTable(false);
-                                  setShowRSVPModal(true);
-                                }}>
+                                as={Link}
+                                to={`/events?event=${encodeURIComponent(event.id)}`}>
                                 View Details & RSVP
                               </Button>
                               {(isAdmin || isManager) && (
@@ -1183,66 +847,7 @@ function Home() {
         </Container>
       </section>
 
-      {/* RSVP Modal */}
-      <Modal
-        show={showRSVPModal}
-        onHide={() => {
-          setShowRSVPModal(false);
-          setExistingRSVP(null);
-          setRsvpStatus({show: false, message: "", type: ""});
-          setConfirmOneTable(false);
-        }}
-        size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>RSVP for {selectedEvent?.title}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <RSVPForm
-            selectedEvent={selectedEvent}
-            rsvpData={rsvpData}
-            setRSVPData={setRSVPData}
-            handleRSVPSubmit={handleRSVPSubmit}
-            existingRSVP={existingRSVP}
-            handleUnregister={handleUnregister}
-            onCancel={() => {
-              setShowRSVPModal(false);
-              setExistingRSVP(null);
-              setRsvpStatus({show: false, message: "", type: ""});
-            }}
-            rsvpStatus={rsvpStatus}
-            confirmOneTable={confirmOneTable}
-            setConfirmOneTable={setConfirmOneTable}
-            eventInfoDisplay={
-              selectedEvent && (
-                <div className="mb-4 p-3 bg-light rounded">
-                  <h5 className="mb-3">{selectedEvent.title}</h5>
-                  <p className="mb-1">
-                    <strong>Date:</strong> {formatEventDateTime(selectedEvent).dateStr}
-                  </p>
-                  <p className="mb-1">
-                    <strong>Time:</strong> {formatEventDateTime(selectedEvent).timeStr}
-                  </p>
-                  <p className="mb-0">
-                    <strong>Location:</strong> {selectedEvent.location}
-                  </p>
-                  {selectedEvent.description && (
-                    <p className="mt-2 mb-0" style={{whiteSpace: "pre-wrap"}}>
-                      {selectedEvent.description}
-                    </p>
-                  )}
-                  {selectedEvent?.rsvpSources?.oneTable && selectedEvent?.oneTableLink && (
-                    <div className="mt-2">
-                      <a href={selectedEvent.oneTableLink} target="_blank" rel="noreferrer">
-                        RSVP through OneTable
-                      </a>
-                    </div>
-                  )}
-                </div>
-              )
-            }
-          />
-        </Modal.Body>
-      </Modal>
+
     </div>
   );
 }
