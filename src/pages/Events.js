@@ -839,7 +839,12 @@ function Events() {
                 <p className="text-center text-muted">No past events found.</p>
               ) : (
                 <Card className="border-0 shadow-sm">
-                  <Card.Body className="p-0">
+                  <Card.Body className="p-0 public-event-archive" tabIndex={0} role="region" aria-label="Past events archive"
+                    onScroll={({currentTarget: box}) => {
+                      if (pastEventLimit < pastEvents.length && box.scrollHeight - box.scrollTop - box.clientHeight < 48) {
+                        loadMorePastEvents();
+                      }
+                    }}>
                     <Table responsive hover className="responsive-event-table mb-0">
                       <thead className="bg-light">
                         <tr>
