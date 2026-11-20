@@ -11,6 +11,8 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 
+const PAST_EVENTS_PAGE_SIZE = 10;
+
 function Events() {
   const {isAdmin, isManager, currentUser} = useAuth();
   const [events, setEvents] = useState([]);
@@ -39,6 +41,7 @@ function Events() {
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [showPastEvents, setShowPastEvents] = useState(false);
+  const [pastEventLimit, setPastEventLimit] = useState(PAST_EVENTS_PAGE_SIZE);
   const [addToCalendar, setAddToCalendar] = useState(false);
   const [showCalendarOptions, setShowCalendarOptions] = useState(false);
 
@@ -181,9 +184,13 @@ function Events() {
     }
     return () => {active = false;};
   }, [selectedEvent, showRSVPModal]);
+  const pastEvents = events.filter(event => isEventPast(event.date))
+    .sort((a, b) => b.date.localeCompare(a.date) || new Date(b.start) - new Date(a.start));
+  const loadMorePastEvents = () => setPastEventLimit(limit => Math.min(limit + PAST_EVENTS_PAGE_SIZE, pastEvents.length));
 
   const handleTogglePastEvents = () => {
-    setShowPastEvents(!showPastEvents);
+    setShowPastEvents(open => !open);
+    setPastEventLimit(PAST_EVENTS_PAGE_SIZE);
   };
 
   useEffect(() => {
@@ -822,14 +829,13 @@ function Events() {
           <h2 className="section-title text-center mb-3">Past Events</h2>
 
           <div className="text-center mb-4">
-            <Button variant="outline-secondary" onClick={handleTogglePastEvents}>
+            <Button variant="outline-secondary" aria-expanded={showPastEvents} aria-controls="public-past-events" onClick={handleTogglePastEvents}>
               {showPastEvents ? "Hide Past Events" : "Show Past Events"}
             </Button>
           </div>
 
-          {showPastEvents && (
-            <>
-              {events.filter((e) => isEventPast(e.date)).length === 0 ? (
+          <div id="public-past-events" hidden={!showPastEvents}>
+            {showPastEvents && (pastEvents.length === 0 ? (
                 <p className="text-center text-muted">No past events found.</p>
               ) : (
                 <Card className="border-0 shadow-sm">
@@ -846,10 +852,7 @@ function Events() {
                         </tr>
                       </thead>
                       <tbody>
-                        {events
-                          .filter((e) => isEventPast(e.date))
-                          .sort((a, b) => parseEventDate(b.date) - parseEventDate(a.date))
-                          .map((event) => (
+                        {pastEvents.slice(0, pastEventLimit).map((event) => (
                             <tr key={event.id} style={{opacity: 0.7}}>
                               <td>
                                 <strong className="text-secondary">{event.title}</strong>
@@ -875,11 +878,15 @@ function Events() {
                           ))}
                       </tbody>
                     </Table>
+                    {pastEventLimit < pastEvents.length && (
+                      <div className="p-3 text-center">
+                        <Button size="sm" variant="outline-secondary" onClick={loadMorePastEvents}>Show 10 more</Button>
+                      </div>
+                    )}
                   </Card.Body>
                 </Card>
-              )}
-            </>
-          )}
+              ))}
+          </div>
         </Container>
       </section>
 
