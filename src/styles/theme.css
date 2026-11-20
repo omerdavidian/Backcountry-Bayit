@@ -1021,4 +1021,4 @@ body {
   --bs-btn-hover-border-color:#53616b;
 }
 .public-event-archive {max-height:min(55vh,24rem); overflow:auto; overscroll-behavior:contain}
-.public-event-archive td {height:2.75rem}
+@media (min-width:641px) {.public-event-archive td {height:2.75rem}}
