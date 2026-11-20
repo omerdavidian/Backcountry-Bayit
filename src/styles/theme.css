@@ -1020,4 +1020,5 @@ body {
   --bs-btn-hover-bg:#53616b;
   --bs-btn-hover-border-color:#53616b;
 }
-.public-event-archive {max-height:min(55vh,32rem); overflow:auto; overscroll-behavior:contain}
+.public-event-archive {max-height:min(55vh,24rem); overflow:auto; overscroll-behavior:contain}
+.public-event-archive td {height:2.75rem}
