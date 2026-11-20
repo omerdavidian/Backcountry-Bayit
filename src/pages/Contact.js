@@ -27,7 +27,7 @@ function Contact() {
       window.location.href = mailtoLink;
       setStatus({
         show: true,
-        message: 'Opening your email client...',
+        message: 'Review and send the draft in your email app. If it did not open, email info@bcbayit.org directly.',
         type: 'info'
       });
     } catch (error) {
@@ -74,8 +74,9 @@ function Contact() {
                       {status.message}
                     </Alert>
                   )}
+                  <p className="text-muted">This opens a draft in your email app. You can also email us directly at <a href="mailto:info@bcbayit.org">info@bcbayit.org</a>.</p>
                   <Form onSubmit={handleSubmit}>
-                    <Form.Group className="mb-3">
+                    <Form.Group controlId="contact-name" className="mb-3">
                       <Form.Label>Name *</Form.Label>
                       <Form.Control
                         type="text"
@@ -85,7 +86,7 @@ function Contact() {
                         placeholder="Your name"
                       />
                     </Form.Group>
-                    <Form.Group className="mb-3">
+                    <Form.Group controlId="contact-email" className="mb-3">
                       <Form.Label>Email *</Form.Label>
                       <Form.Control
                         type="email"
@@ -95,7 +96,7 @@ function Contact() {
                         placeholder="your.email@example.com"
                       />
                     </Form.Group>
-                    <Form.Group className="mb-3">
+                    <Form.Group controlId="contact-subject" className="mb-3">
                       <Form.Label>Subject *</Form.Label>
                       <Form.Control
                         type="text"
@@ -105,7 +106,7 @@ function Contact() {
                         placeholder="What is this regarding?"
                       />
                     </Form.Group>
-                    <Form.Group className="mb-4">
+                    <Form.Group controlId="contact-message" className="mb-4">
                       <Form.Label>Message *</Form.Label>
                       <Form.Control
                         as="textarea"
@@ -122,7 +123,7 @@ function Contact() {
                       size="lg"
                       disabled={isSubmitting}
                     >
-                      {isSubmitting ? 'Sending...' : 'Send Message'}
+                      {isSubmitting ? 'Opening…' : 'Open email draft'}
                     </Button>
                   </Form>
                 </Card.Body>

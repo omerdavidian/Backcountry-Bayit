@@ -2,17 +2,23 @@ import {initializeApp} from "firebase/app";
 import {getAuth} from "firebase/auth";
 import {getFirestore} from "firebase/firestore";
 
-// Firebase configuration
-// TODO: Replace with your actual Firebase config from Firebase Console
+// Production defaults. A sandbox uses its own complete Firebase Web app configuration.
 const firebaseConfig = {
-  apiKey: "AIzaSyCwBKzo8-tyg4AERbTe4-x8uxJ05CnP3nU",
-  authDomain: "backcountry-bayit-website.firebaseapp.com",
-  projectId: "backcountry-bayit-website",
-  storageBucket: "backcountry-bayit-website.firebasestorage.app",
-  messagingSenderId: "274221431699",
-  appId: "1:274221431699:web:286ae1983d5e53c398c666",
-  measurementId: "G-DJZLD86PGX",
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSyCwBKzo8-tyg4AERbTe4-x8uxJ05CnP3nU",
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || "backcountry-bayit-website.firebaseapp.com",
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || "backcountry-bayit-website",
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET || "backcountry-bayit-website.firebasestorage.app",
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID || "274221431699",
+  appId: process.env.REACT_APP_FIREBASE_APP_ID || "1:274221431699:web:286ae1983d5e53c398c666",
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID || "G-DJZLD86PGX",
 };
+
+if (process.env.REACT_APP_BCB_SANDBOX === "true" && (
+  !process.env.REACT_APP_FIREBASE_API_KEY || !process.env.REACT_APP_FIREBASE_AUTH_DOMAIN ||
+  !process.env.REACT_APP_FIREBASE_APP_ID || firebaseConfig.projectId === "backcountry-bayit-website"
+)) {
+  throw new Error("A sandbox requires a separate Firebase Web app configuration.");
+}
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);

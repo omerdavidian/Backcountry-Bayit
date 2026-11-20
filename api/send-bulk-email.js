@@ -1,4 +1,5 @@
 const {Resend} = require("resend");
+const {guestEmail} = require("./_emailTemplates");
 const admin = require("firebase-admin");
 const {applyCors, requireManager} = require("./_auth");
 
@@ -60,31 +61,11 @@ module.exports = async function handler(req, res) {
       // Simple personalization
       const personalizedMessage = message.replace(/\[Name\]/g, name || "Guest");
 
-      // Convert newlines to <br> for HTML email
-      const htmlMessage = personalizedMessage.replace(/\n/g, "<br>");
-
       const {data, error} = await resend.emails.send({
         from: "Backcountry Bayit <noreply@bcbayit.org>",
         to: email,
-        subject: subject,
-        html: `
-          <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px;">
-            <div style="text-align: center; margin-bottom: 30px;">
-              <img src="https://bcbayit.org/images/logo.webp" alt="Backcountry Bayit" style="max-height: 80px; width: auto;" />
-            </div>
-            
-            <div style="color: #333333; font-size: 16px; line-height: 1.6;">
-              <p>${htmlMessage}</p>
-            </div>
-
-            <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eeeeee; text-align: center; color: #888888; font-size: 14px;">
-              <p style="margin-bottom: 10px; font-style: italic;">Thank you for supporting our community.</p>
-              <p style="font-size: 12px; margin-top: 20px; color: #999999;">
-                You are receiving this email because you RSVP'd to <strong>${eventTitle}</strong>.
-              </p>
-            </div>
-          </div>
-        `,
+        subject,
+        ...guestEmail(subject, personalizedMessage, eventTitle),
       });
 
       if (error) {

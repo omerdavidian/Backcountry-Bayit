@@ -1,41 +1,61 @@
-import React, {useState, useEffect} from "react";
+import {calendarTimes, eventFormTimes, editTimes} from "../utils/calendar";
+import React, {useState, useEffect, useCallback, useRef} from "react";
 import {Container, Card, Button, Table, Modal, Form, Alert, Nav} from "react-bootstrap";
 import {useNavigate, useLocation} from "react-router-dom";
 import {useAuth} from "../utils/AuthContext";
-import {collection, getDocs, updateDoc, deleteDoc, doc} from "firebase/firestore";
+import {collection, getDocs, deleteDoc, doc} from "firebase/firestore";
 import {db} from "../config/firebase";
 import {FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaSort, FaSortUp, FaSortDown, FaUserPlus, FaUsers, FaDownload, FaEnvelope} from "react-icons/fa";
+import "./AdminDashboard.css";
 import EventFormFields from "../components/EventFormFields";
 import EmailRSVPsModal from "../components/EmailRSVPsModal";
 import {authorizedFetch} from "../utils/apiClient";
 
-function Admin() {
-  const {currentUser, logout, isManager} = useAuth();
+const eventDayFormat = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Denver", year: "numeric", month: "2-digit", day: "2-digit",
+});
+
+function isEventPast(value) {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value < eventDayFormat.format(new Date());
+  }
+  const date = new Date(value?.toDate?.() ?? value);
+  return Number.isFinite(date.getTime()) && eventDayFormat.format(date) < eventDayFormat.format(new Date());
+}
+
+function Admin({managerView = false}) {
+  const createKey = useRef(null);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [limit, setLimit] = useState(10);
+  const [userSearch, setUserSearch] = useState("");
+  const [inviteFilter, setInviteFilter] = useState("");
+  const [eventSearch, setEventSearch] = useState("");
+  const [sending, setSending] = useState({});
+  const {currentUser, logout, isManager, isAdmin} = useAuth();
+  const canManageUsers = isAdmin && !managerView;
+  const dashboardPath = managerView || !isAdmin ? "/manager" : "/admin";
+  const fullName = currentUser?.displayName?.trim();
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(() => {
-    return sessionStorage.getItem("adminActiveTab") || "events";
+    return canManageUsers ? sessionStorage.getItem("adminActiveTab") || "events" : "events";
   });
 
   useEffect(() => {
-    sessionStorage.setItem("adminActiveTab", activeTab);
-  }, [activeTab]);
+    if (canManageUsers) sessionStorage.setItem("adminActiveTab", activeTab);
+  }, [activeTab, canManageUsers]);
 
   const [users, setUsers] = useState([]);
   const [events, setEvents] = useState([]);
   const [rsvps, setRSVPs] = useState([]);
   const [showEventModal, setShowEventModal] = useState(false);
-  const [showManagerModal, setShowManagerModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [selectedEventForEmail, setSelectedEventForEmail] = useState(null);
   const [editingEvent, setEditingEvent] = useState(null);
   const [alert, setAlert] = useState({show: false, message: "", type: ""});
   const [eventSortConfig, setEventSortConfig] = useState({key: "date", direction: "asc"});
-  const [managerForm, setManagerForm] = useState({
-    email: "",
-    password: "",
-    displayName: "",
-  });
+  const [managerEmail, setManagerEmail] = useState("");
+  const [creatingManager, setCreatingManager] = useState(false);
   const [eventForm, setEventForm] = useState({
     title: "",
     date: "",
@@ -69,15 +89,15 @@ function Admin() {
 
   useEffect(() => {
     if (currentUser && isManager) {
-      loadUsers();
+      if (canManageUsers) loadUsers();
       loadEvents();
       loadRSVPs();
     }
     // If navigation provided a preferred tab, select it
-    if (location?.state && location.state.fromTab) {
+    if (canManageUsers && location.state?.fromTab) {
       setActiveTab(location.state.fromTab);
     }
-  }, [currentUser, isManager, location.state]);
+  }, [currentUser, isManager, canManageUsers, location.state]);
 
   const loadUsers = async () => {
     try {
@@ -102,17 +122,8 @@ function Admin() {
         if (response.ok) {
           const data = await response.json();
           apiEvents = data.events.map((event) => {
-            const startDate = new Date(event.start);
-            const dateStr = event.start.split("T")[0];
-            const timeStr = startDate.toLocaleTimeString("en-US", {
-              hour: "numeric",
-              minute: "2-digit",
-              hour12: true,
-            });
             return {
-              ...event,
-              date: dateStr,
-              time: timeStr,
+              ...calendarTimes(event),
               capacity: event.capacity || 40,
               rsvpSources: event.rsvpSources || {website: true, oneTable: false},
               source: "google", // Mark as Google Calendar event
@@ -220,29 +231,14 @@ function Admin() {
     console.log("=== FORM SUBMIT STARTED ===");
 
     try {
-      // Construct ISO DateTime
-      let hour = parseInt(eventForm.hour);
-      if (eventForm.period === "PM" && hour !== 12) hour += 12;
-      if (eventForm.period === "AM" && hour === 12) hour = 0;
-
-      // Create date object in local time
-      const startDateTime = new Date(`${eventForm.date}T${hour.toString().padStart(2, "0")}:${eventForm.minute}:00`);
-      const endDateTime = new Date(startDateTime.getTime() + 2 * 60 * 60 * 1000); // Default 2 hours duration
-
-      // Format as ISO string (YYYY-MM-DDTHH:mm:ss)
-      const toLocalISO = (date) => {
-        const pad = (n) => n.toString().padStart(2, "0");
-        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
-      };
-
       const eventData = {
         title: eventForm.title,
-        start: toLocalISO(startDateTime),
-        end: toLocalISO(endDateTime),
+        ...eventFormTimes(eventForm, editingEvent),
+        version: editingEvent?.version,
         location: eventForm.location,
         description: eventForm.description,
         capacity: eventForm.capacity,
-        rsvpSources: eventForm.rsvpSources || {website: true, oneTable: false},
+        rsvpSources: {...eventForm.rsvpSources, website: eventForm.websiteRSVP ?? eventForm.rsvpSources?.website ?? true},
         oneTableLink: eventForm.oneTableLink || "",
         rsvpApprovalMode: eventForm.rsvpApprovalMode || "immediate",
         limitCapacity: eventForm.limitCapacity || false,
@@ -253,31 +249,24 @@ function Admin() {
       // Debug logging
       console.log("FINAL eventData to save:", eventData);
 
+      if (!editingEvent) {
+        createKey.current ||= window.crypto.randomUUID();
+        eventData.createKey = createKey.current;
+      }
       let response;
       if (editingEvent) {
         // Update existing event
         console.log("Updating event with ID:", editingEvent.id);
 
         if (editingEvent.source === "firestore") {
-          // Legacy update: Update in Firestore
-          // Note: We need to convert back to the format Firestore expects if it differs,
-          // but here we are just updating fields.
-          // However, the old schema used 'date' and 'time' strings, not 'start'/'end' ISO.
-          // Let's try to maintain compatibility or migrate?
-          // Safest is to update the fields we know about.
-
-          const legacyData = {
-            ...eventData,
-            // Add back legacy fields if needed, or just rely on the new ones if the app supports it.
-            // The app seems to read 'date' and 'time' from 'start' in loadEvents, so we should probably save 'start'/'end'
-            // But the old app saved 'date' (YYYY-MM-DD) and 'time' (H:MM AM/PM).
-            date: eventForm.date,
-            time: `${eventForm.hour}:${eventForm.minute} ${eventForm.period}`,
-          };
-
-          await updateDoc(doc(db, "events", editingEvent.id), legacyData);
-          // Mock response for consistency
-          response = {ok: true};
+          response = await authorizedFetch("/api/events?source=firestore", {
+            method: "PUT",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+              id: editingEvent.id, ...eventData, date: eventForm.date,
+              time: `${eventForm.hour}:${eventForm.minute} ${eventForm.period}`,
+            }),
+          });
         } else {
           // Google Calendar update
           response = await authorizedFetch("/api/events", {
@@ -296,7 +285,7 @@ function Admin() {
         });
       }
 
-      if (!response.ok) throw new Error("Failed to save event");
+      if (!response.ok) throw new Error((await response.json()).error || "Failed to save event");
 
       setAlert({show: true, message: editingEvent ? "Event updated successfully!" : "Event created successfully!", type: "success"});
 
@@ -305,7 +294,7 @@ function Admin() {
       loadEvents();
     } catch (error) {
       console.error("Error saving event:", error);
-      setAlert({show: true, message: "Error saving event. Please try again.", type: "danger"});
+      setAlert({show: true, message: error.message || "Error saving event. Please try again.", type: "danger"});
     }
   };
 
@@ -315,16 +304,12 @@ function Admin() {
         // Find the event to check its source
         const eventToDelete = events.find((e) => e.id === eventId);
 
-        if (eventToDelete && eventToDelete.source === "firestore") {
-          // Delete from Firestore
-          await deleteDoc(doc(db, "events", eventId));
-        } else {
-          // Delete from Google Calendar API
-          const response = await authorizedFetch(`/api/events?id=${eventId}`, {
-            method: "DELETE",
-          });
-          if (!response.ok) throw new Error("Failed to delete event");
-        }
+        const source = eventToDelete?.source === "firestore" ? "&source=firestore" : "";
+        const version = eventToDelete?.version ? "&version=" + encodeURIComponent(eventToDelete.version) : "";
+        const response = await authorizedFetch(`/api/events?id=${encodeURIComponent(eventId)}${source}${version}`, {
+          method: "DELETE",
+        });
+        if (!response.ok) throw new Error("Failed to delete event");
 
         // Delete all RSVPs for this event
         const eventRSVPs = rsvps.filter((rsvp) => rsvp.eventId === eventId);
@@ -343,7 +328,11 @@ function Admin() {
     }
   };
 
-  const handleEditEvent = (event) => {
+  const handleEditEvent = useCallback((event) => {
+    if (!isAdmin && isEventPast(event.start || event.date)) {
+      setAlert({show: true, message: "Only admins can edit past events.", type: "warning"});
+      return;
+    }
     setEditingEvent(event);
 
     // Parse existing time if it exists
@@ -401,11 +390,20 @@ function Admin() {
       limitCapacity: event.limitCapacity !== undefined ? event.limitCapacity : false,
       imageUrl: event.imageUrl || "",
       imagePosition: event.imagePosition || 50,
+      ...editTimes(event),
     });
     setShowEventModal(true);
-  };
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (currentUser && isManager && location.state?.editEvent) {
+      setActiveTab("events");
+      handleEditEvent(location.state.editEvent);
+    }
+  }, [currentUser, isManager, location.state, handleEditEvent]);
 
   const resetEventForm = () => {
+    createKey.current = null;
     setEditingEvent(null);
     setEventForm({
       title: "",
@@ -434,36 +432,52 @@ function Admin() {
     }
   };
 
+  const resendInvitation = async (uid) => {
+    setSending(previous => ({...previous, [uid]: true}));
+    try {
+      const response = await authorizedFetch("/api/manager-invitation", {
+        method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({uid})
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      setAlert({show: true, type: "success", message: "Invitation sent."});
+    } catch (error) {
+      setAlert({show: true, type: "danger", message: error.message});
+    } finally {
+      await loadUsers();
+      setSending(previous => ({...previous, [uid]: false}));
+    }
+  };
+
   const handleManagerSubmit = async (e) => {
     e.preventDefault();
+    if (creatingManager) return;
+    setCreatingManager(true);
     try {
-      setAlert({show: true, message: "Creating manager account...", type: "info"});
+      setAlert({show: true, message: "Sending manager invitation…", type: "info"});
 
       const response = await authorizedFetch("/api/create-manager", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          email: managerForm.email,
-          password: managerForm.password,
-          displayName: managerForm.displayName,
-        }),
+        body: JSON.stringify({email: managerEmail.trim()}),
       });
 
       const result = await response.json();
 
       if (response.ok) {
-        setAlert({show: true, message: "Manager account created successfully!", type: "success"});
-        setShowManagerModal(false);
-        setManagerForm({email: "", password: "", displayName: ""});
-        loadUsers(); // Reload users list
+        setAlert({show: true, message: "Manager invitation sent.", type: "success"});
+        setManagerEmail("");
       } else {
         setAlert({show: true, message: `Error: ${result.error}`, type: "danger"});
       }
     } catch (error) {
       console.error("Error creating manager:", error);
-      setAlert({show: true, message: `Error creating manager: ${error.message}`, type: "danger"});
+      setAlert({show: true, message: `Could not send the invitation: ${error.message}`, type: "danger"});
+    } finally {
+      setCreatingManager(false);
+      loadUsers();
     }
   };
 
@@ -484,8 +498,7 @@ function Admin() {
 
         if (response.ok) {
           setAlert({show: true, message: "User deleted successfully!", type: "success"});
-          loadUsers(); // Reload users list
-        } else {
+          } else {
           setAlert({show: true, message: `Error: ${result.error}`, type: "danger"});
         }
       } catch (error) {
@@ -572,22 +585,6 @@ function Admin() {
     }
   };
 
-  const isEventPast = (eventDate) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Parse date as local time to avoid timezone shifts
-    let eventD;
-    if (typeof eventDate === "string" && eventDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      const [year, month, day] = eventDate.split("-").map(Number);
-      eventD = new Date(year, month - 1, day);
-    } else {
-      eventD = new Date(eventDate);
-    }
-    eventD.setHours(0, 0, 0, 0);
-    return eventD < today;
-  };
-
   const formatEventDate = (dateString) => {
     // Parse date as local time to avoid timezone shifts
     if (typeof dateString === "string" && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
@@ -664,8 +661,26 @@ function Admin() {
     return 0;
   });
 
-  const upcomingEvents = sortedEvents.filter((e) => !isEventPast(e.date));
-  const pastEvents = sortedEvents.filter((e) => isEventPast(e.date));
+  const allUpcoming = sortedEvents.filter((event) => !isEventPast(event.start || event.date));
+  const eventMatches = (event) => [event.title, event.location]
+    .some(value => String(value || "").toLowerCase().includes(eventSearch.trim().toLowerCase()));
+  const upcomingEvents = allUpcoming.filter(eventMatches);
+  const activeEventIds = new Set(allUpcoming.map(event => event.id));
+  const pendingRSVPs = rsvps.filter(rsvp => activeEventIds.has(rsvp.eventId) && rsvp.status === "pending").length;
+  const pendingInvites = users.filter(user => user.managerEligible && user.invitationStatus === "Pending").length;
+  const visibleUsers = users.filter(user =>
+    [user.displayName, user.email].some(value => String(value || "").toLowerCase().includes(userSearch.trim().toLowerCase())) &&
+    (!inviteFilter || (user.managerEligible && user.invitationStatus === inviteFilter))
+  );
+  const eventTimeMinutes = (time = "") => {
+    const match = /^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i.exec(String(time || "").trim());
+    if (!match) return 0;
+    const [, hour, minute, period] = match;
+    const hours = period ? Number(hour) % 12 + (period.toUpperCase() === "PM" ? 12 : 0) : Number(hour);
+    return hours * 60 + Number(minute);
+  };
+  const pastEvents = sortedEvents.filter((e) => isEventPast(e.start || e.date) && eventMatches(e)).sort((a, b) =>
+    new Date(b.date) - new Date(a.date) || eventTimeMinutes(b.time) - eventTimeMinutes(a.time));
 
   if (!currentUser || !isManager) {
     return null;
@@ -682,8 +697,8 @@ function Admin() {
       <Container fluid>
         <div className="admin-page-header d-flex justify-content-between align-items-center mb-4">
           <div>
-            <h1 className="fw-bold">Admin Dashboard</h1>
-            <p className="text-muted mb-0">Welcome, {currentUser.email}</p>
+            <h1 className="fw-bold">{dashboardPath === "/manager" ? "Manager Dashboard" : "Admin Dashboard"}</h1>
+            <p className="text-muted mb-0">{fullName ? `Welcome, ${fullName}` : "Welcome back"}</p>
           </div>
           <div>
             <Button variant="outline-danger" onClick={handleLogout}>
@@ -699,61 +714,97 @@ function Admin() {
           </Alert>
         )}
 
-        <Nav variant="tabs" className="mb-4">
+        <section className="dashboard-stats" aria-label="Dashboard overview">
+          {[
+            [FaCalendarAlt, allUpcoming.length, "Upcoming events"],
+            [FaUsers, pendingRSVPs, "Upcoming RSVPs awaiting approval"],
+            ...(canManageUsers ? [[FaEnvelope, pendingInvites, "Pending invitations"]] : []),
+          ].map(([Icon, count, label]) => (
+            <div className="dashboard-stat" key={label}>
+              <Icon aria-hidden="true" />
+              <div><strong>{count}</strong><span>{label}</span></div>
+            </div>
+          ))}
+        </section>
+
+        <Nav variant="pills" className="dashboard-tabs mb-4" aria-label="Dashboard sections">
           <Nav.Item>
             <Nav.Link active={activeTab === "events"} onClick={() => setActiveTab("events")}>
               <FaCalendarAlt className="me-2" />
               Events
             </Nav.Link>
           </Nav.Item>
-          <Nav.Item>
+          {canManageUsers && <Nav.Item>
             <Nav.Link active={activeTab === "users"} onClick={() => setActiveTab("users")}>
               <FaUsers className="me-2" />
               Users
             </Nav.Link>
-          </Nav.Item>
+          </Nav.Item>}
         </Nav>
         {/* Users Tab */}
-        {activeTab === "users" && (
+        {canManageUsers && activeTab === "users" && (
           <>
-            <div className="mb-4">
-              <Button variant="primary" onClick={() => setShowManagerModal(true)}>
-                <FaUserPlus className="me-2" />
-                Create Manager
-              </Button>
-              <Button variant="secondary" className="ms-2" onClick={() => loadUsers()} title="Refresh users list">
+            <div className="dashboard-toolbar mb-4">
+              {isAdmin && (
+                <Form className="manager-invite-form" onSubmit={handleManagerSubmit}>
+                  <Form.Label htmlFor="manager-email" className="visually-hidden">Manager email address</Form.Label>
+                  <Form.Control id="manager-email" type="email" required maxLength={254} autoComplete="off"
+                    value={managerEmail} onChange={e => setManagerEmail(e.target.value)} placeholder="Manager email address" />
+                  <Button type="submit" disabled={creatingManager}>
+                    <FaUserPlus className="me-2" aria-hidden="true" />
+                    {creatingManager ? "Sending…" : "Send invitation"}
+                  </Button>
+                </Form>
+              )}
+              <Button variant="secondary" className="dashboard-refresh" onClick={() => loadUsers()} title="Refresh users list">
                 Refresh Users
               </Button>
             </div>
 
             <Card className="border-0 shadow">
               <Card.Body className="p-4">
-                <h3 className="mb-4">User Management</h3>
-                <Table responsive hover>
+                <div className="dashboard-section-head">
+                  <h2>User Management <span>{visibleUsers.length} of {users.length}</span></h2>
+                  <div className="dashboard-filters">
+                    <Form.Control type="search" aria-label="Search users" placeholder="Search name or email" value={userSearch} onChange={e => setUserSearch(e.target.value)} />
+                    <Form.Select aria-label="Invitation status" value={inviteFilter} onChange={e => setInviteFilter(e.target.value)}>
+                      <option value="">All invitation statuses</option>
+                      {["Never sent", "Pending", "Accepted", "Expired", "Failed"].map(status => <option key={status}>{status}</option>)}
+                    </Form.Select>
+                  </div>
+                </div>
+                <Table responsive hover className="dashboard-users">
                   <thead className="bg-light">
                     <tr>
-                      <th>Name</th>
-                      <th>Email</th>
-                      <th>Role</th>
+                      <th>Account</th>
+                        <th>Role</th>
                       <th>Created</th>
-                      <th>Last Signed In</th>
+                      <th>Last Signed In</th><th>Invitation</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map((user) => (
+                    {visibleUsers.map((user) => (
                       <tr key={user.uid}>
                         <td>
-                          <strong>{user.displayName || "N/A"}</strong>
+                          <div className="dashboard-person">
+                            <span className="dashboard-initial" aria-hidden="true">{(user.displayName || user.email || "?").trim().charAt(0).toUpperCase()}</span>
+                            <div><strong>{user.displayName || user.email?.split("@")[0] || "Unnamed user"}</strong>
+                              <small>{user.email}</small></div>
+                          </div>
                         </td>
-                        <td>{user.email}</td>
                         <td>
-                          <span className={`badge ${user.customClaims?.admin ? "bg-danger" : "bg-primary"}`}>{user.customClaims?.admin ? "Admin" : "Manager"}</span>
+                          <span className={`badge ${user.customClaims?.admin ? "bg-danger" : "bg-primary"}`}>{user.role === "admin" ? "Admin" : user.role === "manager" ? "Manager" : user.role || "User"}</span>
                         </td>
-                        <td>{new Date(user.metadata.creationTime).toLocaleDateString()}</td>
-                        <td>{formatUserDate(user.metadata.lastSignInTime)}</td>
+                        <td data-label="Created">{formatUserDate(user.metadata.creationTime).split(",")[0]}</td>
+                        <td data-label="Last signed in">{formatUserDate(user.metadata.lastSignInTime)}</td>
+                        <td data-label="Invitation">{user.managerEligible ? <div className="dashboard-invitation">
+                          <span className="invitation-status" data-status={user.invitationStatus}>{user.invitationStatus}</span>
+                          {user.lastSent && <small className="d-block text-muted">Sent {formatUserDate(user.lastSent)}</small>}
+                          {isAdmin && <Button size="sm" variant="outline-primary" className="mt-1" disabled={sending[user.uid]} onClick={() => resendInvitation(user.uid)}>{sending[user.uid] ? "Sending…" : "Resend Invitation"}</Button>}
+                        </div> : <span className="text-muted">—</span>}</td>
                         <td>
-                          <Button variant="outline-danger" size="sm" onClick={() => handleDeleteUser(user.uid, user.email)} disabled={user.email === currentUser.email} title={user.email === currentUser.email ? "Cannot delete your own account" : "Delete user"}>
+                          <Button variant="outline-danger" size="sm" onClick={() => handleDeleteUser(user.uid, user.email)} disabled={user.email === currentUser.email} aria-label={`Delete ${user.displayName || user.email}`} title={user.email === currentUser.email ? "Cannot delete your own account" : "Delete user"}>
                             <FaTrash />
                           </Button>
                         </td>
@@ -762,10 +813,10 @@ function Admin() {
                   </tbody>
                 </Table>
 
-                {users.length === 0 && (
+                {visibleUsers.length === 0 && (
                   <div className="text-center text-muted py-5">
                     <FaUsers size={50} className="mb-3" />
-                    <p>No users found.</p>
+                    <p>{users.length ? "No users match your filters." : "No users found."}</p>
                   </div>
                 )}
               </Card.Body>
@@ -774,7 +825,7 @@ function Admin() {
         )}
 
         {/* Events Tab */}
-        {activeTab === "events" && (
+        {(!canManageUsers || activeTab === "events") && (
           <>
             <div className="mb-4 d-flex gap-2">
               <Button
@@ -791,34 +842,51 @@ function Admin() {
 
             <Card className="border-0 shadow">
               <Card.Body className="p-4">
-                <h3 className="mb-4">Event Management</h3>
-                <Table responsive hover>
+                <div className="dashboard-section-head">
+                  <h2>Upcoming Events ({upcomingEvents.length})</h2>
+                  <div className="dashboard-filters">
+                    <Form.Control type="search" aria-label="Search upcoming and past events" placeholder="Search title or location" value={eventSearch} onChange={e => {setEventSearch(e.target.value); setLimit(10);}} />
+                  </div>
+                </div>
+                <Table responsive hover className="responsive-event-table">
                   <thead className="bg-light">
                     <tr>
-                      <th onClick={() => handleEventSort("title")} style={{cursor: "pointer", userSelect: "none", width: "20%"}}>
-                        Title {getSortIcon("title", eventSortConfig)}
+                      <th aria-sort={eventSortConfig.key === "title" ? (eventSortConfig.direction === "asc" ? "ascending" : "descending") : "none"}>
+                        <button className="event-sort" type="button" onClick={() => handleEventSort("title")}>
+                          Title {getSortIcon("title", eventSortConfig)}
+                        </button>
                       </th>
-                      <th onClick={() => handleEventSort("date")} style={{cursor: "pointer", userSelect: "none"}}>
-                        Date {getSortIcon("date", eventSortConfig)}
+                      <th aria-sort={eventSortConfig.key === "date" ? (eventSortConfig.direction === "asc" ? "ascending" : "descending") : "none"}>
+                        <button className="event-sort" type="button" onClick={() => handleEventSort("date")}>
+                          Date {getSortIcon("date", eventSortConfig)}
+                        </button>
                       </th>
-                      <th onClick={() => handleEventSort("time")} style={{cursor: "pointer", userSelect: "none"}}>
-                        Time {getSortIcon("time", eventSortConfig)}
+                      <th aria-sort={eventSortConfig.key === "time" ? (eventSortConfig.direction === "asc" ? "ascending" : "descending") : "none"}>
+                        <button className="event-sort" type="button" onClick={() => handleEventSort("time")}>
+                          Time {getSortIcon("time", eventSortConfig)}
+                        </button>
                       </th>
-                      <th onClick={() => handleEventSort("location")} style={{cursor: "pointer", userSelect: "none", width: "15%"}}>
-                        Location {getSortIcon("location", eventSortConfig)}
+                      <th aria-sort={eventSortConfig.key === "location" ? (eventSortConfig.direction === "asc" ? "ascending" : "descending") : "none"}>
+                        <button className="event-sort" type="button" onClick={() => handleEventSort("location")}>
+                          Location {getSortIcon("location", eventSortConfig)}
+                        </button>
                       </th>
-                      <th onClick={() => handleEventSort("rsvpCount")} style={{cursor: "pointer", userSelect: "none"}}>
-                        RSVPs {getSortIcon("rsvpCount", eventSortConfig)}
+                      <th aria-sort={eventSortConfig.key === "rsvpCount" ? (eventSortConfig.direction === "asc" ? "ascending" : "descending") : "none"}>
+                        <button className="event-sort" type="button" onClick={() => handleEventSort("rsvpCount")}>
+                          RSVPs {getSortIcon("rsvpCount", eventSortConfig)}
+                        </button>
                       </th>
-                      <th onClick={() => handleEventSort("capacity")} style={{cursor: "pointer", userSelect: "none"}}>
-                        Capacity {getSortIcon("capacity", eventSortConfig)}
+                      <th aria-sort={eventSortConfig.key === "capacity" ? (eventSortConfig.direction === "asc" ? "ascending" : "descending") : "none"}>
+                        <button className="event-sort" type="button" onClick={() => handleEventSort("capacity")}>
+                          Capacity {getSortIcon("capacity", eventSortConfig)}
+                        </button>
                       </th>
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {upcomingEvents.map((event) => {
-                      const isPast = isEventPast(event.date);
+                      const isPast = isEventPast(event.start || event.date);
                       return (
                         <tr key={event.id} style={{opacity: isPast ? 0.5 : 1}}>
                           <td>
@@ -832,10 +900,10 @@ function Admin() {
                           </td>
                           <td>{event.capacity}</td>
                           <td>
-                            <Button variant="outline-primary" size="sm" className="me-2" onClick={() => handleEditEvent(event)}>
+                            <Button variant="outline-primary" size="sm" className="me-2" disabled={event.recurring} title={event.recurring ? "Edit recurring events in Google Calendar" : "Edit event"} onClick={() => handleEditEvent(event)}>
                               <FaEdit />
                             </Button>
-                            <Button variant="outline-danger" size="sm" className="me-2" onClick={() => handleDeleteEvent(event.id)}>
+                            <Button variant="outline-danger" size="sm" className="me-2" disabled={event.recurring} title={event.recurring ? "Cancel recurring events in Google Calendar" : "Delete event"} onClick={() => handleDeleteEvent(event.id)}>
                               <FaTrash />
                             </Button>
                             <Button
@@ -846,7 +914,7 @@ function Admin() {
                                   .toLowerCase()
                                   .replace(/[^a-z0-9]+/g, "-")
                                   .replace(/^-+|-+$/g, "");
-                                navigate(`/admin/rsvps/${event.id}/${eventNameSlug}`, {state: {fromTab: activeTab}});
+                                navigate(`/admin/rsvps/${event.id}/${eventNameSlug}`, {state: {fromTab: "events", dashboardPath}});
                               }}
                               title="Manage RSVPs">
                               RSVPs
@@ -885,9 +953,14 @@ function Admin() {
             <div className="mt-4">
               <Card className="border-0 shadow">
                 <Card.Body className="p-4">
-                  <h4 className="mb-3">Past Events</h4>
+                  <h3 className="mb-0"><button className="archive-toggle" aria-expanded={archiveOpen} aria-controls="past-events" onClick={() => {setArchiveOpen(!archiveOpen); setLimit(10);}}>
+                    Past Events ({pastEvents.length}) <span aria-hidden="true">{archiveOpen ? "−" : "+"}</span>
+                  </button></h3>
+                  <div id="past-events" hidden={!archiveOpen} className="event-archive" tabIndex={0} aria-label="Past events" role="region" onScroll={({currentTarget: box}) => {
+                    if (box.scrollHeight - box.scrollTop - box.clientHeight < 48) setLimit(Math.min(limit + 10, pastEvents.length));
+                  }}>
                   {pastEvents.length > 0 ? (
-                    <Table responsive hover>
+                    <Table responsive hover className="responsive-event-table">
                       <thead className="bg-light">
                         <tr>
                           <th style={{width: "20%"}}>Title</th>
@@ -900,8 +973,8 @@ function Admin() {
                         </tr>
                       </thead>
                       <tbody>
-                        {pastEvents.map((event) => (
-                          <tr key={event.id} style={{opacity: 0.6}}>
+                        {pastEvents.slice(0, archiveOpen ? limit : 0).map((event) => (
+                          <tr key={event.id} >
                             <td>
                               <strong>{event.title}</strong>
                             </td>
@@ -913,12 +986,14 @@ function Admin() {
                             </td>
                             <td>{event.capacity}</td>
                             <td>
-                              <Button variant="outline-primary" size="sm" className="me-2" onClick={() => handleEditEvent(event)}>
+                              {isAdmin && <>
+                              <Button variant="outline-primary" size="sm" className="me-2" disabled={event.recurring} title={event.recurring ? "Edit recurring events in Google Calendar" : "Edit event"} onClick={() => handleEditEvent(event)}>
                                 <FaEdit />
                               </Button>
-                              <Button variant="outline-danger" size="sm" className="me-2" onClick={() => handleDeleteEvent(event.id)}>
+                              <Button variant="outline-danger" size="sm" className="me-2" disabled={event.recurring} title={event.recurring ? "Cancel recurring events in Google Calendar" : "Delete event"} onClick={() => handleDeleteEvent(event.id)}>
                                 <FaTrash />
                               </Button>
+                              </>}
                               <Button
                                 variant={getRSVPButtonVariant(event.id)}
                                 size="sm"
@@ -927,7 +1002,7 @@ function Admin() {
                                     .toLowerCase()
                                     .replace(/[^a-z0-9]+/g, "-")
                                     .replace(/^-+|-+$/g, "");
-                                  navigate(`/admin/rsvps/${event.id}/${eventNameSlug}`, {state: {fromTab: activeTab}});
+                                  navigate(`/admin/rsvps/${event.id}/${eventNameSlug}`, {state: {fromTab: "events", dashboardPath}});
                                 }}
                                 title="Manage RSVPs">
                                 RSVPs
@@ -954,6 +1029,8 @@ function Admin() {
                   ) : (
                     <div className="text-center text-muted py-3">No past events.</div>
                   )}
+                  {limit < pastEvents.length && <Button size="sm" variant="outline-primary" onClick={() => setLimit(limit + 10)}>Show 10 more</Button>}
+                  </div>
                 </Card.Body>
               </Card>
             </div>
@@ -1041,38 +1118,6 @@ function Admin() {
       />
 
       {/* Manager Creation Modal */}
-      <Modal show={showManagerModal} onHide={() => setShowManagerModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Create Manager Account</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={handleManagerSubmit}>
-            <Form.Group className="mb-3">
-              <Form.Label>Display Name *</Form.Label>
-              <Form.Control type="text" required value={managerForm.displayName} onChange={(e) => setManagerForm({...managerForm, displayName: e.target.value})} placeholder="Manager's full name" />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Email *</Form.Label>
-              <Form.Control type="email" required value={managerForm.email} onChange={(e) => setManagerForm({...managerForm, email: e.target.value})} placeholder="manager@example.com" />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Password *</Form.Label>
-              <Form.Control type="password" required minLength="6" value={managerForm.password} onChange={(e) => setManagerForm({...managerForm, password: e.target.value})} placeholder="Minimum 6 characters" />
-            </Form.Group>
-
-            <div className="d-flex gap-2">
-              <Button variant="primary" type="submit">
-                Create Manager
-              </Button>
-              <Button variant="secondary" onClick={() => setShowManagerModal(false)}>
-                Cancel
-              </Button>
-            </div>
-          </Form>
-        </Modal.Body>
-      </Modal>
     </div>
   );
 }

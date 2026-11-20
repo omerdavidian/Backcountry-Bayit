@@ -2,7 +2,7 @@ import React from "react";
 import {Form, Button, Alert} from "react-bootstrap";
 import {FaTrash} from "react-icons/fa";
 
-function RSVPForm({selectedEvent, rsvpData, setRSVPData, handleRSVPSubmit, existingRSVP, handleUnregister, onCancel, rsvpStatus, eventInfoDisplay, confirmOneTable, setConfirmOneTable, addToCalendar, setAddToCalendar, rememberMe, setRememberMe}) {
+function RSVPForm({selectedEvent, rsvpData, setRSVPData, handleRSVPSubmit, existingRSVP, handleUnregister, onCancel, rsvpStatus, eventInfoDisplay, confirmOneTable, setConfirmOneTable, addToCalendar, setAddToCalendar, rememberMe, setRememberMe, requestManageLink, busy, remaining, registrationClosed}) {
   const handleRemoveAttendee = (index) => {
     setRSVPData({
       ...rsvpData,
@@ -22,9 +22,12 @@ function RSVPForm({selectedEvent, rsvpData, setRSVPData, handleRSVPSubmit, exist
       {/* Event Info Display */}
       {selectedEvent && eventInfoDisplay}
 
-      <Form onSubmit={handleRSVPSubmit} autoComplete="on">
+      {remaining !== null && remaining !== undefined && <p role="status">{remaining ? `${remaining} seats available` : "This event is full. You can join the waitlist."}</p>}
+      {registrationClosed && !existingRSVP ? (
+        <p className="mb-0">Website RSVP is closed for this event.</p>
+      ) : <Form onSubmit={handleRSVPSubmit} autoComplete="on">
         {/* OneTable Confirmation */}
-        {selectedEvent?.rsvpSources?.oneTable && selectedEvent?.oneTableLink && (
+        {!existingRSVP && selectedEvent?.rsvpSources?.oneTable && selectedEvent?.oneTableLink && (
           <Form.Group className="mb-3">
             <Form.Check
               type="checkbox"
@@ -46,22 +49,22 @@ function RSVPForm({selectedEvent, rsvpData, setRSVPData, handleRSVPSubmit, exist
         )}
 
         {/* Primary Registrant Fields */}
-        <Form.Group className="mb-3">
+        <Form.Group controlId="rsvp-first" className="mb-3">
           <Form.Label>First Name *</Form.Label>
           <Form.Control type="text" required value={rsvpData.firstName} onChange={(e) => setRSVPData({...rsvpData, firstName: e.target.value})} placeholder="John" autoComplete="given-name" name="firstName" />
         </Form.Group>
 
-        <Form.Group className="mb-3">
+        <Form.Group controlId="rsvp-last" className="mb-3">
           <Form.Label>Last Name *</Form.Label>
           <Form.Control type="text" required value={rsvpData.lastName} onChange={(e) => setRSVPData({...rsvpData, lastName: e.target.value})} placeholder="Doe" autoComplete="family-name" name="lastName" />
         </Form.Group>
 
-        <Form.Group className="mb-3">
+        <Form.Group controlId="rsvp-email" className="mb-3">
           <Form.Label>Email *</Form.Label>
-          <Form.Control type="email" required value={rsvpData.email} onChange={(e) => setRSVPData({...rsvpData, email: e.target.value})} placeholder="john@example.com" autoComplete="email" name="email" />
+          <Form.Control type="email" required readOnly={Boolean(existingRSVP)} value={rsvpData.email} onChange={(e) => setRSVPData({...rsvpData, email: e.target.value})} placeholder="john@example.com" autoComplete="email" name="email" />
         </Form.Group>
 
-        <Form.Group className="mb-3">
+        <Form.Group controlId="rsvp-phone" className="mb-3">
           <Form.Label>Phone Number</Form.Label>
           <Form.Control type="tel" value={rsvpData.phone} onChange={(e) => setRSVPData({...rsvpData, phone: e.target.value})} placeholder="(123) 456-7890" autoComplete="tel" name="phone" />
         </Form.Group>
@@ -75,7 +78,7 @@ function RSVPForm({selectedEvent, rsvpData, setRSVPData, handleRSVPSubmit, exist
                 <FaTrash /> Remove
               </Button>
             </div>
-            <Form.Group className="mb-3">
+            <Form.Group controlId={`rsvp-guest-${index}-first`} className="mb-3">
               <Form.Label>First Name *</Form.Label>
               <Form.Control
                 type="text"
@@ -90,7 +93,7 @@ function RSVPForm({selectedEvent, rsvpData, setRSVPData, handleRSVPSubmit, exist
               />
             </Form.Group>
 
-            <Form.Group className="mb-3">
+            <Form.Group controlId={`rsvp-guest-${index}-last`} className="mb-3">
               <Form.Label>Last Name *</Form.Label>
               <Form.Control
                 type="text"
@@ -105,7 +108,7 @@ function RSVPForm({selectedEvent, rsvpData, setRSVPData, handleRSVPSubmit, exist
               />
             </Form.Group>
 
-            <Form.Group className="mb-3">
+            <Form.Group controlId={`rsvp-guest-${index}-email`} className="mb-3">
               <Form.Label>Email *</Form.Label>
               <Form.Control
                 type="email"
@@ -120,7 +123,7 @@ function RSVPForm({selectedEvent, rsvpData, setRSVPData, handleRSVPSubmit, exist
               />
             </Form.Group>
 
-            <Form.Group className="mb-3">
+            <Form.Group controlId={`rsvp-guest-${index}-phone`} className="mb-3">
               <Form.Label>Phone</Form.Label>
               <Form.Control
                 type="tel"
@@ -140,7 +143,7 @@ function RSVPForm({selectedEvent, rsvpData, setRSVPData, handleRSVPSubmit, exist
           Add Another Person
         </Button>
 
-        <Form.Group className="mb-4 mt-3">
+        <Form.Group controlId="rsvp-dietary" className="mb-4 mt-3">
           <Form.Label>Dietary Restrictions or Allergies</Form.Label>
           <Form.Control as="textarea" rows={3} value={rsvpData.dietaryRestrictions} onChange={(e) => setRSVPData({...rsvpData, dietaryRestrictions: e.target.value})} placeholder="Please let us know about any dietary restrictions or allergies..." />
         </Form.Group>
@@ -155,18 +158,18 @@ function RSVPForm({selectedEvent, rsvpData, setRSVPData, handleRSVPSubmit, exist
         {/* Add to Calendar Checkbox */}
         {setAddToCalendar && (
           <Form.Group className="mb-4">
-            <Form.Check type="checkbox" id="addToCalendar" label="Add this event to my calendar after RSVP" checked={addToCalendar || false} onChange={(e) => setAddToCalendar(e.target.checked)} />
+            <Form.Check type="checkbox" id="addToCalendar" label="Save a copy of this event after RSVP" checked={addToCalendar || false} onChange={(e) => setAddToCalendar(e.target.checked)} />
           </Form.Group>
         )}
 
         {/* Action Buttons */}
-        <div className="d-flex gap-2">
-          <Button variant="primary" type="submit" size="lg">
+        <div className="d-flex flex-wrap gap-2">
+          <Button variant="primary" type="submit" size="lg" disabled={busy}>
             {existingRSVP ? "Update RSVP" : "Submit RSVP"}
           </Button>
           {existingRSVP && handleUnregister && (
-            <Button variant="danger" onClick={handleUnregister} size="lg">
-              Unregister
+            <Button variant="outline-danger" onClick={handleUnregister} size="lg" disabled={busy}>
+              Cancel RSVP
             </Button>
           )}
           <Button variant="secondary" onClick={onCancel} size="lg">
@@ -181,11 +184,13 @@ function RSVPForm({selectedEvent, rsvpData, setRSVPData, handleRSVPSubmit, exist
           </Alert>
         )}
 
-        {/* Unregister Help Text */}
-        <div className="small mt-4" style={{color: "rgba(108,117,125,0.75)"}}>
-          To unregister, fill in the same information you registered with and press submit.
-        </div>
-      </Form>
+        {!existingRSVP && requestManageLink && (
+          <div className="mt-3">
+            <Button variant="link" className="p-0" disabled={busy} onClick={requestManageLink}>Manage my RSVP</Button>
+            <p className="small text-muted mb-0">Enter the email you used to register, then request a private link.</p>
+          </div>
+        )}
+      </Form>}
     </>
   );
 }

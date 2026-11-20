@@ -44,6 +44,7 @@ function Footer() {
             <div className="mb-3">
               <a
                 href="https://www.facebook.com/BackcountryBayit"
+                aria-label="Backcountry Bayit on Facebook"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="social-icon"
@@ -52,6 +53,7 @@ function Footer() {
               </a>
               <a
                 href="https://www.instagram.com/bcbayit/"
+                aria-label="Backcountry Bayit on Instagram"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="social-icon"
@@ -60,6 +62,7 @@ function Footer() {
               </a>
               <a
                 href="mailto:info@bcbayit.org"
+                aria-label="Email Backcountry Bayit"
                 className="social-icon"
               >
                 <FaEnvelope size={20} />

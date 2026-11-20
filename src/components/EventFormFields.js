@@ -87,6 +87,8 @@ function EventFormFields({eventForm, setEventForm, showCapacityToggle = true, ha
   };
   return (
     <>
+      <Form.Check className="mb-3" id="event-all-day" label="All-day event" checked={Boolean(eventForm.allDay)}
+        onChange={event => setEventForm({...eventForm, allDay: event.target.checked, endDate: "", endTime: ""})} />
       <Form.Group className="mb-3">
         <Form.Label>Event Title *</Form.Label>
         <Form.Control type="text" required value={eventForm.title} onChange={(e) => setEventForm({...eventForm, title: e.target.value})} placeholder="e.g., Shabbat Dinner" />
@@ -100,7 +102,7 @@ function EventFormFields({eventForm, setEventForm, showCapacityToggle = true, ha
           </Form.Group>
         </Col>
         <Col md={6}>
-          <Form.Label>Time *</Form.Label>
+          <Form.Label>Start time (Mountain Time) *</Form.Label>
           <Row>
             <Col xs={4}>
               <Form.Select value={eventForm.hour} onChange={(e) => setEventForm({...eventForm, hour: e.target.value})}>
@@ -133,9 +135,26 @@ function EventFormFields({eventForm, setEventForm, showCapacityToggle = true, ha
         </Col>
       </Row>
 
+      <div className="row g-2 mb-3">
+        <Form.Group className="col-sm" controlId="event-end-date">
+          <Form.Label>{eventForm.allDay ? "End date (first day after event)" : "End date"}</Form.Label>
+          <Form.Control type="date" min={eventForm.date} value={eventForm.endDate || ""}
+            onChange={event => setEventForm({...eventForm, endDate: event.target.value})} />
+        </Form.Group>
+        {!eventForm.allDay && <Form.Group className="col-sm" controlId="event-end-time">
+          <Form.Label>End time (Mountain Time)</Form.Label>
+          <Form.Control type="time" value={eventForm.endTime || ""}
+            onChange={event => setEventForm({...eventForm, endTime: event.target.value})} />
+        </Form.Group>}
+      </div>
+      <Form.Check className="mb-3" id="event-website-rsvp" label="Allow website RSVP"
+        checked={eventForm.websiteRSVP ?? eventForm.rsvpSources?.website ?? true}
+        onChange={event => setEventForm({...eventForm, websiteRSVP: event.target.checked})} />
+
       <Form.Group className="mb-3">
         <Form.Label>Location *</Form.Label>
         <Form.Control type="text" required value={eventForm.location} onChange={(e) => setEventForm({...eventForm, location: e.target.value})} placeholder="e.g., BCB Community House, Frisco, CO" />
+        <Form.Text>Public venue label only. Keep private addresses and directions out of this form and the public calendar.</Form.Text>
       </Form.Group>
 
       <Form.Group className="mb-3">
