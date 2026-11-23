@@ -9,13 +9,13 @@ import {auth} from "../config/firebase";
 
 function Login() {
   const [invite, setInvite] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get("invite"));
+  const missingInvite = !invite && new URLSearchParams(window.location.search).get("invitation") === "1";
   React.useEffect(() => {
-    if (invite) window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    if (invite) window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
   }, [invite]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [needsPassword, setNeedsPassword] = useState(false);
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const { login, currentUser, userRole, isAdmin } = useAuth();
@@ -67,8 +67,8 @@ function Login() {
                     style={{ maxWidth: '150px' }}
                     className="mb-3"
                   />
-                  <h2 className="fw-bold">Manager Login</h2>
-                  <p className="text-muted">Access the event management portal</p>
+                  <h2 className="fw-bold">{invite ? "Set your manager password" : "Manager Login"}</h2>
+                  <p className="text-muted">{invite ? "Choose a password to accept your invitation and open the dashboard." : "Access the event management portal"}</p>
                 </div>
 
                 {error && (
@@ -77,11 +77,12 @@ function Login() {
                   </Alert>
                 )}
 
+                {missingInvite && <Alert variant="warning">This invitation link is incomplete. Open the original link in your email or ask an administrator for a new one.</Alert>}
                 {notice && <Alert variant="info">{notice}</Alert>}
                 {invite && <Form onSubmit={async event => {
                   event.preventDefault();
                   const {newPassword, confirmPassword} = Object.fromEntries(new FormData(event.currentTarget));
-                  if (needsPassword && newPassword !== confirmPassword) {
+                  if (newPassword !== confirmPassword) {
                     setError("The passwords don’t match.");
                     return;
                   }
@@ -94,10 +95,6 @@ function Login() {
                     });
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.error);
-                    if (data.passwordRequired) {
-                      setNeedsPassword(true);
-                      return;
-                    }
                     await signInWithCustomToken(auth, data.token);
                     navigate("/manager", {replace: true});
                   } catch (failure) {
@@ -106,7 +103,7 @@ function Login() {
                     setLoading(false);
                   }
                 }}>
-                  {needsPassword && ["newPassword", "confirmPassword"].map((name, index) => (
+                  {["newPassword", "confirmPassword"].map((name, index) => (
                     <Form.Group key={name} controlId={"invite-" + name} className="mb-3">
                       <Form.Label>{index ? "Confirm password" : "Create a password"}</Form.Label>
                       <Form.Control name={name} type="password" autoComplete="new-password" required minLength={12} maxLength={128} />
@@ -114,10 +111,10 @@ function Login() {
                     </Form.Group>
                   ))}
                   <Button type="submit" disabled={loading} className="w-100 mb-3">
-                    {needsPassword ? "Save password and sign in" : "Accept invitation and sign in"}
+                    Save password and sign in
                   </Button>
                 </Form>}
-                <Form onSubmit={handleSubmit}>
+                {!invite && <Form onSubmit={handleSubmit}>
                   <Form.Group controlId="login-email" className="mb-3">
                     <Form.Label>
                       <FaUser className="me-2" />
@@ -157,7 +154,7 @@ function Login() {
                   >
                     {loading ? 'Logging in...' : 'Login'}
                   </Button>
-                </Form>
+                </Form>}
                 <Button type="button" variant="link" className="px-0 mt-2" disabled={loading} onClick={async () => {
                   if (!email.trim()) {
                     setError("Enter your email address to request a password reset.");

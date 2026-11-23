@@ -82,18 +82,13 @@ module.exports = async (req, res) => {
       const validRecord = record => record && record.hash === digest(invite) &&
         record.email === user.email && record.status === "Pending" && record.expires > Date.now() &&
         Boolean(record.onboarding) === onboarding && Boolean(record.restore) === restore;
+      if (!validRecord((await ref.get()).data())) throw invalid();
       if (checkProfile === true) {
-        const record = (await ref.get()).data();
-        if (!onboarding || !validRecord(record)) throw invalid();
+        if (!onboarding) throw invalid();
         return res.json({profileRequired: true});
       }
-      const needsPassword = onboarding || !user.providerData?.some(provider => provider.providerId === "password");
-      if (needsPassword && password === undefined && !onboarding) {
-        if (!validRecord((await ref.get()).data())) throw invalid();
-        return res.json({passwordRequired: true});
-      }
       const fields = onboarding ? validateProfile(profile) : null;
-      if (needsPassword && (typeof password !== "string" || password.length < 12 || password.length > 128)) {
+      if (typeof password !== "string" || password.length < 12 || password.length > 128) {
         throw reject(400, "Choose a password with 12 to 128 characters.");
       }
 
@@ -106,9 +101,7 @@ module.exports = async (req, res) => {
         tx.update(ref, {setupOperation: operation, setupUntil: Date.now() + 300000});
       });
       try {
-        if (needsPassword) {
-          await auth.updateUser(user.uid, {password, emailVerified: true, ...(fields && {displayName: fields.displayName})});
-        }
+        await auth.updateUser(user.uid, {password, emailVerified: true, ...(fields && {displayName: fields.displayName})});
         const token = isOnboardingAccount(user)
           ? await auth.createCustomToken(user.uid, {isManager: true})
           : await auth.createCustomToken(user.uid);

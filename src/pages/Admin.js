@@ -435,7 +435,7 @@ function Admin({managerView = false}) {
 
   const resendInvitation = async (user) => {
     const {uid, email, role} = user;
-    if (role === "manager" && !window.confirm(`Send a new sign-in link to ${email}? Their manager access and password will stay active.`)) return;
+    if (role === "manager" && !window.confirm(`Send a new sign-in link to ${email}? They’ll choose a password when they accept it.`)) return;
     setSending(previous => ({...previous, [uid]: true}));
     try {
       const response = await authorizedFetch("/api/manager-invitation", {

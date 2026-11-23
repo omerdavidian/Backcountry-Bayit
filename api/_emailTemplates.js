@@ -33,13 +33,13 @@ function managerEmail(secret, onboarding) {
     subject: "Your Backcountry Bayit manager invitation",
     ...emailLayout({
       category: "Manager access",
-      heading: onboarding ? "You’re invited to manage Backcountry Bayit" : "Your manager sign-in link",
+      heading: onboarding ? "You’re invited to manage Backcountry Bayit" : "Set up your manager password",
       paragraphs: [onboarding
         ? "You’ve been invited to help manage events and RSVPs for the Backcountry Bayit community. Complete your profile to activate your manager account."
-        : "Use the button below to sign in to your existing Backcountry Bayit manager account."],
+        : "Use the button below to set a password for your Backcountry Bayit manager account and sign in."],
       action: {
-        label: onboarding ? "Complete your manager profile" : "Sign in to the dashboard",
-        url: `${SITE}/${onboarding ? "manager/profile" : "login"}#invite=${secret}`,
+        label: onboarding ? "Complete your manager profile" : "Set your password",
+        url: `${SITE}/${onboarding ? "manager/profile" : "login?invitation=1"}#invite=${secret}`,
       },
       note: "This link works once and expires in 30 days. If you weren’t expecting it, you can ignore this email.",
     }),
