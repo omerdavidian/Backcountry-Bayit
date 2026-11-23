@@ -8,7 +8,6 @@ const {Resend} = require(require.resolve('resend', {paths: [require.resolve('../
 const handler = require('../api/manager-invitation');
 const listUsers = require('../api/list-users');
 const deleteUser = require('../api/delete-user');
-const resetPassword = require('../api/request-password-reset');
 
 let records, profiles, users, send, auth, db, clock;
 const digest = value => createHash('sha256').update(value).digest('hex');
@@ -270,9 +269,9 @@ test('a later invite to a deleted address uses a new account and requires onboar
 });
 
 test("sends a branded reset email to an eligible manager and throttles repeat requests", async () => {
-  const body = {email: " MANAGER@example.com "};
-  expect((await call(body, null, "POST", resetPassword)).statusCode).toBe(202);
-  expect((await call(body, null, "POST", resetPassword)).statusCode).toBe(202);
+  const body = {action: "requestPasswordReset", email: " MANAGER@example.com "};
+  expect((await call(body, null)).statusCode).toBe(202);
+  expect((await call(body, null)).statusCode).toBe(202);
   expect(auth.generatePasswordResetLink).toHaveBeenCalledTimes(1);
   expect(send).toHaveBeenCalledTimes(1);
   expect(send.mock.calls[0][0]).toMatchObject({
@@ -280,6 +279,6 @@ test("sends a branded reset email to an eligible manager and throttles repeat re
     subject: "Reset your Backcountry Bayit password",
     html: expect.stringContaining("/reset-password#oobCode=fixture"),
   });
-  expect((await call({email: "unknown@example.com"}, null, "POST", resetPassword)).body).toEqual({accepted: true});
+  expect((await call({action: "requestPasswordReset", email: "unknown@example.com"}, null)).body).toEqual({accepted: true});
   expect(send).toHaveBeenCalledTimes(1);
 });
