@@ -701,6 +701,39 @@ function Admin({managerView = false}) {
     return pendingRSVPs.length > 0 ? "warning" : "success";
   };
 
+  const renderEventActions = (event, canEdit) => (
+    <div className="dashboard-event-actions">
+      {canEdit && <>
+        <Button variant="outline-primary" size="sm" disabled={event.recurring}
+          title={event.recurring ? "Edit recurring events in Google Calendar" : "Edit event"}
+          aria-label="Edit event" onClick={() => handleEditEvent(event)}>
+          <FaEdit aria-hidden="true" />
+        </Button>
+        <Button variant="outline-danger" size="sm" disabled={event.recurring}
+          title={event.recurring ? "Cancel recurring events in Google Calendar" : "Delete event"}
+          aria-label="Delete event" onClick={() => handleDeleteEvent(event.id)}>
+          <FaTrash aria-hidden="true" />
+        </Button>
+      </>}
+      <Button variant={getRSVPButtonVariant(event.id)} size="sm" title="Manage RSVPs" onClick={() => {
+        const eventNameSlug = event.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+        navigate(`/admin/rsvps/${event.id}/${eventNameSlug}`, {state: {fromTab: "events", dashboardPath}});
+      }}>
+        RSVPs
+      </Button>
+      <Button variant="outline-secondary" size="sm" title="Download RSVPs as CSV"
+        aria-label="Download RSVPs as CSV" onClick={() => handleDownloadCSV(event)}>
+        <FaDownload aria-hidden="true" />
+      </Button>
+      <Button variant="outline-secondary" size="sm" title="Email guests" aria-label="Email Guests" onClick={() => {
+        setSelectedEventForEmail(event);
+        setShowEmailModal(true);
+      }}>
+        <FaEnvelope aria-hidden="true" />
+      </Button>
+    </div>
+  );
+
   return (
     <div className="admin-page min-vh-100">
       <Container fluid>
@@ -865,28 +898,22 @@ function Admin({managerView = false}) {
         {/* Events Tab */}
         {activeTab === "events" && (
           <>
-            <div className="mb-4 d-flex gap-2">
-              <Button
-                variant="primary"
-                onClick={() => {
-                  resetEventForm();
-                  setShowEventModal(true);
-                }}>
-                <FaPlus className="me-2" />
-                Add Event
-              </Button>
-              {/* Test email button removed to prevent sending non-production emails */}
-            </div>
-
             <Card className="border-0 shadow">
               <Card.Body className="p-4">
                 <div className="dashboard-section-head">
                   <h2>Upcoming Events ({upcomingEvents.length})</h2>
-                  <div className="dashboard-filters">
+                  <div className="dashboard-filters dashboard-event-tools">
                     <Form.Control type="search" aria-label="Search upcoming and past events" placeholder="Search title or location" value={eventSearch} onChange={e => {setEventSearch(e.target.value); setLimit(10);}} />
+                    <Button onClick={() => {
+                      resetEventForm();
+                      setShowEventModal(true);
+                    }}>
+                      <FaPlus className="me-2" aria-hidden="true" />
+                      Add Event
+                    </Button>
                   </div>
                 </div>
-                <Table responsive hover className="responsive-event-table">
+                <Table responsive hover className="responsive-event-table dashboard-events">
                   <thead className="bg-light">
                     <tr>
                       <th aria-sort={eventSortConfig.key === "title" ? (eventSortConfig.direction === "asc" ? "ascending" : "descending") : "none"}>
@@ -930,58 +957,24 @@ function Admin({managerView = false}) {
                           <td>
                             <strong>{event.title}</strong>
                           </td>
-                          <td>{formatEventDate(event.date)}</td>
-                          <td>{event.time}</td>
+                          <td className="dashboard-event-when">{formatEventDate(event.date)}</td>
+                          <td className="dashboard-event-when">{event.time}</td>
                           <td>{event.location}</td>
                           <td>
-                            {getTotalGuestsForEvent(event.id)} guests ({getRSVPsForEvent(event.id).length} RSVPs)
+                            <strong>{getTotalGuestsForEvent(event.id)} guests</strong>
+                            <small className="dashboard-rsvp-count">{getRSVPsForEvent(event.id).length} RSVPs</small>
                           </td>
                           <td>{event.capacity}</td>
-                          <td>
-                            <Button variant="outline-primary" size="sm" className="me-2" disabled={event.recurring} title={event.recurring ? "Edit recurring events in Google Calendar" : "Edit event"} onClick={() => handleEditEvent(event)}>
-                              <FaEdit />
-                            </Button>
-                            <Button variant="outline-danger" size="sm" className="me-2" disabled={event.recurring} title={event.recurring ? "Cancel recurring events in Google Calendar" : "Delete event"} onClick={() => handleDeleteEvent(event.id)}>
-                              <FaTrash />
-                            </Button>
-                            <Button
-                              variant={getRSVPButtonVariant(event.id)}
-                              size="sm"
-                              onClick={() => {
-                                const eventNameSlug = event.title
-                                  .toLowerCase()
-                                  .replace(/[^a-z0-9]+/g, "-")
-                                  .replace(/^-+|-+$/g, "");
-                                navigate(`/admin/rsvps/${event.id}/${eventNameSlug}`, {state: {fromTab: "events", dashboardPath}});
-                              }}
-                              title="Manage RSVPs">
-                              RSVPs
-                            </Button>
-                            <Button variant="outline-success" size="sm" className="ms-2" onClick={() => handleDownloadCSV(event)} title="Download RSVPs as CSV">
-                              <FaDownload />
-                            </Button>
-                            <Button
-                              variant="outline-secondary"
-                              size="sm"
-                              className="ms-2"
-                              onClick={() => {
-                                setSelectedEventForEmail(event);
-                                setShowEmailModal(true);
-                              }}
-                              title="Email Guests">
-                              <FaEnvelope />
-                            </Button>
-                          </td>
+                          <td>{renderEventActions(event, true)}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </Table>
 
-                {events.length === 0 && (
+                {upcomingEvents.length === 0 && (
                   <div className="text-center text-muted py-5">
-                    <FaCalendarAlt size={50} className="mb-3" />
-                    <p>No events yet. Click "Add Event" to create your first event.</p>
+                    <p className="mb-0">{eventSearch.trim() ? "No upcoming events match your search." : "No upcoming events scheduled."}</p>
                   </div>
                 )}
               </Card.Body>
@@ -998,7 +991,7 @@ function Admin({managerView = false}) {
                     if (box.scrollHeight - box.scrollTop - box.clientHeight < 48) setLimit(Math.min(limit + 10, pastEvents.length));
                   }}>
                   {pastEvents.length > 0 ? (
-                    <Table responsive hover className="responsive-event-table">
+                    <Table responsive hover className="responsive-event-table dashboard-events">
                       <thead className="bg-light">
                         <tr>
                           <th style={{width: "20%"}}>Title</th>
@@ -1016,50 +1009,15 @@ function Admin({managerView = false}) {
                             <td>
                               <strong>{event.title}</strong>
                             </td>
-                            <td>{formatEventDate(event.date)}</td>
-                            <td>{event.time}</td>
+                            <td className="dashboard-event-when">{formatEventDate(event.date)}</td>
+                            <td className="dashboard-event-when">{event.time}</td>
                             <td>{event.location}</td>
                             <td>
-                              {getTotalGuestsForEvent(event.id)} guests ({getRSVPsForEvent(event.id).length} RSVPs)
+                              <strong>{getTotalGuestsForEvent(event.id)} guests</strong>
+                            <small className="dashboard-rsvp-count">{getRSVPsForEvent(event.id).length} RSVPs</small>
                             </td>
                             <td>{event.capacity}</td>
-                            <td>
-                              {isAdmin && <>
-                              <Button variant="outline-primary" size="sm" className="me-2" disabled={event.recurring} title={event.recurring ? "Edit recurring events in Google Calendar" : "Edit event"} onClick={() => handleEditEvent(event)}>
-                                <FaEdit />
-                              </Button>
-                              <Button variant="outline-danger" size="sm" className="me-2" disabled={event.recurring} title={event.recurring ? "Cancel recurring events in Google Calendar" : "Delete event"} onClick={() => handleDeleteEvent(event.id)}>
-                                <FaTrash />
-                              </Button>
-                              </>}
-                              <Button
-                                variant={getRSVPButtonVariant(event.id)}
-                                size="sm"
-                                onClick={() => {
-                                  const eventNameSlug = event.title
-                                    .toLowerCase()
-                                    .replace(/[^a-z0-9]+/g, "-")
-                                    .replace(/^-+|-+$/g, "");
-                                  navigate(`/admin/rsvps/${event.id}/${eventNameSlug}`, {state: {fromTab: "events", dashboardPath}});
-                                }}
-                                title="Manage RSVPs">
-                                RSVPs
-                              </Button>
-                              <Button variant="outline-success" size="sm" className="ms-2" onClick={() => handleDownloadCSV(event)} title="Download RSVPs as CSV">
-                                <FaDownload />
-                              </Button>
-                              <Button
-                                variant="outline-secondary"
-                                size="sm"
-                                className="ms-2"
-                                onClick={() => {
-                                  setSelectedEventForEmail(event);
-                                  setShowEmailModal(true);
-                                }}
-                                title="Email Guests">
-                                <FaEnvelope />
-                              </Button>
-                            </td>
+                            <td>{renderEventActions(event, isAdmin)}</td>
                           </tr>
                         ))}
                       </tbody>

@@ -1,8 +1,8 @@
 .admin-page {
-  --dashboard-ink: #18383d;
-  --dashboard-muted: #52676a;
-  --dashboard-line: #dce8e7;
-  background: #f7f8f6;
+  --dashboard-ink: #17304b;
+  --dashboard-muted: #4b6075;
+  --dashboard-line: #dce5ee;
+  background: #f3f6f9;
   padding-block: clamp(1rem, 3vw, 2.75rem);
   color: var(--dashboard-ink);
 }
@@ -14,18 +14,11 @@
 }
 .admin-page-header h1 {font-size: clamp(1.6rem, 3vw, 2.25rem); margin-bottom: .35rem; letter-spacing: -.035em}
 .admin-page-header .text-muted {color: var(--dashboard-muted) !important; overflow-wrap: anywhere}
-.dashboard-stats {display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 215px), 1fr)); gap: .8rem; margin-bottom: 1.25rem}
-.dashboard-stat {
-  display: flex;
-  align-items: center;
-  gap: .85rem;
-  padding: 1rem;
-  background: #fff;
-  border: 1px solid var(--dashboard-line);
-  border-radius: .5rem;
-}
-.dashboard-stat > svg {width: 2.6rem; height: 2.6rem; padding: .65rem; border-radius: .45rem; color: #225953; background: #e5f2ee; flex: none}
-.dashboard-stat strong {display: block; font-size: 1.5rem; line-height: 1.15; font-variant-numeric: tabular-nums}
+.dashboard-stats {display: flex; flex-wrap: wrap; gap: .65rem 1.35rem; margin-bottom: 1.25rem; background: #e8eff6; padding: .8rem 1rem; border-radius: .55rem}
+.dashboard-stat {display: flex; align-items: center; gap: .6rem; padding: .2rem 0}
+.dashboard-stat > svg {width: 1rem; height: 1rem; color: #245780; flex: none}
+.dashboard-stat > div {display: flex; align-items: baseline; gap: .45rem}
+.dashboard-stat strong {font-size: 1.15rem; font-variant-numeric: tabular-nums}
 .dashboard-stat span {color: var(--dashboard-muted); font-size: .86rem}
 .dashboard-tabs {gap: .4rem; padding: .35rem; background: #e4eeec; border-radius: .8rem; width: max-content; max-width: 100%}
 .dashboard-tabs .nav-link {color: #254d4d; border-radius: .6rem}
@@ -69,17 +62,17 @@
 
 .dashboard-shell {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: 216px minmax(0, 1fr);
   align-items: start;
   gap: clamp(1rem, 3vw, 2.5rem);
 }
 .dashboard-sidebar {
-  position: sticky;
-  top: 6rem;
-  border-inline-end: 1px solid var(--dashboard-line);
-  padding-inline-end: 1rem;
+  background: #153754;
+  color: #fff;
+  border-radius: .65rem;
+  padding: .9rem .75rem;
   display: grid;
-  gap: 1rem;
+  gap: .75rem;
 }
 .dashboard-sidebar-title {
   display: flex;
@@ -89,7 +82,7 @@
   font-weight: 750;
   white-space: nowrap;
 }
-.dashboard-sidebar-title img {object-fit: contain}
+.dashboard-sidebar-title img {object-fit: contain; border-radius: 50%; background: #fff}
 .dashboard-menu {display: grid; gap: .2rem}
 .dashboard-menu-item {
   display: flex;
@@ -102,21 +95,21 @@
   border-inline-start: 3px solid transparent;
   border-radius: .25rem;
   background: transparent;
-  color: var(--dashboard-ink);
+  color: inherit;
   text-align: start;
   font-size: .9rem;
   white-space: nowrap;
 }
 .dashboard-menu-item svg {flex: none; width: 1em}
-.dashboard-menu-item:hover {background: #eaf0eb}
-.dashboard-menu-item[aria-current="page"] {background: #e3ece5; border-inline-start-color: #2e6858; font-weight: 700}
+.dashboard-menu-item:hover {background: #244a6a}
+.dashboard-menu-item[aria-current="page"] {background: #254e72; border-inline-start-color: #f5cd54; font-weight: 700}
 .dashboard-signout {
   margin-block-start: .55rem;
   padding-block-start: .7rem;
-  border-block-start: 1px solid var(--dashboard-line);
-  color: #953e44;
+  border-block-start: 1px solid #42617c;
+  color: #ffd0cc;
 }
-.dashboard-signout:hover {background: #f9eae8}
+.dashboard-signout:hover {background: #613d4c}
 .dashboard-content {min-width: 0}
 .dashboard-security {max-width: 38rem}
 .dashboard-role {
@@ -145,7 +138,7 @@
 .dashboard-menu-item:focus-visible, .dashboard-icon-action:focus-visible {outline: 2px solid #2164a3; outline-offset: 2px}
 @media (max-width: 900px) {
   .dashboard-shell {grid-template-columns: minmax(0, 1fr)}
-  .dashboard-sidebar {position: static; padding: 0 0 .65rem; border-inline-end: 0; border-bottom: 1px solid var(--dashboard-line); gap: .35rem}
+  .dashboard-sidebar {padding: .5rem; gap: .3rem}
   .dashboard-sidebar-title {display: none}
   .dashboard-menu {display: flex; flex-wrap: wrap; gap: .3rem}
   .dashboard-menu-item {width: auto}
@@ -154,4 +147,31 @@
   .manager-invite-form {flex-wrap: wrap}
   .manager-invite-form input {flex: 1 1 100%}
   .dashboard-menu-item {padding-inline: .4rem; gap: .35rem}
+}
+
+.dashboard-event-tools {align-items: stretch}
+.dashboard-event-tools > button {flex: 0 0 auto; white-space: nowrap}
+.admin-page .dashboard-events th {background: #edf2f7}
+.dashboard-events td.dashboard-event-when {white-space: nowrap; font-variant-numeric: tabular-nums}
+.dashboard-events td:first-child strong {color: #153754}
+.dashboard-rsvp-count {display: block; color: var(--dashboard-muted); white-space: nowrap}
+.dashboard-event-actions {display: flex; gap: .3rem; flex-wrap: wrap}
+.dashboard-event-actions .btn {min-width: 38px; min-height: 38px; display: inline-grid; place-items: center}
+.dashboard-event-actions .btn-success {background: #e4eef8; color: #194e79; border-color: #c9dced}
+.dashboard-event-actions .btn-success:hover {background: #cfe2f3; color: #123d60}
+.archive-toggle {font-size: 1.15rem; font-weight: 700; color: #153754; align-items: center; gap: 1rem}
+.archive-toggle > span {display: grid; place-items: center; width: 2rem; height: 2rem; background: #e8eff6; border-radius: .35rem}
+@media (max-width: 760px) {
+  .admin-page .table.dashboard-events {min-width: 0}
+  .dashboard-events thead tr:has([aria-sort]) {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: .65rem;
+  }
+  .admin-page .dashboard-events th[aria-sort] {padding: 0}
+  .dashboard-events .event-sort {min-height: 44px; width: 100%; justify-content: flex-start; padding-inline: .4rem}
+  .dashboard-event-actions .btn {min-width: 44px; min-height: 44px; margin-bottom: 0}
+}
+@media (max-width: 460px) {
+  .dashboard-event-tools > input {flex-basis: 100%}
 }
