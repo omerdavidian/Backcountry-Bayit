@@ -61,9 +61,13 @@ afterEach(() => clock.mockRestore());
 
 test('admin sends a hashed, expiring invitation; manager redeems it exactly once', async () => {
   expect((await call({uid: 'manager'})).statusCode).toBe(200);
+  expect(send.mock.calls[0][0]).toMatchObject({
+    from: 'Backcountry Bayit <info@bcbayit.org>', to: manager.email,
+    text: expect.stringContaining('expires in 30 days'), html: expect.stringContaining('expires in 30 days'),
+  });
   const secret = secretFromEmail();
   expect(secret).toMatch(/^[a-f0-9]{64}$/);
-  expect(records.get('manager')).toMatchObject({hash: digest(secret), status: 'Pending', expires: Date.now() + 86400000, lastSent: Date.now()});
+  expect(records.get('manager')).toMatchObject({hash: digest(secret), status: 'Pending', expires: Date.now() + 30 * 86400000, lastSent: Date.now()});
   expect((await call({invite: secret}, null)).body).toEqual({token: 'token-for-manager'});
   expect(records.get('manager')).toMatchObject({hash: null, status: 'Accepted'});
   expect((await call({invite: secret}, null)).statusCode).toBe(410);
@@ -99,7 +103,7 @@ test('resending is throttled and replaces the previous link after one minute', a
 test.each(['expired', 'email changed', 'disabled', 'role revoked'])('redemption rejects %s', async reason => {
   await call({uid: 'manager'});
   const secret = secretFromEmail();
-  if (reason === 'expired') clock.mockReturnValue(Date.now() + 86400000);
+  if (reason === 'expired') clock.mockReturnValue(Date.now() + 30 * 86400000);
   if (reason === 'email changed') users = [{...manager, email: 'changed@example.com'}];
   if (reason === 'disabled') users = [{...manager, disabled: true}];
   if (reason === 'role revoked') users = [{...manager, customClaims: {}}];

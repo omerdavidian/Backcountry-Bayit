@@ -41,7 +41,7 @@ function managerEmail(secret, onboarding) {
         label: onboarding ? "Complete your manager profile" : "Sign in to the dashboard",
         url: `${SITE}/${onboarding ? "manager/profile" : "login"}#invite=${secret}`,
       },
-      note: "This link works once and expires in 24 hours. If you weren’t expecting it, you can ignore this email.",
+      note: "This link works once and expires in 30 days. If you weren’t expecting it, you can ignore this email.",
     }),
   };
 }

@@ -5,7 +5,7 @@ const {requireAdmin, resolveRole} = require("./_auth");
 const {admin, initAdmin} = require("./firebase-admin");
 const digest = value => createHash("sha256").update(value).digest("hex");
 const reject = (status, message) => Object.assign(new Error(message), {status});
-const DAY = 86400000;
+const INVITATION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 const onboardingUid = email => "invite-" + digest(email.toLowerCase());
 const isOnboardingAccount = user => user.email && user.uid === onboardingUid(user.email);
@@ -107,28 +107,28 @@ module.exports = async (req, res) => {
       const previous = (await tx.get(ref)).data() || {};
       if (Date.now() - previous.attempt < 60000) throw reject(429, "Wait one minute before resending.");
       tx.set(ref, {
-        hash, email: user.email, onboarding, status: "Pending", expires: Date.now() + DAY,
+        hash, email: user.email, onboarding, status: "Pending", expires: Date.now() + INVITATION_TTL_MS,
         attempt: Date.now(), lastSent: previous.lastSent || null, displayName: previous.displayName || null,
       });
     });
-    let delivered = false;
+    let messageId = null;
     try {
       const result = await new Resend(process.env.RESEND_API_KEY).emails.send({
-        from: "Backcountry Bayit <noreply@bcbayit.org>",
+        from: "Backcountry Bayit <info@bcbayit.org>",
         to: user.email,
         replyTo: "info@bcbayit.org",
         ...managerEmail(secret, onboarding),
       });
-      delivered = Boolean(result.data?.id && !result.error);
+      if (!result.error) messageId = result.data?.id || null;
     } catch {
-      delivered = false;
+      messageId = null;
     } finally {
       await db.runTransaction(async tx => {
         const record = (await tx.get(ref)).data();
-        if (record?.hash === hash) tx.update(ref, delivered ? {lastSent:Date.now()} : {hash:null, status:"Failed"});
+        if (record?.hash === hash) tx.update(ref, messageId ? {lastSent: Date.now(), messageId} : {hash:null, status:"Failed"});
       });
     }
-    if (!delivered) throw reject(502, "Invitation delivery failed. Please try again.");
+    if (!messageId) throw reject(502, "Invitation delivery failed. Please try again.");
     return res.json({success:true});
   } catch (error) {
     return res.status(error.status || 500).json({error:error.status ? error.message : "Unable to process the invitation."});
