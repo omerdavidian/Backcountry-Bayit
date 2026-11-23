@@ -5,8 +5,9 @@ import {useNavigate, useLocation} from "react-router-dom";
 import {useAuth} from "../utils/AuthContext";
 import {collection, getDocs, deleteDoc, doc} from "firebase/firestore";
 import {db} from "../config/firebase";
-import {FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaSort, FaSortUp, FaSortDown, FaUserPlus, FaUsers, FaDownload, FaEnvelope} from "react-icons/fa";
+import {FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaSort, FaSortUp, FaSortDown, FaUserPlus, FaUsers, FaDownload, FaEnvelope, FaLock} from "react-icons/fa";
 import "./AdminDashboard.css";
+import DashboardPassword from "../components/DashboardPassword";
 import EventFormFields from "../components/EventFormFields";
 import EmailRSVPsModal from "../components/EmailRSVPsModal";
 import {authorizedFetch} from "../utils/apiClient";
@@ -481,10 +482,10 @@ function Admin({managerView = false}) {
     }
   };
 
-  const handleDeleteUser = async (userId, userEmail) => {
-    if (window.confirm(`Are you sure you want to delete user ${userEmail}?`)) {
+  const handleRemoveManager = async (userId, userEmail) => {
+    if (window.confirm(`Remove manager access for ${userEmail}? Their account and profile will be kept.`)) {
       try {
-        setAlert({show: true, message: "Deleting user...", type: "info"});
+        setAlert({show: true, message: "Removing manager access…", type: "info"});
 
         const response = await authorizedFetch("/api/delete-user", {
           method: "POST",
@@ -497,13 +498,14 @@ function Admin({managerView = false}) {
         const result = await response.json();
 
         if (response.ok) {
-          setAlert({show: true, message: "User deleted successfully!", type: "success"});
-          } else {
+          setAlert({show: true, message: "Manager access removed.", type: "success"});
+          await loadUsers();
+        } else {
           setAlert({show: true, message: `Error: ${result.error}`, type: "danger"});
         }
       } catch (error) {
-        console.error("Error deleting user:", error);
-        setAlert({show: true, message: `Error deleting user: ${error.message}`, type: "danger"});
+        console.error("Error removing manager access:", error);
+        setAlert({show: true, message: `Error removing manager access: ${error.message}`, type: "danger"});
       }
     }
   };
@@ -695,39 +697,10 @@ function Admin({managerView = false}) {
   return (
     <div className="admin-page bg-light min-vh-100 py-5">
       <Container fluid>
-        <div className="admin-page-header d-flex justify-content-between align-items-center mb-4">
-          <div>
-            <h1 className="fw-bold">{dashboardPath === "/manager" ? "Manager Dashboard" : "Admin Dashboard"}</h1>
-            <p className="text-muted mb-0">{fullName ? `Welcome, ${fullName}` : "Welcome back"}</p>
-          </div>
-          <div>
-            <Button variant="outline-danger" onClick={handleLogout}>
-              <FaSignOutAlt className="me-2" />
-              Logout
-            </Button>
-          </div>
-        </div>
-
-        {alert.show && (
-          <Alert variant={alert.type} onClose={() => setAlert({show: false, message: "", type: ""})} dismissible className="mb-4">
-            {alert.message}
-          </Alert>
-        )}
-
-        <section className="dashboard-stats" aria-label="Dashboard overview">
-          {[
-            [FaCalendarAlt, allUpcoming.length, "Upcoming events"],
-            [FaUsers, pendingRSVPs, "Upcoming RSVPs awaiting approval"],
-            ...(canManageUsers ? [[FaEnvelope, pendingInvites, "Pending invitations"]] : []),
-          ].map(([Icon, count, label]) => (
-            <div className="dashboard-stat" key={label}>
-              <Icon aria-hidden="true" />
-              <div><strong>{count}</strong><span>{label}</span></div>
-            </div>
-          ))}
-        </section>
-
-        <Nav variant="pills" className="dashboard-tabs mb-4" aria-label="Dashboard sections">
+        <div className="dashboard-shell">
+          <aside className="dashboard-sidebar">
+            <div className="dashboard-sidebar-title">Backcountry Bayit</div>
+        <Nav variant="pills" className="dashboard-menu flex-column" aria-label="Dashboard sections">
           <Nav.Item>
             <Nav.Link active={activeTab === "events"} onClick={() => setActiveTab("events")}>
               <FaCalendarAlt className="me-2" />
@@ -740,7 +713,45 @@ function Admin({managerView = false}) {
               Users
             </Nav.Link>
           </Nav.Item>}
+          <Nav.Item>
+            <Nav.Link active={activeTab === "account"} onClick={() => setActiveTab("account")}>
+              <FaLock className="me-2" aria-hidden="true" /> Account & security
+            </Nav.Link>
+          </Nav.Item>
         </Nav>
+            <Button className="dashboard-signout" variant="outline-secondary" onClick={handleLogout}>
+              <FaSignOutAlt className="me-2" aria-hidden="true" /> Log out
+            </Button>
+          </aside>
+          <div className="dashboard-content">
+        <div className="admin-page-header d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h1 className="fw-bold">{dashboardPath === "/manager" ? "Manager Dashboard" : "Admin Dashboard"}</h1>
+            <p className="text-muted mb-0">{fullName ? `Welcome, ${fullName}` : "Welcome back"}</p>
+          </div>
+        </div>
+
+        {alert.show && (
+          <Alert variant={alert.type} onClose={() => setAlert({show: false, message: "", type: ""})} dismissible className="mb-4">
+            {alert.message}
+          </Alert>
+        )}
+
+        {activeTab === "events" && <section className="dashboard-stats" aria-label="Dashboard overview">
+          {[
+            [FaCalendarAlt, allUpcoming.length, "Upcoming events"],
+            [FaUsers, pendingRSVPs, "Upcoming RSVPs awaiting approval"],
+            ...(canManageUsers ? [[FaEnvelope, pendingInvites, "Pending invitations"]] : []),
+          ].map(([Icon, count, label]) => (
+            <div className="dashboard-stat" key={label}>
+              <Icon aria-hidden="true" />
+              <div><strong>{count}</strong><span>{label}</span></div>
+            </div>
+          ))}
+        </section>}
+
+        {activeTab === "account" && <DashboardPassword user={currentUser} />}
+
         {/* Users Tab */}
         {canManageUsers && activeTab === "users" && (
           <>
@@ -802,11 +813,11 @@ function Admin({managerView = false}) {
                           <span className="invitation-status" data-status={user.invitationStatus}>{user.invitationStatus}</span>
                           {user.lastSent && <small className="d-block text-muted">Sent {formatUserDate(user.lastSent)}</small>}
                           {isAdmin && <Button size="sm" variant="outline-primary" className="mt-1" disabled={sending[user.uid]} onClick={() => resendInvitation(user.uid)}>{sending[user.uid] ? "Sending…" : "Resend Invitation"}</Button>}
-                        </div> : <span className="text-muted">—</span>}</td>
+                        </div> : <span className="text-muted">{user.role === "manager" ? "Active manager" : "—"}</span>}</td>
                         <td>
-                          <Button variant="outline-danger" size="sm" onClick={() => handleDeleteUser(user.uid, user.email)} disabled={user.email === currentUser.email} aria-label={`Delete ${user.displayName || user.email}`} title={user.email === currentUser.email ? "Cannot delete your own account" : "Delete user"}>
-                            <FaTrash />
-                          </Button>
+                          {user.role === "manager" && <Button variant="outline-danger" size="sm" onClick={() => handleRemoveManager(user.uid, user.email)} disabled={user.email === currentUser.email} aria-label={`Remove manager access for ${user.displayName || user.email}`}>
+                            Remove access
+                          </Button>}
                         </td>
                       </tr>
                     ))}
@@ -825,7 +836,7 @@ function Admin({managerView = false}) {
         )}
 
         {/* Events Tab */}
-        {(!canManageUsers || activeTab === "events") && (
+        {activeTab === "events" && (
           <>
             <div className="mb-4 d-flex gap-2">
               <Button
@@ -1036,6 +1047,8 @@ function Admin({managerView = false}) {
             </div>
           </>
         )}
+          </div>
+        </div>
       </Container>
 
       {/* Event Modal */}

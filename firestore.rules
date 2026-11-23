@@ -2,6 +2,18 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function userRecord() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function hasManagerAccess() {
+      let profile = userRecord();
+      return request.auth.token.get('admin', false) == true ||
+        (exists(profile) && get(profile).data.get('role', '') in ['manager', 'admin']) ||
+        (request.auth.token.get('isManager', false) == true &&
+          (!exists(profile) || get(profile).data.get('managerRevokedAt', null) == null));
+    }
+
     // Public event reads remain available. Managers write through the API,
     // which checks the stored event date in Mountain Time.
     match /events/{eventId} {
@@ -14,16 +26,15 @@ service cloud.firestore {
     // No public access to guest records. The RSVP API owns all writes
     // involving capacity or guest ownership.
     match /rsvps/{rsvpId} {
-      allow read, delete: if request.auth != null &&
-        (request.auth.token.get('admin', false) == true ||
-         request.auth.token.get('isManager', false) == true ||
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'manager']);
+      allow read, delete: if request.auth != null && hasManagerAccess();
     }
 
     // Users: only admins can read/write
     match /users/{userId} {
-      allow read, write: if request.auth != null &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow read: if request.auth != null &&
+        (request.auth.uid == userId || request.auth.token.get('admin', false) == true ||
+         get(userRecord()).data.role == 'admin');
+      allow write: if request.auth != null && get(userRecord()).data.role == 'admin';
     }
   }
 }

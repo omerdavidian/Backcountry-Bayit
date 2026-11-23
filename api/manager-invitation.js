@@ -46,7 +46,7 @@ async function createInvitee(value) {
   } catch (error) {
     if (!["auth/email-already-exists", "auth/uid-already-exists"].includes(error.code)) throw error;
     const existing = await admin.auth().getUserByEmail(email);
-    if (existing.uid !== uid) throw reject(409, "An account with this email already exists. Use its invitation control if it is a manager.");
+    if (existing.uid !== uid) throw reject(409, "An account with this email already exists.");
   }
   return manager(uid);
 }
@@ -55,7 +55,7 @@ module.exports = async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") return res.status(405).end();
   try {
-    const {uid, invite, email, profile, checkProfile} = req.body || {};
+    const {uid, invite, email, profile, password, checkProfile} = req.body || {};
     if (invite !== undefined) {
       if (typeof invite !== "string" || !/^[a-f0-9]{64}$/.test(invite)) throw reject(400, "Invalid invitation.");
       initAdmin();
@@ -73,38 +73,62 @@ module.exports = async (req, res) => {
         if (!onboarding || !validRecord(record)) throw invalid();
         return res.json({profileRequired: true});
       }
+      const needsPassword = onboarding || !user.providerData?.some(provider => provider.providerId === "password");
+      if (needsPassword && password === undefined && !onboarding) {
+        if (!validRecord((await ref.get()).data())) throw invalid();
+        return res.json({passwordRequired: true});
+      }
       const fields = onboarding ? validateProfile(profile) : null;
+      if (needsPassword && (typeof password !== "string" || password.length < 12 || password.length > 128)) {
+        throw reject(400, "Choose a password with 12 to 128 characters.");
+      }
+
       const auth = admin.auth();
-      const token = isOnboardingAccount(user)
-        ? await auth.createCustomToken(user.uid, {isManager: true})
-        : await auth.createCustomToken(user.uid);
+      const operation = randomBytes(16).toString("hex");
       await db.runTransaction(async tx => {
         const record = (await tx.get(ref)).data();
         if (!validRecord(record)) throw invalid();
-        if (fields) {
-          tx.set(db.collection("users").doc(user.uid), {
-            ...fields, email: user.email, uid: user.uid, role: "manager", createdAt: new Date(),
-          });
-        }
-        tx.update(ref, {status: "Accepted", hash: null, ...(fields && {displayName: fields.displayName})});
+        if (record.setupUntil > Date.now()) throw reject(409, "Setup is already in progress. Please try again shortly.");
+        tx.update(ref, {setupOperation: operation, setupUntil: Date.now() + 300000});
       });
-      if (fields) {
-        try {
-          await auth.updateUser(user.uid, {displayName: fields.displayName});
-        } catch (error) {
-          console.error("Could not update manager account display name:", error.code);
+      try {
+        if (needsPassword) {
+          await auth.updateUser(user.uid, {password, emailVerified: true, ...(fields && {displayName: fields.displayName})});
         }
+        const token = isOnboardingAccount(user)
+          ? await auth.createCustomToken(user.uid, {isManager: true})
+          : await auth.createCustomToken(user.uid);
+        await db.runTransaction(async tx => {
+          const record = (await tx.get(ref)).data();
+          if (!validRecord(record) || record.setupOperation !== operation) throw invalid();
+          if (fields) {
+            tx.set(db.collection("users").doc(user.uid), {
+              ...fields, email: user.email, uid: user.uid, role: "manager", createdAt: new Date(),
+            }, {merge: true});
+          }
+          tx.update(ref, {status: "Accepted", hash: null, setupUntil: null, setupOperation: null,
+            ...(fields && {displayName: fields.displayName})});
+        });
+        return res.json({token});
+      } catch (error) {
+        await db.runTransaction(async tx => {
+          const record = (await tx.get(ref)).data();
+          if (record?.setupOperation === operation) tx.update(ref, {setupUntil: null, setupOperation: null});
+        });
+        if (error.code === "auth/invalid-password") throw reject(400, "Firebase rejected this password. Choose a stronger password and try again.");
+        throw error;
       }
-      return res.json({token});
     }
     await requireAdmin(req);
     const {user, onboarding} = email === undefined ? await manager(uid) : await createInvitee(email);
+    if (!onboarding) throw reject(409, "This person already has manager access. They can sign in with their password or reset it.");
     const db = admin.firestore();
     const ref = db.collection("managerInvitations").doc(user.uid);
     const secret = randomBytes(32).toString("hex");
     const hash = digest(secret);
     await db.runTransaction(async tx => {
       const previous = (await tx.get(ref)).data() || {};
+      if (previous.setupUntil > Date.now() || previous.status === "Accepted") throw reject(409, "This invitation is already being completed or was accepted.");
       if (Date.now() - previous.attempt < 60000) throw reject(429, "Wait one minute before resending.");
       tx.set(ref, {
         hash, email: user.email, onboarding, status: "Pending", expires: Date.now() + INVITATION_TTL_MS,

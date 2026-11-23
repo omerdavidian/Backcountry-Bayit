@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import { FaLock, FaUser } from 'react-icons/fa';
 
-import {signInWithCustomToken} from "firebase/auth";
+import {signInWithCustomToken, sendPasswordResetEmail} from "firebase/auth";
 import {auth} from "../config/firebase";
 
 function Login() {
@@ -15,6 +15,8 @@ function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [needsPassword, setNeedsPassword] = useState(false);
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const { login, currentUser, userRole, isAdmin } = useAuth();
   const navigate = useNavigate();
@@ -75,17 +77,46 @@ function Login() {
                   </Alert>
                 )}
 
-                {invite && <Button disabled={loading} className="w-100 mb-3" onClick={async () => {
+                {notice && <Alert variant="info">{notice}</Alert>}
+                {invite && <Form onSubmit={async event => {
+                  event.preventDefault();
+                  const {newPassword, confirmPassword} = Object.fromEntries(new FormData(event.currentTarget));
+                  if (needsPassword && newPassword !== confirmPassword) {
+                    setError("The passwords don’t match.");
+                    return;
+                  }
                   setLoading(true);
+                  setError("");
                   try {
-                    const response = await fetch("/api/manager-invitation", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({invite})});
+                    const response = await fetch("/api/manager-invitation", {
+                      method: "POST", headers: {"Content-Type": "application/json"},
+                      body: JSON.stringify({invite, password: newPassword}),
+                    });
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.error);
+                    if (data.passwordRequired) {
+                      setNeedsPassword(true);
+                      return;
+                    }
                     await signInWithCustomToken(auth, data.token);
-                    navigate("/manager", {replace:true});
-                  } catch (err) {setError(err.message);}
-                  finally {setLoading(false);}
-                }}>Accept invitation and sign in</Button>}
+                    navigate("/manager", {replace: true});
+                  } catch (failure) {
+                    setError(failure.message);
+                  } finally {
+                    setLoading(false);
+                  }
+                }}>
+                  {needsPassword && ["newPassword", "confirmPassword"].map((name, index) => (
+                    <Form.Group key={name} controlId={"invite-" + name} className="mb-3">
+                      <Form.Label>{index ? "Confirm password" : "Create a password"}</Form.Label>
+                      <Form.Control name={name} type="password" autoComplete="new-password" required minLength={12} maxLength={128} />
+                      {!index && <Form.Text>Use at least 12 characters.</Form.Text>}
+                    </Form.Group>
+                  ))}
+                  <Button type="submit" disabled={loading} className="w-100 mb-3">
+                    {needsPassword ? "Save password and sign in" : "Accept invitation and sign in"}
+                  </Button>
+                </Form>}
                 <Form onSubmit={handleSubmit}>
                   <Form.Group controlId="login-email" className="mb-3">
                     <Form.Label>
@@ -127,6 +158,25 @@ function Login() {
                     {loading ? 'Logging in...' : 'Login'}
                   </Button>
                 </Form>
+                <Button type="button" variant="link" className="px-0 mt-2" disabled={loading} onClick={async () => {
+                  if (!email.trim()) {
+                    setError("Enter your email address to request a password reset.");
+                    return;
+                  }
+                  setLoading(true);
+                  setError("");
+                  try {
+                    await sendPasswordResetEmail(auth, email.trim());
+                    setNotice("If there’s an account for this address, check your email for a reset link.");
+                  } catch (failure) {
+                    if (failure.code === "auth/user-not-found") {
+                      setNotice("If there’s an account for this address, check your email for a reset link.");
+                    } else setError("Couldn’t request a reset. Check your email address and try again.");
+                  } finally {
+                    setLoading(false);
+                  }
+                }}>Forgot password?</Button>
+
 
                 <div className="text-center mt-4">
                   <p className="text-muted mb-0">

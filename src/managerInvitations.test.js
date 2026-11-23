@@ -10,7 +10,7 @@ const listUsers = require('../api/list-users');
 
 let records, profiles, users, send, auth, db, clock;
 const digest = value => createHash('sha256').update(value).digest('hex');
-const manager = {uid: 'manager', email: 'manager@example.com', customClaims: {isManager: true}, metadata: {creationTime: '2020-01-01'}};
+const manager = {uid: 'manager', email: 'manager@example.com', customClaims: {isManager: true}, providerData: [{providerId: 'password'}], metadata: {creationTime: '2020-01-01'}};
 const call = async (body, role = 'admin', method = 'POST', route = handler) => {
   const req = {method, body, headers: role ? {authorization: `Bearer ${role}`} : {}};
   const res = {statusCode: 200, setHeader: jest.fn(), status(code) {this.statusCode = code; return this;}, json(data) {this.body = data; return this;}, end() {return this;}};
@@ -59,18 +59,28 @@ beforeEach(() => {
 });
 afterEach(() => clock.mockRestore());
 
-test('admin sends a hashed, expiring invitation; manager redeems it exactly once', async () => {
-  expect((await call({uid: 'manager'})).statusCode).toBe(200);
-  expect(send.mock.calls[0][0]).toMatchObject({
-    from: 'Backcountry Bayit <info@bcbayit.org>', to: manager.email,
-    text: expect.stringContaining('expires in 30 days'), html: expect.stringContaining('expires in 30 days'),
-  });
-  const secret = secretFromEmail();
-  expect(secret).toMatch(/^[a-f0-9]{64}$/);
-  expect(records.get('manager')).toMatchObject({hash: digest(secret), status: 'Pending', expires: Date.now() + 30 * 86400000, lastSent: Date.now()});
+const seedLegacyInvite = () => {
+  const secret = "a".repeat(64);
+  records.set("manager", {hash: digest(secret), status: "Pending", email: manager.email, expires: Date.now() + 30 * 86400000});
+  return secret;
+};
+
+test('active managers cannot receive new links, but existing links remain single-use', async () => {
+  expect((await call({uid: 'manager'})).statusCode).toBe(409);
+  expect(send).not.toHaveBeenCalled();
+  const secret = seedLegacyInvite();
   expect((await call({invite: secret}, null)).body).toEqual({token: 'token-for-manager'});
   expect(records.get('manager')).toMatchObject({hash: null, status: 'Accepted'});
   expect((await call({invite: secret}, null)).statusCode).toBe(410);
+});
+
+test('a passwordless manager following an outstanding link must set a password', async () => {
+  users = [{...manager, providerData: []}];
+  const invite = seedLegacyInvite();
+  expect((await call({invite}, null)).body).toEqual({passwordRequired: true});
+  expect((await call({invite, password: "short"}, null)).statusCode).toBe(400);
+  expect((await call({invite, password: "a valid test password"}, null)).statusCode).toBe(200);
+  expect(auth.updateUser).toHaveBeenCalledWith("manager", {password: "a valid test password", emailVerified: true});
 });
 
 test.each([[null, 401], ['manager', 403], ['user', 403]])('caller %s cannot send invitations', async (role, status) => {
@@ -85,24 +95,24 @@ test.each([{disabled: true}, {customClaims: {admin: true}}, {customClaims: {}}, 
   expect(send).not.toHaveBeenCalled();
 });
 
-test('Firestore role fallback is eligible', async () => {
+test('Firestore role fallback cannot be reinvited', async () => {
   users = [{...manager, uid: 'fallback', customClaims: {}}];
-  expect((await call({uid: 'fallback'})).statusCode).toBe(200);
+  expect((await call({uid: 'fallback'})).statusCode).toBe(409);
 });
 
-test('resending is throttled and replaces the previous link after one minute', async () => {
-  await call({uid: 'manager'});
+test('resending a pending invitation is throttled and invalidates the previous link', async () => {
+  await call({email: 'pending@example.com'});
   const oldSecret = secretFromEmail();
-  expect((await call({uid: 'manager'})).statusCode).toBe(429);
+  const uid = users[1].uid;
+  expect((await call({uid})).statusCode).toBe(429);
   clock.mockReturnValue(Date.now() + 60000);
-  expect((await call({uid: 'manager'})).statusCode).toBe(200);
-  expect((await call({invite: oldSecret}, null)).statusCode).toBe(410);
-  expect((await call({invite: secretFromEmail()}, null)).statusCode).toBe(200);
+  expect((await call({uid})).statusCode).toBe(200);
+  expect((await call({invite: oldSecret, checkProfile: true}, null)).statusCode).toBe(410);
+  expect((await call({invite: secretFromEmail(), checkProfile: true}, null)).body).toEqual({profileRequired: true});
 });
 
 test.each(['expired', 'email changed', 'disabled', 'role revoked'])('redemption rejects %s', async reason => {
-  await call({uid: 'manager'});
-  const secret = secretFromEmail();
+  const secret = seedLegacyInvite();
   if (reason === 'expired') clock.mockReturnValue(Date.now() + 30 * 86400000);
   if (reason === 'email changed') users = [{...manager, email: 'changed@example.com'}];
   if (reason === 'disabled') users = [{...manager, disabled: true}];
@@ -114,8 +124,8 @@ test.each(['expired', 'email changed', 'disabled', 'role revoked'])('redemption 
 
 test('email delivery failure invalidates the link', async () => {
   send.mockResolvedValue({error: {message: 'delivery failed'}});
-  expect((await call({uid: 'manager'})).statusCode).toBe(502);
-  expect(records.get('manager')).toMatchObject({hash: null, status: 'Failed', lastSent: null});
+  expect((await call({email: 'pending@example.com'})).statusCode).toBe(502);
+  expect(records.get(users[1].uid)).toMatchObject({hash: null, status: 'Failed', lastSent: null});
 });
 
 test('invalid requests and methods are rejected', async () => {
@@ -132,9 +142,9 @@ test('list-users reports invitation statuses and manager eligibility', async () 
   const res = await call({}, 'admin', 'GET', listUsers);
   expect(res.statusCode).toBe(200);
   expect(res.body.users).toEqual(expect.arrayContaining([
-    expect.objectContaining({uid: 'manager', managerEligible: true, invitationStatus: 'Expired', lastSent: 123}),
+    expect.objectContaining({uid: 'manager', managerEligible: false, invitationStatus: 'Expired', lastSent: 123}),
     expect.objectContaining({uid: 'disabled', managerEligible: false, invitationStatus: 'Accepted'}),
-    expect.objectContaining({uid: 'fallback', managerEligible: true, invitationStatus: 'Never sent'})
+    expect.objectContaining({uid: 'fallback', managerEligible: false, invitationStatus: 'Never sent'})
   ]));
 });
 
@@ -145,6 +155,8 @@ test('email-only invitation requires and stores a profile before granting manage
   const secret = secretFromEmail();
   const newUser = users[1];
   expect((await call({invite: secret, checkProfile: true}, null)).body).toEqual({profileRequired: true});
+  expect(send.mock.calls[0][0]).toMatchObject({from: 'Backcountry Bayit <info@bcbayit.org>', text: expect.stringContaining('expires in 30 days')});
+  expect(records.get(newUser.uid).expires).toBe(Date.now() + 30 * 86400000);
   expect(newUser.customClaims).toBeUndefined();
   expect(profiles.size).toBe(0);
   const profile = {firstName: ' Al ', lastName: 'Smith', phone: '970-555-0134', birthday: '1990-02-28'};
@@ -154,13 +166,38 @@ test('email-only invitation requires and stores a profile before granting manage
   expect((await call({invite: secret, profile: {...profile, birthday: '1990-02-30'}}, null)).statusCode).toBe(400);
   expect(auth.createCustomToken).not.toHaveBeenCalled();
   expect(records.get(newUser.uid).status).toBe('Pending');
-  expect((await call({invite: secret, profile}, null)).statusCode).toBe(200);
+  expect((await call({invite: secret, profile}, null)).statusCode).toBe(400);
+  expect((await call({invite: secret, profile, password: 'fixture password only'}, null)).statusCode).toBe(200);
   expect(auth.createCustomToken).toHaveBeenCalledWith(newUser.uid, {isManager: true});
-  expect(auth.updateUser).toHaveBeenCalledWith(newUser.uid, {displayName: 'Al Smith'});
+  expect(auth.updateUser).toHaveBeenCalledWith(newUser.uid, {displayName: 'Al Smith', password: 'fixture password only', emailVerified: true});
   expect(profiles.get(newUser.uid)).toMatchObject({...profile, firstName: 'Al', role: 'manager'});
   expect((await call({invite: secret, profile}, null)).statusCode).toBe(410);
   expect((await call({invite: secret, checkProfile: true}, null)).statusCode).toBe(410);
   clock.mockReturnValue(Date.now() + 60000);
-  expect((await call({uid: newUser.uid})).statusCode).toBe(200);
-  expect(send.mock.calls[1][0].html).toContain('Sign in to the dashboard');
+  expect((await call({uid: newUser.uid})).statusCode).toBe(409);
+  expect(send).toHaveBeenCalledTimes(1);
+});
+
+test('removing manager access keeps the account and blocks an old manager claim', async () => {
+  const remove = require('../api/delete-user');
+  profiles.set('manager', {role: 'manager', displayName: 'Jordan Test'});
+  seedLegacyInvite();
+  const writes = [];
+  db.batch = () => ({
+    set: (target, value) => writes.push([target, value]),
+    commit: async () => writes.forEach(([target, value]) => {
+      const store = target.profile ? profiles : records;
+      store.set(target.id, {...store.get(target.id), ...value});
+    }),
+  });
+  auth.setCustomUserClaims = jest.fn().mockResolvedValue();
+  auth.revokeRefreshTokens = jest.fn().mockResolvedValue();
+  auth.deleteUser = jest.fn();
+  expect((await call({userId: 'manager'}, 'admin', 'POST', remove)).statusCode).toBe(200);
+  expect(profiles.get('manager')).toMatchObject({role: 'user', displayName: 'Jordan Test'});
+  expect(records.get('manager')).toMatchObject({status: 'Revoked', hash: null});
+  expect(auth.deleteUser).not.toHaveBeenCalled();
+  const {resolveRole}=require('../api/_auth');
+  expect(await resolveRole(admin, {uid: 'manager', isManager: true})).toBe('user');
+  expect(auth.setCustomUserClaims).toHaveBeenCalledWith('manager', {});
 });
