@@ -11,7 +11,7 @@ function submitInvitation() {
   fireEvent.change(screen.getByLabelText('Confirm password'), {target: {value: password}});
   fireEvent.click(screen.getByRole('button', {name: 'Save password and sign in'}));
 }
-jest.mock('react-router-dom', () => ({useNavigate: () => mockNavigate}), {virtual: true});
+jest.mock('react-router-dom', () => ({useNavigate: () => mockNavigate, useLocation: () => ({})}), {virtual: true});
 jest.mock('../utils/AuthContext', () => ({useAuth: () => ({login: jest.fn(), currentUser: null, userRole: null})}));
 jest.mock('../config/firebase', () => ({auth: {}}));
 jest.mock('firebase/auth', () => ({signInWithCustomToken: jest.fn()}));

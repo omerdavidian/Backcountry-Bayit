@@ -14,6 +14,7 @@ const About = lazy(() => import('./pages/About'));
 const Events = lazy(() => import('./pages/Events'));
 const Donate = lazy(() => import('./pages/Donate'));
 const Contact = lazy(() => import('./pages/Contact'));
+const PasswordReset = lazy(() => import('./pages/PasswordReset'));
 const Login = lazy(() => import('./pages/Login'));
 const Admin = lazy(() => import('./pages/Admin'));
 const ManagerProfile = lazy(() => import('./pages/ManagerProfile'));
@@ -70,6 +71,7 @@ function App() {
                   <Route path="/donate" element={<Donate />} />
                   <Route path="/contact" element={<Contact />} />
                   <Route path="/login" element={<Login />} />
+                  <Route path="/reset-password" element={<PasswordReset />} />
                   <Route path="/admin" element={<Admin />} />
                   <Route path="/manager" element={<Manager />} />
                   <Route path="/manager/profile" element={<ManagerProfile />} />

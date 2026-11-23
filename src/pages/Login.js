@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import { FaLock, FaUser } from 'react-icons/fa';
 
-import {signInWithCustomToken, sendPasswordResetEmail} from "firebase/auth";
+import {signInWithCustomToken} from "firebase/auth";
 import {auth} from "../config/firebase";
+import {requestPasswordReset} from "../utils/passwordReset";
 
 function Login() {
   const [invite, setInvite] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get("invite"));
@@ -13,7 +14,8 @@ function Login() {
   React.useEffect(() => {
     if (invite) window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
   }, [invite]);
-  const [email, setEmail] = useState('');
+  const {state} = useLocation();
+  const [email, setEmail] = useState(state?.email || '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState("");
@@ -78,6 +80,7 @@ function Login() {
                 )}
 
                 {missingInvite && <Alert variant="warning">This invitation link is incomplete. Open the original link in your email or ask an administrator for a new one.</Alert>}
+                {state?.passwordChanged && <Alert variant="success">Password changed. Sign in with your new password.</Alert>}
                 {notice && <Alert variant="info">{notice}</Alert>}
                 {invite && <Form onSubmit={async event => {
                   event.preventDefault();
@@ -122,6 +125,7 @@ function Login() {
                     </Form.Label>
                     <Form.Control
                       type="email"
+                      name="username" autoComplete="username"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -137,6 +141,7 @@ function Login() {
                     </Form.Label>
                     <Form.Control
                       type="password"
+                      name="password" autoComplete="current-password"
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -163,12 +168,10 @@ function Login() {
                   setLoading(true);
                   setError("");
                   try {
-                    await sendPasswordResetEmail(auth, email.trim());
+                    await requestPasswordReset(email.trim());
                     setNotice("If there’s an account for this address, check your email for a reset link.");
                   } catch (failure) {
-                    if (failure.code === "auth/user-not-found") {
-                      setNotice("If there’s an account for this address, check your email for a reset link.");
-                    } else setError("Couldn’t request a reset. Check your email address and try again.");
+                    setError(failure.message);
                   } finally {
                     setLoading(false);
                   }

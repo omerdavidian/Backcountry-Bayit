@@ -8,6 +8,7 @@ const {Resend} = require(require.resolve('resend', {paths: [require.resolve('../
 const handler = require('../api/manager-invitation');
 const listUsers = require('../api/list-users');
 const deleteUser = require('../api/delete-user');
+const resetPassword = require('../api/request-password-reset');
 
 let records, profiles, users, send, auth, db, clock;
 const digest = value => createHash('sha256').update(value).digest('hex');
@@ -51,6 +52,7 @@ beforeEach(() => {
       return data;
     }),
     getUserByEmail: async email => users.find(user => user.email === email),
+    generatePasswordResetLink: jest.fn(async () => "https://example.firebaseapp.com/__/auth/action?oobCode=fixture"),
     getUser: jest.fn(async uid => users.find(u => u.uid === uid)),
     updateUser: jest.fn(async () => {}),
     deleteUser: jest.fn(async uid => {users = users.filter(user => user.uid !== uid);}),
@@ -265,4 +267,19 @@ test('a later invite to a deleted address uses a new account and requires onboar
   expect(newUid).not.toBe(oldUid);
   expect((await call({invite: secretFromEmail(), checkProfile: true}, null)).body).toEqual({profileRequired: true});
   expect(profiles.get(oldUid)).toEqual({managerRevokedAt: 123});
+});
+
+test("sends a branded reset email to an eligible manager and throttles repeat requests", async () => {
+  const body = {email: " MANAGER@example.com "};
+  expect((await call(body, null, "POST", resetPassword)).statusCode).toBe(202);
+  expect((await call(body, null, "POST", resetPassword)).statusCode).toBe(202);
+  expect(auth.generatePasswordResetLink).toHaveBeenCalledTimes(1);
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(send.mock.calls[0][0]).toMatchObject({
+    to: manager.email,
+    subject: "Reset your Backcountry Bayit password",
+    html: expect.stringContaining("/reset-password#oobCode=fixture"),
+  });
+  expect((await call({email: "unknown@example.com"}, null, "POST", resetPassword)).body).toEqual({accepted: true});
+  expect(send).toHaveBeenCalledTimes(1);
 });

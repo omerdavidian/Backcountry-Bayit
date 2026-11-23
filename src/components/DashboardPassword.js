@@ -1,10 +1,13 @@
 import React, {useState} from "react";
 import {Alert, Button, Card, Form} from "react-bootstrap";
-import {EmailAuthProvider, reauthenticateWithCredential, sendPasswordResetEmail, updatePassword} from "firebase/auth";
+import {EmailAuthProvider, reauthenticateWithCredential, signOut, updatePassword} from "firebase/auth";
 import {auth} from "../config/firebase";
+import {useNavigate} from "react-router-dom";
+import {requestPasswordReset} from "../utils/passwordReset";
 
 export default function DashboardPassword({user}) {
-  const [hasPassword, setHasPassword] = useState(() => Boolean(user.providerData?.some(p => p.providerId === "password")));
+  const navigate = useNavigate();
+  const hasPassword = Boolean(user.providerData?.some(provider => provider.providerId === "password"));
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
@@ -22,9 +25,6 @@ export default function DashboardPassword({user}) {
     try {
       if (hasPassword) await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, currentPassword));
       await updatePassword(user, password);
-      form.reset();
-      setHasPassword(true);
-      setFeedback({type: "success", text: "Password saved. Use it the next time you sign in."});
     } catch (error) {
       const text = error.code === "auth/requires-recent-login"
         ? "Your sign-in is too old to save a password. Use the password reset link below."
@@ -32,7 +32,14 @@ export default function DashboardPassword({user}) {
           ? "Your current password is incorrect."
           : "We couldn’t save your password. Check the requirements and try again.";
       setFeedback({type: "danger", text});
-    } finally {
+      setBusy(false);
+      return;
+    }
+    try {
+      await signOut(auth);
+      navigate("/login", {replace: true, state: {email: user.email, passwordChanged: true}});
+    } catch {
+      setFeedback({type: "info", text: "Password saved. Log out to sign in with your new password."});
       setBusy(false);
     }
   }
@@ -41,8 +48,8 @@ export default function DashboardPassword({user}) {
     if (busy) return;
     setBusy(true);
     try {
-      await sendPasswordResetEmail(auth, user.email);
-      setFeedback({type: "info", text: "Check your email for a password reset link."});
+      await requestPasswordReset(user.email);
+      setFeedback({type: "info", text: "If a reset is available for this account, check your email for a link."});
     } catch {
       setFeedback({type: "danger", text: "We couldn’t send the reset email. Try again shortly."});
     } finally {
@@ -53,9 +60,9 @@ export default function DashboardPassword({user}) {
   return <Card className="border-0 dashboard-security">
     <Card.Body className="p-4">
       <h2 className="h4">{hasPassword ? "Change password" : "Set a password"}</h2>
-      <p className="text-muted">{user.email}</p>
       {feedback && <Alert variant={feedback.type}>{feedback.text}</Alert>}
       <Form onSubmit={save}>
+        <Form.Control name="username" type="email" autoComplete="username" value={user.email} aria-label="Email address" readOnly className="mb-3" />
         {hasPassword && <Form.Group controlId="dashboard-current-password" className="mb-3">
           <Form.Label>Current password</Form.Label>
           <Form.Control name="currentPassword" type="password" autoComplete="current-password" required />
