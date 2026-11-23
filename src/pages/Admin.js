@@ -484,31 +484,33 @@ function Admin({managerView = false}) {
     }
   };
 
-  const handleRemoveManager = async (userId, userEmail) => {
-    if (window.confirm(`Remove manager access for ${userEmail}? Their account and profile will be kept.`)) {
+  const handleUserRemoval = async (userId, userEmail, permanent = false) => {
+    const confirmation = permanent
+      ? `Permanently delete ${userEmail}? Their sign-in, profile, and any invitation will be removed. This cannot be undone.`
+      : `Remove manager access for ${userEmail}? Their account and profile will be kept.`;
+    if (window.confirm(confirmation)) {
       setSending(previous => ({...previous, [userId]: true}));
       try {
-        setAlert({show: true, message: "Removing manager access…", type: "info"});
+        setAlert({show: true, message: permanent ? "Deleting user…" : "Removing manager access…", type: "info"});
 
         const response = await authorizedFetch("/api/delete-user", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({userId}),
+          body: JSON.stringify(permanent ? {userId, permanent: true} : {userId}),
         });
 
         const result = await response.json();
 
         if (response.ok) {
-          setAlert({show: true, message: "Manager access removed.", type: "success"});
+          setAlert({show: true, message: result.message || (permanent ? "User permanently deleted." : "Manager access removed."), type: "success"});
           await loadUsers();
         } else {
           setAlert({show: true, message: `Error: ${result.error}`, type: "danger"});
         }
       } catch (error) {
-        console.error("Error removing manager access:", error);
-        setAlert({show: true, message: `Error removing manager access: ${error.message}`, type: "danger"});
+        setAlert({show: true, message: error.message, type: "danger"});
       } finally {
         setSending(previous => ({...previous, [userId]: false}));
       }
@@ -830,10 +832,18 @@ function Admin({managerView = false}) {
                             {(user.canRevokeManager ?? (user.role === "manager")) && <button
                               type="button" className="dashboard-icon-action revoke-manager" title="Revoke manager access"
                               aria-label={`Remove manager access for ${user.displayName || user.email}`}
-                              onClick={() => handleRemoveManager(user.uid, user.email)}
+                              onClick={() => handleUserRemoval(user.uid, user.email)}
                               disabled={user.uid === currentUser.uid || sending[user.uid]}>
                               <FaUserSlash aria-hidden="true" />
                             </button>}
+                            {user.role?.toLowerCase() === "user" && user.uid !== currentUser.uid && <button
+                              type="button" className="dashboard-icon-action revoke-manager" title="Permanently delete user"
+                              aria-label={`Permanently delete ${user.displayName || user.email}`}
+                              onClick={() => handleUserRemoval(user.uid, user.email, true)}
+                              disabled={sending[user.uid]}>
+                              <FaTrash aria-hidden="true" />
+                            </button>}
+
                           </div>}
                         </td>
                       </tr>
