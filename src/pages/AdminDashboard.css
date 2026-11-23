@@ -163,6 +163,13 @@
 .archive-toggle > span {display: grid; place-items: center; width: 2rem; height: 2rem; background: #e8eff6; border-radius: .35rem}
 @media (max-width: 760px) {
   .admin-page .table.dashboard-events {min-width: 0}
+  .dashboard-events thead tr:has([aria-sort]) {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: .65rem;
+  }
+  .admin-page .dashboard-events th[aria-sort] {padding: 0}
+  .dashboard-events .event-sort {min-height: 44px; width: 100%; justify-content: flex-start; padding-inline: .4rem}
   .dashboard-event-actions .btn {min-width: 44px; min-height: 44px; margin-bottom: 0}
 }
 @media (max-width: 460px) {
