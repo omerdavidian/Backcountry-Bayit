@@ -8,7 +8,7 @@ const reject = (status, message) => Object.assign(new Error(message), {status});
 const INVITATION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 const onboardingUid = email => "invite-" + digest(email.toLowerCase());
-const isOnboardingAccount = user => user.email && user.uid === onboardingUid(user.email);
+const isOnboardingAccount = user => user.email && /^invite-[a-f0-9]{64}$/.test(user.uid);
 
 function validateProfile(profile) {
   const read = key => typeof profile?.[key] === "string" ? profile[key].trim() : "";
@@ -44,7 +44,11 @@ async function manager(uid) {
 async function createInvitee(value) {
   const email = typeof value === "string" ? value.trim().toLowerCase() : "";
   if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw reject(400, "Enter a valid email address.");
-  const uid = onboardingUid(email);
+  const initialUid = onboardingUid(email);
+  const oldProfile = (await admin.firestore().collection("users").doc(initialUid).get()).data();
+  const uid = oldProfile?.managerRevokedAt && !oldProfile.role
+    ? `invite-${randomBytes(32).toString('hex')}`
+    : initialUid;
   try {
     await admin.auth().createUser({uid, email});
   } catch (error) {
@@ -145,6 +149,7 @@ module.exports = async (req, res) => {
     const hash = digest(secret);
     await db.runTransaction(async tx => {
       const previous = (await tx.get(ref)).data() || {};
+      if (previous.status === "Deleting") throw reject(409, "This account is being deleted.");
       if (previous.setupUntil > Date.now()) throw reject(409, "This invitation is being completed. Try again shortly.");
       if (resetActive && (previous.status === "Revoked" || (previous.restore && previous.status !== "Accepted"))) throw reject(409, "Manager access changed. Refresh the users list.");
       if (previous.status === "Accepted" && !resetActive) throw reject(409, "This invitation was already accepted.");

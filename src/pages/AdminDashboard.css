@@ -110,7 +110,13 @@
 .dashboard-menu-item svg {flex: none; width: 1em}
 .dashboard-menu-item:hover {background: #eaf0eb}
 .dashboard-menu-item[aria-current="page"] {background: #e3ece5; border-inline-start-color: #2e6858; font-weight: 700}
-.dashboard-signout {color: var(--dashboard-muted)}
+.dashboard-signout {
+  margin-block-start: .55rem;
+  padding-block-start: .7rem;
+  border-block-start: 1px solid var(--dashboard-line);
+  color: #953e44;
+}
+.dashboard-signout:hover {background: #f9eae8}
 .dashboard-content {min-width: 0}
 .dashboard-security {max-width: 38rem}
 .dashboard-role {

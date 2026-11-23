@@ -7,6 +7,7 @@ const {admin, initAdmin} = require('../api/firebase-admin');
 const {Resend} = require(require.resolve('resend', {paths: [require.resolve('../api/manager-invitation')]}));
 const handler = require('../api/manager-invitation');
 const listUsers = require('../api/list-users');
+const deleteUser = require('../api/delete-user');
 
 let records, profiles, users, send, auth, db, clock;
 const digest = value => createHash('sha256').update(value).digest('hex');
@@ -25,7 +26,7 @@ beforeEach(() => {
   records = new Map();
   profiles = new Map();
   users = [manager];
-  const ref = id => ({id, data: () => records.get(id), get: async () => ({data: () => records.get(id)})});
+  const ref = id => ({id, delete: async () => records.delete(id), data: () => records.get(id), get: async () => ({data: () => records.get(id)})});
   const collection = name => ({
     doc: id => name === 'users' ? {id, profile: true, data: () => profiles.get(id), get: async () => ({exists: !id.startsWith('invite-') || profiles.has(id), data: () => profiles.get(id) || {role: id === 'fallback' ? 'manager' : 'user'}})} : ref(id),
     where: (_key, _op, hash) => ({limit: () => ({get: async () => {
@@ -39,6 +40,7 @@ beforeEach(() => {
       const target = r.profile ? profiles : records;
       target.set(r.id, options?.merge ? {...target.get(r.id), ...value} : value);
     },
+    delete: r => (r.profile ? profiles : records).delete(r.id),
     update: (r, value) => records.set(r.id, {...records.get(r.id), ...value})
   })};
   auth = {
@@ -51,6 +53,7 @@ beforeEach(() => {
     getUserByEmail: async email => users.find(user => user.email === email),
     getUser: jest.fn(async uid => users.find(u => u.uid === uid)),
     updateUser: jest.fn(async () => {}),
+    deleteUser: jest.fn(async uid => {users = users.filter(user => user.uid !== uid);}),
     createCustomToken: jest.fn(async uid => `token-for-${uid}`),
     listUsers: async () => ({users})
   };
@@ -226,4 +229,39 @@ test('reinviting a revoked manager preserves their account and restores access o
   expect((await call({invite: secretFromEmail()}, null)).body).toEqual({token: 'token-for-manager'});
   expect(profiles.get('manager')).toEqual({role: 'manager', managerRevokedAt: null, firstName: 'Former'});
   expect(auth.updateUser).not.toHaveBeenCalled();
+});
+
+test('permanent deletion requires an admin and prior manager revocation', async () => {
+  const request = {userId: 'manager', permanent: true};
+  expect((await call(request, 'manager', 'POST', deleteUser)).statusCode).toBe(403);
+  expect((await call(request, 'admin', 'POST', deleteUser)).statusCode).toBe(409);
+  expect(auth.deleteUser).not.toHaveBeenCalled();
+  profiles.set('manager', {role: 'user', managerRevokedAt: 123, firstName: 'Former', email: manager.email});
+  records.set('manager', {status: 'Revoked', email: manager.email});
+  expect((await call(request, 'admin', 'POST', deleteUser)).statusCode).toBe(200);
+  expect(auth.deleteUser).toHaveBeenCalledWith('manager');
+  expect(profiles.get('manager')).toEqual({managerRevokedAt: 123});
+  expect(records.has('manager')).toBe(false);
+  expect((await call({}, 'admin', 'GET', listUsers)).body.users).toEqual([]);
+});
+
+test('deleting an ordinary account removes its profile and leaves other data alone', async () => {
+  users = [{...manager, uid: 'regular', customClaims: {}}];
+  profiles.set('regular', {role: 'user', firstName: 'Test'});
+  profiles.set('other', {role: 'manager'});
+  const res = await call({userId: 'regular', permanent: true}, 'admin', 'POST', deleteUser);
+  expect(res.body).toEqual({success: true, message: 'User permanently deleted.'});
+  expect(profiles.has('regular')).toBe(false);
+  expect(profiles.get('other')).toEqual({role: 'manager'});
+});
+
+test('a later invite to a deleted address uses a new account and requires onboarding', async () => {
+  const email = 'previous@example.com';
+  const oldUid = 'invite-' + digest(email);
+  profiles.set(oldUid, {managerRevokedAt: 123});
+  expect((await call({email})).statusCode).toBe(200);
+  const newUid = users.find(user => user.email === email).uid;
+  expect(newUid).not.toBe(oldUid);
+  expect((await call({invite: secretFromEmail(), checkProfile: true}, null)).body).toEqual({profileRequired: true});
+  expect(profiles.get(oldUid)).toEqual({managerRevokedAt: 123});
 });
