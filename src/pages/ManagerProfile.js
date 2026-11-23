@@ -57,14 +57,19 @@ export default function ManagerProfile() {
   async function submit(event) {
     event.preventDefault();
     if (busy) return;
-    const profile = Object.fromEntries(new FormData(event.currentTarget));
+    setError("");
+    const {password, confirmPassword, ...profile} = Object.fromEntries(new FormData(event.currentTarget));
+    if (password !== confirmPassword) {
+      setError("The passwords don’t match.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
       const response = await fetch("/api/manager-invitation", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({invite, profile}),
+        body: JSON.stringify({invite, profile, password}),
       });
       const data = await response.json();
       if (response.status === 410) {
@@ -93,14 +98,14 @@ export default function ManagerProfile() {
           <Card.Body className="p-4 p-md-5">
             {error && <Alert variant="danger">{error}</Alert>}
             {complete ? (
-              <p>Your profile has been saved. If you can’t sign in, ask an administrator for a new sign-in link.</p>
+              <p>Your profile has been saved. If you can’t sign in, sign in with the password you just created.</p>
             ) : linkState === "checking" ? (
               <p role="status" className="mb-0">Checking your invitation…</p>
             ) : linkState === "error" ? (
               <Alert variant="danger" className="mb-0">Couldn’t check this link. Reopen it from your invitation email to try again.</Alert>
             ) : linkState === "ready" ? (
               <>
-                <p className="text-muted mb-4">Enter all four fields to activate your manager account.</p>
+                <p className="text-muted mb-4">Complete your profile and choose a password for future sign-ins.</p>
                 <Form onSubmit={submit}>
                   <Row className="g-3 mb-4">
                     {fields.map(({name, label, type = "text", ...props}) => (
@@ -109,6 +114,17 @@ export default function ManagerProfile() {
                           <Form.Label>{label}</Form.Label>
                           <Form.Control name={name} type={type} required {...props}
                             {...(type === "date" && {min: "1900-01-01", max: new Date().toISOString().slice(0, 10)})} />
+                        </Form.Group>
+                      </Col>
+                    ))}
+                  </Row>
+                  <Row className="g-3 mb-4">
+                    {["password", "confirmPassword"].map((name, index) => (
+                      <Col xs={12} sm={6} key={name}>
+                        <Form.Group controlId={"setup-" + name}>
+                          <Form.Label>{index ? "Confirm password" : "Create a password"}</Form.Label>
+                          <Form.Control name={name} type="password" autoComplete="new-password" minLength={12} maxLength={128} required />
+                          {!index && <Form.Text>Use at least 12 characters.</Form.Text>}
                         </Form.Group>
                       </Col>
                     ))}

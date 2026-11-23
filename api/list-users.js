@@ -24,9 +24,9 @@ module.exports = async function handler(req, res) {
     const users = await Promise.all(listUsersResult.users.map(async (user,index) => {
       const invite = snapshots[index].data();
       const role = await resolveRole(admin, {...user.customClaims, uid: user.uid});
-      const invitedAccount = Boolean(invite?.onboarding && user.uid.startsWith("invite-"));
+      const invitedAccount = Boolean(!role && invite?.onboarding && user.uid.startsWith("invite-"));
       return ({
-      managerEligible: Boolean(!user.disabled && user.email && (role === "manager" || (!role && invitedAccount))),
+      managerEligible: Boolean(!user.disabled && user.email && invitedAccount),
       invitationStatus: invite?.status === "Pending" && invite.expires <= Date.now() ? "Expired" : invite?.status || "Never sent",
       lastSent: invite?.lastSent || null,
       uid: user.uid,

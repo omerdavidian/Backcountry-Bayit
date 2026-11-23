@@ -54,14 +54,10 @@ const verifyRequest = async (req) => {
 // Resolve the caller's role from custom claims, falling back to their Firestore user doc.
 const resolveRole = async (admin, decoded) => {
   if (decoded.admin) return "admin";
-  if (decoded.isManager) return "manager";
-  try {
-    const snap = await admin.firestore().collection("users").doc(decoded.uid).get();
-    if (snap.exists) return snap.data().role || null;
-  } catch (err) {
-    console.error("Failed to read user role:", err);
-  }
-  return null;
+  const snap = await admin.firestore().collection("users").doc(decoded.uid).get();
+  const profile = snap.exists ? snap.data() : null;
+  if (profile?.managerRevokedAt) return "user";
+  return decoded.isManager ? "manager" : profile?.role || null;
 };
 
 // Require the caller to be a manager or admin. Throws { status, message } otherwise.

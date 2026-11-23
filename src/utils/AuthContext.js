@@ -25,21 +25,13 @@ export function AuthProvider({ children }) {
       }
 
       try {
-        // Prefer Firebase Auth custom claims for role
-        const tokenResult = await user.getIdTokenResult();
-        const claims = tokenResult.claims || {};
+        const {claims} = await user.getIdTokenResult();
         if (claims.admin) {
           setUserRole('admin');
-        } else if (claims.isManager) {
-          setUserRole('manager');
         } else {
-          // Fallback to Firestore record if custom claim is missing
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
-            setUserRole(userDoc.data().role);
-          } else {
-            setUserRole(null);
-          }
+          const profile = await getDoc(doc(db, 'users', user.uid));
+          const data = profile.data();
+          setUserRole(data?.managerRevokedAt ? 'user' : claims.isManager ? 'manager' : data?.role || null);
         }
       } catch (error) {
         console.error('Error fetching user role:', error);

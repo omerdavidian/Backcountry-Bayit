@@ -68,3 +68,20 @@
 .manager-invite-form {display: flex; flex: 0 1 32rem; gap: .65rem; align-items: stretch; max-width: 100%}
 .manager-invite-form input {min-width: 0}
 .manager-invite-form button {flex: none; white-space: nowrap}
+
+.dashboard-shell {display:grid; grid-template-columns: 220px minmax(0,1fr); align-items:start; gap:clamp(1rem,2vw,2rem)}
+.dashboard-sidebar {position:sticky; top:6.5rem; background:#fff; border:1px solid #d9e5e3; border-radius:1rem; padding:1.1rem; display:grid; gap:1rem; box-shadow:0 3px 14px #173d430a}
+.dashboard-sidebar-title {font-weight:750; color:#173d43; padding:.35rem .5rem}
+.dashboard-menu {gap:.35rem}
+.dashboard-menu .nav-link {color:#24464a; border-radius:.6rem; padding:.65rem .6rem; min-height:44px}
+.dashboard-menu .nav-link:hover {background:#eaf3f1}
+.dashboard-menu .nav-link.active {background:#205450; color:#fff}
+.dashboard-signout {text-align:left}
+.dashboard-content {min-width:0}
+.dashboard-security {max-width:38rem}
+@media (max-width:767px) {
+  .dashboard-shell {grid-template-columns:minmax(0,1fr)}
+  .dashboard-sidebar {position:static; gap:.55rem; padding:.75rem}
+  .dashboard-menu {flex-direction:row!important; flex-wrap:wrap}
+  .dashboard-signout {justify-self:start}
+}
