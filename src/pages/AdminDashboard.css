@@ -110,7 +110,13 @@
   color: #ffd0cc;
 }
 .dashboard-signout:hover {background: #613d4c}
-.dashboard-content {min-width: 0}
+.dashboard-intro, .dashboard-content {min-width: 0}
+@media (min-width: 901px) {
+  .dashboard-shell {row-gap: 0}
+  .dashboard-intro {grid-area: 1 / 2}
+  .dashboard-sidebar {grid-area: 2 / 1}
+  .dashboard-content {grid-area: 2 / 2}
+}
 .dashboard-security {max-width: 38rem}
 .dashboard-role {
   display: inline-block;

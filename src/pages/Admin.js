@@ -760,7 +760,7 @@ function Admin({managerView = false}) {
               <FaSignOutAlt aria-hidden="true" /> <span>Log out</span>
             </button>
           </aside>
-          <div className="dashboard-content">
+          <div className="dashboard-intro">
         <div className="admin-page-header">
           <div>
             <h1 className="fw-bold">{dashboardPath === "/manager" ? "Manager Dashboard" : "Admin Dashboard"}</h1>
@@ -787,6 +787,8 @@ function Admin({managerView = false}) {
           ))}
         </section>}
 
+          </div>
+          <div className="dashboard-content">
         {activeTab === "account" && <DashboardPassword user={currentUser} />}
 
         {/* Users Tab */}
