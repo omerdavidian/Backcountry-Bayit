@@ -46,6 +46,19 @@ function managerEmail(secret, onboarding) {
   };
 }
 
+function passwordResetEmail(url) {
+  return {
+    subject: "Reset your Backcountry Bayit password",
+    ...emailLayout({
+      category: "Account security",
+      heading: "Reset your password",
+      paragraphs: ["Choose a new password for your Backcountry Bayit manager account."],
+      action: {label: "Reset your password", url},
+      note: "This link can only be used once. If you didn’t request a password reset, you can ignore this email.",
+    }),
+  };
+}
+
 function rsvpEmail({name, event, status, guests, dietary}) {
   const messages = {
     approved: ["RSVP confirmed", "Your spot is confirmed. We look forward to seeing you!"],
@@ -73,4 +86,4 @@ function guestEmail(subject, message, eventTitle) {
   });
 }
 
-module.exports = {SITE, emailLayout, managerEmail, rsvpEmail, guestEmail};
+module.exports = {SITE, emailLayout, managerEmail, passwordResetEmail, rsvpEmail, guestEmail};

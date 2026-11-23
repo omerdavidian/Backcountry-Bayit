@@ -2,6 +2,7 @@ const {randomBytes, createHash} = require("crypto");
 const {managerEmail} = require("./_emailTemplates");
 const {Resend} = require("resend");
 const {requireAdmin, resolveRole} = require("./_auth");
+const requestPasswordReset = require("./_passwordReset");
 const {admin, initAdmin} = require("./firebase-admin");
 const digest = value => createHash("sha256").update(value).digest("hex");
 const reject = (status, message) => Object.assign(new Error(message), {status});
@@ -68,6 +69,7 @@ async function createInvitee(value) {
 module.exports = async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") return res.status(405).end();
+  if (req.body?.action === "requestPasswordReset") return requestPasswordReset(req, res);
   try {
     const {uid, invite, email, profile, password, checkProfile, reset} = req.body || {};
     if (invite !== undefined) {
