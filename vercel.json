@@ -1,7 +1,8 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/" }
+    { "source": "/:page(about|events|donate|contact|login|admin|manager|zelle)", "destination": "/index.html" },
+    { "source": "/manager/profile", "destination": "/index.html" },
+    { "source": "/admin/rsvps/:eventId/:eventName", "destination": "/index.html" }
   ],
   "headers": [
     {

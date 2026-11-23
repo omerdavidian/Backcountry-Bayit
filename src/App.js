@@ -29,6 +29,27 @@ const PageLoader = () => (
   </div>
 );
 
+class PageErrorBoundary extends React.Component {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  render() {
+    if (!this.state.failed) return this.props.children;
+
+    return (
+      <div className="container py-5" role="alert">
+        <h1>This page couldn’t load</h1>
+        <button className="btn btn-primary" onClick={() => window.location.reload()}>
+          Reload page
+        </button>
+      </div>
+    );
+  }
+}
+
 function App() {
   return (
     <AuthProvider>
@@ -40,21 +61,23 @@ function App() {
           }}>Skip to content</a>
           <Navigation />
           <main id="main-content" tabIndex={-1} className="flex-grow-1">
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/events" element={<Events />} />
-                <Route path="/donate" element={<Donate />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/admin" element={<Admin />} />
-                <Route path="/manager" element={<Manager />} />
-                <Route path="/manager/profile" element={<ManagerProfile />} />
-                <Route path="/admin/rsvps/:eventId/:eventName" element={<EventRSVPs />} />
-                <Route path="/zelle" element={<Zelle />} />
-              </Routes>
-            </Suspense>
+            <PageErrorBoundary>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/events" element={<Events />} />
+                  <Route path="/donate" element={<Donate />} />
+                  <Route path="/contact" element={<Contact />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/admin" element={<Admin />} />
+                  <Route path="/manager" element={<Manager />} />
+                  <Route path="/manager/profile" element={<ManagerProfile />} />
+                  <Route path="/admin/rsvps/:eventId/:eventName" element={<EventRSVPs />} />
+                  <Route path="/zelle" element={<Zelle />} />
+                </Routes>
+              </Suspense>
+            </PageErrorBoundary>
           </main>
           <Footer />
         </div>
