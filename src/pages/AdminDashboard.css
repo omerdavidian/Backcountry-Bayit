@@ -2,21 +2,18 @@
   --dashboard-ink: #18383d;
   --dashboard-muted: #52676a;
   --dashboard-line: #dce8e7;
-  background: #f1f6f5 !important;
+  background: #f7f8f6;
+  padding-block: clamp(1rem, 3vw, 2.75rem);
   color: var(--dashboard-ink);
 }
 .admin-page > .container-fluid {max-width: 1440px; padding-inline: clamp(1rem, 3vw, 3rem)}
 .admin-page-header {
-  padding: clamp(1.25rem, 4vw, 2.6rem);
-  gap: 1rem;
-  background: linear-gradient(120deg, #102e36, #215b58);
-  color: white;
-  border-radius: 1.25rem;
-  flex-wrap: wrap;
+  border-bottom: 1px solid var(--dashboard-line);
+  margin-bottom: 1.5rem;
+  padding: .25rem 0 1.1rem;
 }
-.admin-page-header h1 {font-size: clamp(1.65rem, 4vw, 2.75rem); letter-spacing: -.035em}
-.admin-page-header .text-muted {color: #d6e7e4 !important; overflow-wrap: anywhere}
-.admin-page-header .btn {color: white; border-color: #abc8c3}
+.admin-page-header h1 {font-size: clamp(1.6rem, 3vw, 2.25rem); margin-bottom: .35rem; letter-spacing: -.035em}
+.admin-page-header .text-muted {color: var(--dashboard-muted) !important; overflow-wrap: anywhere}
 .dashboard-stats {display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 215px), 1fr)); gap: .8rem; margin-bottom: 1.25rem}
 .dashboard-stat {
   display: flex;
@@ -25,9 +22,9 @@
   padding: 1rem;
   background: #fff;
   border: 1px solid var(--dashboard-line);
-  border-radius: .95rem;
+  border-radius: .5rem;
 }
-.dashboard-stat > svg {width: 2.6rem; height: 2.6rem; padding: .65rem; border-radius: .75rem; color: #225953; background: #e5f2ee; flex: none}
+.dashboard-stat > svg {width: 2.6rem; height: 2.6rem; padding: .65rem; border-radius: .45rem; color: #225953; background: #e5f2ee; flex: none}
 .dashboard-stat strong {display: block; font-size: 1.5rem; line-height: 1.15; font-variant-numeric: tabular-nums}
 .dashboard-stat span {color: var(--dashboard-muted); font-size: .86rem}
 .dashboard-tabs {gap: .4rem; padding: .35rem; background: #e4eeec; border-radius: .8rem; width: max-content; max-width: 100%}
@@ -38,18 +35,18 @@
 .dashboard-section-head {display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem}
 .dashboard-section-head h2 {font-size: 1.3rem; font-weight: 700; margin: 0}
 .dashboard-section-head h2 span {font-size: .78rem; color: var(--dashboard-muted); margin-inline-start: .35rem; white-space: nowrap}
-.admin-page .card {border-radius: 1rem; box-shadow: 0 3px 18px #173d4312 !important}
+.admin-page .card {border: 1px solid var(--dashboard-line) !important; border-radius: .65rem; box-shadow: none !important}
 .admin-page .table {vertical-align: middle; margin-bottom: 0}
-.admin-page .table th {background: #edf4f3; color: #26474a; white-space: nowrap; font-size: .88rem}
+.admin-page .table th {background: #f1f4f2; color: #26474a; white-space: nowrap; font-size: .88rem}
 .admin-page .table td {padding-block: .85rem; border-color: var(--dashboard-line)}
 .dashboard-person {display: flex; align-items: center; gap: .65rem; overflow-wrap: anywhere}
 .dashboard-person small {display: block; color: var(--dashboard-muted)}
-.dashboard-initial {display: grid; place-items: center; width: 2.25rem; height: 2.25rem; flex: none; border-radius: .7rem; background: #e2efed; color: #214e4c; font-weight: 700}
+.dashboard-initial {display: grid; place-items: center; width: 2.25rem; height: 2.25rem; flex: none; border-radius: 50%; background: #e6eeea; color: #214e4c; font-weight: 700}
 .dashboard-invitation {display: grid; gap: .25rem; justify-items: start}
 .invitation-status {padding: .18rem .6rem; border-radius: 999px; background: #edf1f4; color: #42525d; font-size: .78rem; font-weight: 700; white-space: nowrap}
 .invitation-status[data-status="Pending"], .invitation-status[data-status="Expired"] {background: #fff0ce; color: #744700}
 .invitation-status[data-status="Accepted"] {background: #e0f4e7; color: #185b34}
-.invitation-status[data-status="Failed"] {background: #fbe6e6; color: #922e36}
+.invitation-status[data-status="Revoked"], .invitation-status[data-status="Failed"] {background: #fbe6e6; color: #922e36}
 .archive-toggle {width: 100%; display: flex; justify-content: space-between; color: #22494b; background: transparent; border: 0; padding: .5rem 0; font: inherit; text-align: left}
 .event-archive {max-height: min(55vh, 32rem); overflow: auto; overscroll-behavior: contain}
 @media (max-width: 760px) {
@@ -57,11 +54,12 @@
   .dashboard-filters {width: 100%}
   .dashboard-users thead {position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%)}
   .dashboard-users, .dashboard-users tbody {display: block}
-  .dashboard-users tr {display: grid; grid-template-columns: 1fr auto; border: 1px solid var(--dashboard-line); border-radius: .75rem; padding: .7rem; margin-bottom: .65rem}
+  .admin-page .table.dashboard-users {min-width: 0; width: 100%}
+  .dashboard-users tr {display: grid; grid-template-columns: minmax(0, 1fr) auto; border: 1px solid var(--dashboard-line); border-radius: .75rem; padding: .7rem; margin-bottom: .65rem}
   .admin-page .dashboard-users td {display: block; border: 0; padding: .35rem; min-width: 0}
   .dashboard-users td[data-label] {grid-column: 1 / -1}
   .dashboard-users td[data-label]::before {content: attr(data-label); display: block; color: var(--dashboard-muted); font-size: .76rem; font-weight: 700}
-  .dashboard-users td:last-child {grid-column: 2; grid-row: 2}
+  .dashboard-users td:last-child {grid-column: 2; grid-row: 1; align-self: start}
   .admin-page .d-flex.gap-2 {flex-wrap: wrap}
 }
 
@@ -69,19 +67,85 @@
 .manager-invite-form input {min-width: 0}
 .manager-invite-form button {flex: none; white-space: nowrap}
 
-.dashboard-shell {display:grid; grid-template-columns: 220px minmax(0,1fr); align-items:start; gap:clamp(1rem,2vw,2rem)}
-.dashboard-sidebar {position:sticky; top:6.5rem; background:#fff; border:1px solid #d9e5e3; border-radius:1rem; padding:1.1rem; display:grid; gap:1rem; box-shadow:0 3px 14px #173d430a}
-.dashboard-sidebar-title {font-weight:750; color:#173d43; padding:.35rem .5rem}
-.dashboard-menu {gap:.35rem}
-.dashboard-menu .nav-link {color:#24464a; border-radius:.6rem; padding:.65rem .6rem; min-height:44px}
-.dashboard-menu .nav-link:hover {background:#eaf3f1}
-.dashboard-menu .nav-link.active {background:#205450; color:#fff}
-.dashboard-signout {text-align:left}
-.dashboard-content {min-width:0}
-.dashboard-security {max-width:38rem}
-@media (max-width:767px) {
-  .dashboard-shell {grid-template-columns:minmax(0,1fr)}
-  .dashboard-sidebar {position:static; gap:.55rem; padding:.75rem}
-  .dashboard-menu {flex-direction:row!important; flex-wrap:wrap}
-  .dashboard-signout {justify-self:start}
+.dashboard-shell {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(1rem, 3vw, 2.5rem);
+}
+.dashboard-sidebar {
+  position: sticky;
+  top: 6rem;
+  border-inline-end: 1px solid var(--dashboard-line);
+  padding-inline-end: 1rem;
+  display: grid;
+  gap: 1rem;
+}
+.dashboard-sidebar-title {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .35rem .65rem .75rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.dashboard-sidebar-title img {object-fit: contain}
+.dashboard-menu {display: grid; gap: .2rem}
+.dashboard-menu-item {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  min-height: 44px;
+  width: 100%;
+  padding: .55rem .65rem;
+  border: 0;
+  border-inline-start: 3px solid transparent;
+  border-radius: .25rem;
+  background: transparent;
+  color: var(--dashboard-ink);
+  text-align: start;
+  font-size: .9rem;
+  white-space: nowrap;
+}
+.dashboard-menu-item svg {flex: none; width: 1em}
+.dashboard-menu-item:hover {background: #eaf0eb}
+.dashboard-menu-item[aria-current="page"] {background: #e3ece5; border-inline-start-color: #2e6858; font-weight: 700}
+.dashboard-signout {color: var(--dashboard-muted)}
+.dashboard-content {min-width: 0}
+.dashboard-security {max-width: 38rem}
+.dashboard-role {
+  display: inline-block;
+  background: #eef0ed;
+  color: #43504b;
+  border-radius: .25rem;
+  font-size: .78rem;
+  font-weight: 700;
+  padding: .18rem .45rem;
+}
+.dashboard-role[data-role="manager"], .dashboard-role[data-role="admin"] {background: #dfece3; color: #245746}
+.dashboard-user-actions {display: flex; gap: .35rem}
+.dashboard-icon-action {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid transparent;
+  border-radius: .45rem;
+}
+.dashboard-icon-action.reset-invitation {background: #e8f0fc; color: #1d4e8a}
+.dashboard-icon-action.revoke-manager {background: #f9e9e7; color: #902c32}
+.dashboard-icon-action:hover:not(:disabled) {border-color: currentColor}
+.dashboard-icon-action:disabled {opacity: .5}
+.dashboard-menu-item:focus-visible, .dashboard-icon-action:focus-visible {outline: 2px solid #2164a3; outline-offset: 2px}
+@media (max-width: 900px) {
+  .dashboard-shell {grid-template-columns: minmax(0, 1fr)}
+  .dashboard-sidebar {position: static; padding: 0 0 .65rem; border-inline-end: 0; border-bottom: 1px solid var(--dashboard-line); gap: .35rem}
+  .dashboard-sidebar-title {display: none}
+  .dashboard-menu {display: flex; flex-wrap: wrap; gap: .3rem}
+  .dashboard-menu-item {width: auto}
+}
+@media (max-width: 460px) {
+  .manager-invite-form {flex-wrap: wrap}
+  .manager-invite-form input {flex: 1 1 100%}
+  .dashboard-menu-item {padding-inline: .4rem; gap: .35rem}
 }

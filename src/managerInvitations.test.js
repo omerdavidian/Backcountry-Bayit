@@ -27,7 +27,7 @@ beforeEach(() => {
   users = [manager];
   const ref = id => ({id, data: () => records.get(id), get: async () => ({data: () => records.get(id)})});
   const collection = name => ({
-    doc: id => name === 'users' ? {id, profile: true, get: async () => ({exists: !id.startsWith('invite-') || profiles.has(id), data: () => profiles.get(id) || {role: id === 'fallback' ? 'manager' : 'user'}})} : ref(id),
+    doc: id => name === 'users' ? {id, profile: true, data: () => profiles.get(id), get: async () => ({exists: !id.startsWith('invite-') || profiles.has(id), data: () => profiles.get(id) || {role: id === 'fallback' ? 'manager' : 'user'}})} : ref(id),
     where: (_key, _op, hash) => ({limit: () => ({get: async () => {
       const docs = [...records].filter(([, record]) => record.hash === hash).map(([id]) => ({ref: ref(id)}));
       return {empty: !docs.length, docs};
@@ -35,7 +35,10 @@ beforeEach(() => {
   });
   db = {collection, getAll: async (...refs) => refs.map(r => ({data: r.data})), runTransaction: async run => run({
     get: async r => ({data: r.data}),
-    set: (r, value) => (r.profile ? profiles : records).set(r.id, value),
+    set: (r, value, options) => {
+      const target = r.profile ? profiles : records;
+      target.set(r.id, options?.merge ? {...target.get(r.id), ...value} : value);
+    },
     update: (r, value) => records.set(r.id, {...records.get(r.id), ...value})
   })};
   auth = {
@@ -200,4 +203,27 @@ test('removing manager access keeps the account and blocks an old manager claim'
   const {resolveRole}=require('../api/_auth');
   expect(await resolveRole(admin, {uid: 'manager', isManager: true})).toBe('user');
   expect(auth.setCustomUserClaims).toHaveBeenCalledWith('manager', {});
+});
+
+test('admin can reset an active invitation without changing the manager password or access', async () => {
+  const oldLink = seedLegacyInvite();
+  expect((await call({uid: 'manager', reset: true}, 'manager')).statusCode).toBe(403);
+  expect((await call({uid: 'manager', reset: true})).statusCode).toBe(200);
+  expect((await call({invite: oldLink}, null)).statusCode).toBe(410);
+  expect((await call({invite: secretFromEmail()}, null)).body).toEqual({token: 'token-for-manager'});
+  expect(auth.updateUser).not.toHaveBeenCalled();
+  expect(profiles.size).toBe(0);
+});
+
+test('reinviting a revoked manager preserves their account and restores access on acceptance', async () => {
+  profiles.set('manager', {role: 'user', managerRevokedAt: 123, firstName: 'Former'});
+  records.set('manager', {status: 'Revoked'});
+  const list = await call({}, 'admin', 'GET', listUsers);
+  expect(list.body.users[0]).toMatchObject({canResetInvitation: true, canRevokeManager: false, invitationStatus: 'Revoked'});
+  expect((await call({email: manager.email})).statusCode).toBe(200);
+  expect(profiles.get('manager')).toMatchObject({role: 'user', managerRevokedAt: 123});
+  expect(records.get('manager')).toMatchObject({status: 'Pending', restore: true});
+  expect((await call({invite: secretFromEmail()}, null)).body).toEqual({token: 'token-for-manager'});
+  expect(profiles.get('manager')).toEqual({role: 'manager', managerRevokedAt: null, firstName: 'Former'});
+  expect(auth.updateUser).not.toHaveBeenCalled();
 });

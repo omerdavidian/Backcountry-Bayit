@@ -75,7 +75,7 @@ test.each([true, false])('invitation controls respect admin permission (%s)', as
   expect(screen.queryAllByRole('button', {name: 'Resend Invitation'})).toHaveLength(isAdmin ? 1 : 0);
   fireEvent.click(screen.getByRole('button', {name: 'Resend Invitation'}));
   await screen.findByText('Invitation sent.');
-  expect(authorizedFetch).toHaveBeenCalledWith('/api/manager-invitation', expect.objectContaining({method: 'POST', body: JSON.stringify({uid: 'manager'})}));
+  expect(authorizedFetch).toHaveBeenCalledWith('/api/manager-invitation', expect.objectContaining({method: 'POST', body: JSON.stringify({uid: 'manager', reset: true})}));
   await waitFor(() => expect(screen.getByRole('button', {name: 'Resend Invitation'})).toBeEnabled());
 });
 
@@ -98,7 +98,7 @@ test('resending disables the button while pending and surfaces delivery errors',
   render(<Admin />);
   fireEvent.click(screen.getByText('Users'));
   fireEvent.click(await screen.findByRole('button', {name: 'Resend Invitation'}));
-  expect(screen.getByRole('button', {name: 'Sending…'})).toBeDisabled();
+  expect(screen.getByRole('button', {name: 'Resend Invitation', busy: true})).toBeDisabled();
   finishSend({ok: false, json: async () => ({error: 'Invitation delivery failed. Please try again.'})});
   await screen.findByText('Invitation delivery failed. Please try again.');
   await waitFor(() => expect(screen.getByRole('button', {name: 'Resend Invitation'})).toBeEnabled());

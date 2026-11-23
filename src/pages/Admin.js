@@ -1,11 +1,11 @@
 import {calendarTimes, eventFormTimes, editTimes} from "../utils/calendar";
 import React, {useState, useEffect, useCallback, useRef} from "react";
-import {Container, Card, Button, Table, Modal, Form, Alert, Nav} from "react-bootstrap";
+import {Container, Card, Button, Table, Modal, Form, Alert} from "react-bootstrap";
 import {useNavigate, useLocation} from "react-router-dom";
 import {useAuth} from "../utils/AuthContext";
 import {collection, getDocs, deleteDoc, doc} from "firebase/firestore";
 import {db} from "../config/firebase";
-import {FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaSort, FaSortUp, FaSortDown, FaUserPlus, FaUsers, FaDownload, FaEnvelope, FaLock} from "react-icons/fa";
+import {FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaSort, FaSortUp, FaSortDown, FaUserPlus, FaUsers, FaDownload, FaEnvelope, FaLock, FaRedoAlt, FaUserSlash} from "react-icons/fa";
 import "./AdminDashboard.css";
 import DashboardPassword from "../components/DashboardPassword";
 import EventFormFields from "../components/EventFormFields";
@@ -433,11 +433,13 @@ function Admin({managerView = false}) {
     }
   };
 
-  const resendInvitation = async (uid) => {
+  const resendInvitation = async (user) => {
+    const {uid, email, role} = user;
+    if (role === "manager" && !window.confirm(`Send a new sign-in link to ${email}? Their manager access and password will stay active.`)) return;
     setSending(previous => ({...previous, [uid]: true}));
     try {
       const response = await authorizedFetch("/api/manager-invitation", {
-        method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({uid})
+        method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({uid, reset: true})
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
@@ -484,6 +486,7 @@ function Admin({managerView = false}) {
 
   const handleRemoveManager = async (userId, userEmail) => {
     if (window.confirm(`Remove manager access for ${userEmail}? Their account and profile will be kept.`)) {
+      setSending(previous => ({...previous, [userId]: true}));
       try {
         setAlert({show: true, message: "Removing manager access…", type: "info"});
 
@@ -506,6 +509,8 @@ function Admin({managerView = false}) {
       } catch (error) {
         console.error("Error removing manager access:", error);
         setAlert({show: true, message: `Error removing manager access: ${error.message}`, type: "danger"});
+      } finally {
+        setSending(previous => ({...previous, [userId]: false}));
       }
     }
   };
@@ -672,7 +677,7 @@ function Admin({managerView = false}) {
   const pendingInvites = users.filter(user => user.managerEligible && user.invitationStatus === "Pending").length;
   const visibleUsers = users.filter(user =>
     [user.displayName, user.email].some(value => String(value || "").toLowerCase().includes(userSearch.trim().toLowerCase())) &&
-    (!inviteFilter || (user.managerEligible && user.invitationStatus === inviteFilter))
+    (!inviteFilter || user.invitationStatus === inviteFilter)
   );
   const eventTimeMinutes = (time = "") => {
     const match = /^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i.exec(String(time || "").trim());
@@ -695,36 +700,33 @@ function Admin({managerView = false}) {
   };
 
   return (
-    <div className="admin-page bg-light min-vh-100 py-5">
+    <div className="admin-page min-vh-100">
       <Container fluid>
         <div className="dashboard-shell">
           <aside className="dashboard-sidebar">
-            <div className="dashboard-sidebar-title">Backcountry Bayit</div>
-        <Nav variant="pills" className="dashboard-menu flex-column" aria-label="Dashboard sections">
-          <Nav.Item>
-            <Nav.Link active={activeTab === "events"} onClick={() => setActiveTab("events")}>
-              <FaCalendarAlt className="me-2" />
-              Events
-            </Nav.Link>
-          </Nav.Item>
-          {canManageUsers && <Nav.Item>
-            <Nav.Link active={activeTab === "users"} onClick={() => setActiveTab("users")}>
-              <FaUsers className="me-2" />
-              Users
-            </Nav.Link>
-          </Nav.Item>}
-          <Nav.Item>
-            <Nav.Link active={activeTab === "account"} onClick={() => setActiveTab("account")}>
-              <FaLock className="me-2" aria-hidden="true" /> Account & security
-            </Nav.Link>
-          </Nav.Item>
-        </Nav>
-            <Button className="dashboard-signout" variant="outline-secondary" onClick={handleLogout}>
-              <FaSignOutAlt className="me-2" aria-hidden="true" /> Log out
-            </Button>
+            <div className="dashboard-sidebar-title">
+              <img src="/images/logo.webp" alt="" width="34" height="34" />
+              <span>Backcountry Bayit</span>
+            </div>
+            <nav className="dashboard-menu" aria-label="Dashboard sections">
+              {[
+                ["events", "Events", FaCalendarAlt],
+                ...(canManageUsers ? [["users", "Users", FaUsers]] : []),
+                ["account", "Account & security", FaLock],
+              ].map(([section, label, Icon]) => (
+                <button key={section} type="button" className="dashboard-menu-item"
+                  aria-current={activeTab === section ? "page" : undefined}
+                  onClick={() => setActiveTab(section)}>
+                  <Icon aria-hidden="true" /> <span>{label}</span>
+                </button>
+              ))}
+            </nav>
+            <button type="button" className="dashboard-menu-item dashboard-signout" onClick={handleLogout}>
+              <FaSignOutAlt aria-hidden="true" /> <span>Log out</span>
+            </button>
           </aside>
           <div className="dashboard-content">
-        <div className="admin-page-header d-flex justify-content-between align-items-center mb-4">
+        <div className="admin-page-header">
           <div>
             <h1 className="fw-bold">{dashboardPath === "/manager" ? "Manager Dashboard" : "Admin Dashboard"}</h1>
             <p className="text-muted mb-0">{fullName ? `Welcome, ${fullName}` : "Welcome back"}</p>
@@ -780,7 +782,7 @@ function Admin({managerView = false}) {
                     <Form.Control type="search" aria-label="Search users" placeholder="Search name or email" value={userSearch} onChange={e => setUserSearch(e.target.value)} />
                     <Form.Select aria-label="Invitation status" value={inviteFilter} onChange={e => setInviteFilter(e.target.value)}>
                       <option value="">All invitation statuses</option>
-                      {["Never sent", "Pending", "Accepted", "Expired", "Failed"].map(status => <option key={status}>{status}</option>)}
+                      {["Never sent", "Pending", "Accepted", "Expired", "Failed", "Revoked"].map(status => <option key={status}>{status}</option>)}
                     </Form.Select>
                   </div>
                 </div>
@@ -805,19 +807,34 @@ function Admin({managerView = false}) {
                           </div>
                         </td>
                         <td>
-                          <span className={`badge ${user.customClaims?.admin ? "bg-danger" : "bg-primary"}`}>{user.role === "admin" ? "Admin" : user.role === "manager" ? "Manager" : user.role || "User"}</span>
+                          <span className="dashboard-role" data-role={user.role}>{user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "User"}</span>
                         </td>
                         <td data-label="Created">{formatUserDate(user.metadata.creationTime).split(",")[0]}</td>
                         <td data-label="Last signed in">{formatUserDate(user.metadata.lastSignInTime)}</td>
-                        <td data-label="Invitation">{user.managerEligible ? <div className="dashboard-invitation">
-                          <span className="invitation-status" data-status={user.invitationStatus}>{user.invitationStatus}</span>
-                          {user.lastSent && <small className="d-block text-muted">Sent {formatUserDate(user.lastSent)}</small>}
-                          {isAdmin && <Button size="sm" variant="outline-primary" className="mt-1" disabled={sending[user.uid]} onClick={() => resendInvitation(user.uid)}>{sending[user.uid] ? "Sending…" : "Resend Invitation"}</Button>}
-                        </div> : <span className="text-muted">{user.role === "manager" ? "Active manager" : "—"}</span>}</td>
+                        <td data-label="Invitation">
+                          {user.invitationStatus && user.invitationStatus !== "Never sent" ? <div className="dashboard-invitation">
+                            <span className="invitation-status" data-status={user.invitationStatus}>{user.invitationStatus}</span>
+                            {user.lastSent && <small className="text-muted">Sent {formatUserDate(user.lastSent)}</small>}
+                          </div> : <span className="text-muted">—</span>}
+                        </td>
                         <td>
-                          {user.role === "manager" && <Button variant="outline-danger" size="sm" onClick={() => handleRemoveManager(user.uid, user.email)} disabled={user.email === currentUser.email} aria-label={`Remove manager access for ${user.displayName || user.email}`}>
-                            Remove access
-                          </Button>}
+                          {isAdmin && <div className="dashboard-user-actions">
+                            {(user.canResetInvitation ?? user.managerEligible) && <button
+                              type="button" className="dashboard-icon-action reset-invitation"
+                              title={user.role === "manager" ? "Reset invitation" : "Send new invitation"}
+                              aria-busy={Boolean(sending[user.uid])}
+                              aria-label={user.role === "manager" ? `Reset invitation for ${user.displayName || user.email}` : "Resend Invitation"}
+                              disabled={sending[user.uid]} onClick={() => resendInvitation(user)}>
+                              <FaRedoAlt aria-hidden="true" />
+                            </button>}
+                            {(user.canRevokeManager ?? (user.role === "manager")) && <button
+                              type="button" className="dashboard-icon-action revoke-manager" title="Revoke manager access"
+                              aria-label={`Remove manager access for ${user.displayName || user.email}`}
+                              onClick={() => handleRemoveManager(user.uid, user.email)}
+                              disabled={user.uid === currentUser.uid || sending[user.uid]}>
+                              <FaUserSlash aria-hidden="true" />
+                            </button>}
+                          </div>}
                         </td>
                       </tr>
                     ))}
