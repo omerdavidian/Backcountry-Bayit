@@ -181,3 +181,34 @@
 @media (max-width: 460px) {
   .dashboard-event-tools > input {flex-basis: 100%}
 }
+.dashboard-phone-events {list-style: none; padding: 0; margin: 0}
+.dashboard-phone-events li + li {border-top: 1px solid var(--dashboard-line)}
+.dashboard-phone-events button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  width: 100%;
+  min-height: 54px;
+  border: 0;
+  border-radius: .25rem;
+  background: transparent;
+  color: var(--dashboard-ink);
+  text-align: start;
+  padding: .4rem .2rem;
+}
+.dashboard-phone-events button:hover {background: #edf2f7}
+.dashboard-phone-events button > span {min-width: 0}
+.dashboard-phone-events strong, .dashboard-phone-events small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dashboard-phone-events small {color: var(--dashboard-muted)}
+.dashboard-phone-events svg {flex: none}
+@media (max-width: 767px) {
+  .dashboard-sidebar .dashboard-menu {display: grid}
+  .dashboard-sidebar .dashboard-menu-item {width: 100%}
+  .dashboard-event-actions .btn {min-width: 44px; min-height: 44px}
+}
