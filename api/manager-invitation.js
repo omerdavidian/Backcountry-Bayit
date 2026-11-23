@@ -33,6 +33,10 @@ async function manager(uid) {
   if (user.disabled || !user.email) throw reject(403, "An active manager account is required.");
   const role = await resolveRole(admin, {...user.customClaims, uid});
   if (role === "manager") return {user, onboarding: false};
+  if (role === "user") {
+    const profile = (await admin.firestore().collection("users").doc(uid).get()).data();
+    if (profile?.managerRevokedAt) return {user, onboarding: false, restore: true};
+  }
   if (!role && isOnboardingAccount(user)) return {user, onboarding: true};
   throw reject(403, "An active manager account is required.");
 }
@@ -46,7 +50,13 @@ async function createInvitee(value) {
   } catch (error) {
     if (!["auth/email-already-exists", "auth/uid-already-exists"].includes(error.code)) throw error;
     const existing = await admin.auth().getUserByEmail(email);
-    if (existing.uid !== uid) throw reject(409, "An account with this email already exists.");
+    if (existing.uid !== uid) {
+      const account = await manager(existing.uid).catch(error => {
+        if (error.status === 403) throw reject(409, "An account with this email already exists.");
+        throw error;
+      });
+      return account;
+    }
   }
   return manager(uid);
 }
@@ -55,7 +65,7 @@ module.exports = async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") return res.status(405).end();
   try {
-    const {uid, invite, email, profile, password, checkProfile} = req.body || {};
+    const {uid, invite, email, profile, password, checkProfile, reset} = req.body || {};
     if (invite !== undefined) {
       if (typeof invite !== "string" || !/^[a-f0-9]{64}$/.test(invite)) throw reject(400, "Invalid invitation.");
       initAdmin();
@@ -64,10 +74,10 @@ module.exports = async (req, res) => {
       const invalid = () => reject(410, "This invitation is expired or already used. Request a new invitation.");
       if (matches.empty) throw invalid();
       const ref = matches.docs[0].ref;
-      const {user, onboarding} = await manager(ref.id);
+      const {user, onboarding, restore = false} = await manager(ref.id);
       const validRecord = record => record && record.hash === digest(invite) &&
         record.email === user.email && record.status === "Pending" && record.expires > Date.now() &&
-        Boolean(record.onboarding) === onboarding;
+        Boolean(record.onboarding) === onboarding && Boolean(record.restore) === restore;
       if (checkProfile === true) {
         const record = (await ref.get()).data();
         if (!onboarding || !validRecord(record)) throw invalid();
@@ -101,6 +111,12 @@ module.exports = async (req, res) => {
         await db.runTransaction(async tx => {
           const record = (await tx.get(ref)).data();
           if (!validRecord(record) || record.setupOperation !== operation) throw invalid();
+          if (restore) {
+            const profileRef = db.collection("users").doc(user.uid);
+            const existing = (await tx.get(profileRef)).data();
+            if (!existing?.managerRevokedAt || existing.role !== "user") throw invalid();
+            tx.set(profileRef, {role: "manager", managerRevokedAt: null}, {merge: true});
+          }
           if (fields) {
             tx.set(db.collection("users").doc(user.uid), {
               ...fields, email: user.email, uid: user.uid, role: "manager", createdAt: new Date(),
@@ -120,18 +136,21 @@ module.exports = async (req, res) => {
       }
     }
     await requireAdmin(req);
-    const {user, onboarding} = email === undefined ? await manager(uid) : await createInvitee(email);
-    if (!onboarding) throw reject(409, "This person already has manager access. They can sign in with their password or reset it.");
+    const {user, onboarding, restore = false} = email === undefined ? await manager(uid) : await createInvitee(email);
+    const resetActive = !onboarding && !restore && email === undefined && reset === true;
+    if (!onboarding && !restore && !resetActive) throw reject(409, "This person already has manager access. Use Reset invitation in their account row.");
     const db = admin.firestore();
     const ref = db.collection("managerInvitations").doc(user.uid);
     const secret = randomBytes(32).toString("hex");
     const hash = digest(secret);
     await db.runTransaction(async tx => {
       const previous = (await tx.get(ref)).data() || {};
-      if (previous.setupUntil > Date.now() || previous.status === "Accepted") throw reject(409, "This invitation is already being completed or was accepted.");
+      if (previous.setupUntil > Date.now()) throw reject(409, "This invitation is being completed. Try again shortly.");
+      if (resetActive && (previous.status === "Revoked" || (previous.restore && previous.status !== "Accepted"))) throw reject(409, "Manager access changed. Refresh the users list.");
+      if (previous.status === "Accepted" && !resetActive) throw reject(409, "This invitation was already accepted.");
       if (Date.now() - previous.attempt < 60000) throw reject(429, "Wait one minute before resending.");
       tx.set(ref, {
-        hash, email: user.email, onboarding, status: "Pending", expires: Date.now() + INVITATION_TTL_MS,
+        hash, email: user.email, onboarding, restore, status: "Pending", expires: Date.now() + INVITATION_TTL_MS,
         attempt: Date.now(), lastSent: previous.lastSent || null, displayName: previous.displayName || null,
       });
     });

@@ -25,7 +25,10 @@ module.exports = async function handler(req, res) {
       const invite = snapshots[index].data();
       const role = await resolveRole(admin, {...user.customClaims, uid: user.uid});
       const invitedAccount = Boolean(!role && invite?.onboarding && user.uid.startsWith("invite-"));
+      const formerManager = role === "user" && (invite?.status === "Revoked" || invite?.restore === true);
       return ({
+      canResetInvitation: Boolean(!user.disabled && user.email && (invitedAccount || formerManager || role === "manager")),
+      canRevokeManager: role === "manager",
       managerEligible: Boolean(!user.disabled && user.email && invitedAccount),
       invitationStatus: invite?.status === "Pending" && invite.expires <= Date.now() ? "Expired" : invite?.status || "Never sent",
       lastSent: invite?.lastSent || null,
