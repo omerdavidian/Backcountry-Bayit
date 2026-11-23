@@ -75,7 +75,8 @@ test('active managers cannot receive new links, but existing links remain single
   expect((await call({uid: 'manager'})).statusCode).toBe(409);
   expect(send).not.toHaveBeenCalled();
   const secret = seedLegacyInvite();
-  expect((await call({invite: secret}, null)).body).toEqual({token: 'token-for-manager'});
+  expect((await call({invite: secret}, null)).statusCode).toBe(400);
+  expect((await call({invite: secret, password: 'fixture password only'}, null)).body).toEqual({token: 'token-for-manager'});
   expect(records.get('manager')).toMatchObject({hash: null, status: 'Accepted'});
   expect((await call({invite: secret}, null)).statusCode).toBe(410);
 });
@@ -83,7 +84,7 @@ test('active managers cannot receive new links, but existing links remain single
 test('a passwordless manager following an outstanding link must set a password', async () => {
   users = [{...manager, providerData: []}];
   const invite = seedLegacyInvite();
-  expect((await call({invite}, null)).body).toEqual({passwordRequired: true});
+  expect((await call({invite}, null)).statusCode).toBe(400);
   expect((await call({invite, password: "short"}, null)).statusCode).toBe(400);
   expect((await call({invite, password: "a valid test password"}, null)).statusCode).toBe(200);
   expect(auth.updateUser).toHaveBeenCalledWith("manager", {password: "a valid test password", emailVerified: true});
@@ -208,13 +209,13 @@ test('removing manager access keeps the account and blocks an old manager claim'
   expect(auth.setCustomUserClaims).toHaveBeenCalledWith('manager', {});
 });
 
-test('admin can reset an active invitation without changing the manager password or access', async () => {
+test('admin can reset an active invitation and the recipient chooses a password when accepting', async () => {
   const oldLink = seedLegacyInvite();
   expect((await call({uid: 'manager', reset: true}, 'manager')).statusCode).toBe(403);
   expect((await call({uid: 'manager', reset: true})).statusCode).toBe(200);
   expect((await call({invite: oldLink}, null)).statusCode).toBe(410);
-  expect((await call({invite: secretFromEmail()}, null)).body).toEqual({token: 'token-for-manager'});
-  expect(auth.updateUser).not.toHaveBeenCalled();
+  expect((await call({invite: secretFromEmail(), password: 'fixture password only'}, null)).body).toEqual({token: 'token-for-manager'});
+  expect(auth.updateUser).toHaveBeenCalledWith('manager', {password: 'fixture password only', emailVerified: true});
   expect(profiles.size).toBe(0);
 });
 
@@ -226,9 +227,9 @@ test('reinviting a revoked manager preserves their account and restores access o
   expect((await call({email: manager.email})).statusCode).toBe(200);
   expect(profiles.get('manager')).toMatchObject({role: 'user', managerRevokedAt: 123});
   expect(records.get('manager')).toMatchObject({status: 'Pending', restore: true});
-  expect((await call({invite: secretFromEmail()}, null)).body).toEqual({token: 'token-for-manager'});
+  expect((await call({invite: secretFromEmail(), password: 'fixture password only'}, null)).body).toEqual({token: 'token-for-manager'});
   expect(profiles.get('manager')).toEqual({role: 'manager', managerRevokedAt: null, firstName: 'Former'});
-  expect(auth.updateUser).not.toHaveBeenCalled();
+  expect(auth.updateUser).toHaveBeenCalledWith('manager', {password: 'fixture password only', emailVerified: true});
 });
 
 test('permanent deletion requires an admin and prior manager revocation', async () => {
