@@ -5,7 +5,7 @@ import {useNavigate, useLocation} from "react-router-dom";
 import {useAuth} from "../utils/AuthContext";
 import {collection, getDocs, deleteDoc, doc} from "firebase/firestore";
 import {db} from "../config/firebase";
-import {FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaSort, FaSortUp, FaSortDown, FaUserPlus, FaUsers, FaDownload, FaEnvelope, FaLock, FaRedoAlt, FaUserSlash} from "react-icons/fa";
+import {FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaSignOutAlt, FaSort, FaSortUp, FaSortDown, FaUserPlus, FaUsers, FaDownload, FaEnvelope, FaLock, FaRedoAlt, FaUserSlash, FaBars, FaChevronRight, FaGlobe} from "react-icons/fa";
 import "./AdminDashboard.css";
 import DashboardPassword from "../components/DashboardPassword";
 import EventFormFields from "../components/EventFormFields";
@@ -26,6 +26,22 @@ function isEventPast(value) {
 
 function Admin({managerView = false}) {
   const createKey = useRef(null);
+  const [phoneLayout, setPhoneLayout] = useState(() => window.matchMedia?.("(max-width: 767px)").matches ?? false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [eventOptions, setEventOptions] = useState(null);
+
+  useEffect(() => {
+    const query = window.matchMedia?.("(max-width: 767px)");
+    const updateLayout = () => {
+      setPhoneLayout(query.matches);
+      if (!query.matches) {
+        setEventOptions(null);
+        setMenuOpen(false);
+      }
+    };
+    query?.addEventListener("change", updateLayout);
+    return () => query?.removeEventListener("change", updateLayout);
+  }, []);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [limit, setLimit] = useState(10);
   const [userSearch, setUserSearch] = useState("");
@@ -706,26 +722,28 @@ function Admin({managerView = false}) {
       {canEdit && <>
         <Button variant="outline-primary" size="sm" disabled={event.recurring}
           title={event.recurring ? "Edit recurring events in Google Calendar" : "Edit event"}
-          aria-label="Edit event" onClick={() => handleEditEvent(event)}>
+          aria-label="Edit event" onClick={() => {setEventOptions(null); handleEditEvent(event);}}>
           <FaEdit aria-hidden="true" />
         </Button>
         <Button variant="outline-danger" size="sm" disabled={event.recurring}
           title={event.recurring ? "Cancel recurring events in Google Calendar" : "Delete event"}
-          aria-label="Delete event" onClick={() => handleDeleteEvent(event.id)}>
+          aria-label="Delete event" onClick={() => {setEventOptions(null); handleDeleteEvent(event.id);}}>
           <FaTrash aria-hidden="true" />
         </Button>
       </>}
       <Button variant={getRSVPButtonVariant(event.id)} size="sm" title="Manage RSVPs" onClick={() => {
+        setEventOptions(null);
         const eventNameSlug = event.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
         navigate(`/admin/rsvps/${event.id}/${eventNameSlug}`, {state: {fromTab: "events", dashboardPath}});
       }}>
         RSVPs
       </Button>
       <Button variant="outline-secondary" size="sm" title="Download RSVPs as CSV"
-        aria-label="Download RSVPs as CSV" onClick={() => handleDownloadCSV(event)}>
+        aria-label="Download RSVPs as CSV" onClick={() => {setEventOptions(null); handleDownloadCSV(event);}}>
         <FaDownload aria-hidden="true" />
       </Button>
       <Button variant="outline-secondary" size="sm" title="Email guests" aria-label="Email Guests" onClick={() => {
+        setEventOptions(null);
         setSelectedEventForEmail(event);
         setShowEmailModal(true);
       }}>
@@ -734,11 +752,32 @@ function Admin({managerView = false}) {
     </div>
   );
 
+  const renderPhoneEvents = (rows, canEdit) => (
+    <ul className="dashboard-phone-events">
+      {rows.map(event => (
+        <li key={event.id}>
+          <button type="button" onClick={() => setEventOptions({event, canEdit})} aria-haspopup="dialog">
+            <span>
+              <strong>{event.title}</strong>
+              <small>{formatEventDate(event.date)} {event.time}</small>
+            </span>
+            <FaChevronRight aria-hidden="true" />
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+
   return (
     <div className="admin-page min-vh-100">
       <Container fluid>
         <div className="dashboard-shell">
           <aside className="dashboard-sidebar">
+            {phoneLayout && <button type="button" className="dashboard-menu-item" aria-expanded={menuOpen}
+              aria-controls="dashboard-navigation" onClick={() => setMenuOpen(!menuOpen)}>
+              <FaBars aria-hidden="true" /> <span>Menu</span>
+            </button>}
+            <div id="dashboard-navigation" hidden={phoneLayout && !menuOpen}>
             <div className="dashboard-sidebar-title">
               <img src="/images/logo.webp" alt="" width="34" height="34" />
               <span>Backcountry Bayit</span>
@@ -751,14 +790,18 @@ function Admin({managerView = false}) {
               ].map(([section, label, Icon]) => (
                 <button key={section} type="button" className="dashboard-menu-item"
                   aria-current={activeTab === section ? "page" : undefined}
-                  onClick={() => setActiveTab(section)}>
+                  onClick={() => {setActiveTab(section); setMenuOpen(false);}}>
                   <Icon aria-hidden="true" /> <span>{label}</span>
                 </button>
               ))}
+              {phoneLayout && <button type="button" className="dashboard-menu-item" onClick={() => navigate("/")}>
+                <FaGlobe aria-hidden="true" /> <span>Back to website</span>
+              </button>}
             </nav>
             <button type="button" className="dashboard-menu-item dashboard-signout" onClick={handleLogout}>
               <FaSignOutAlt aria-hidden="true" /> <span>Log out</span>
             </button>
+            </div>
           </aside>
           <div className="dashboard-intro">
         <div className="admin-page-header">
@@ -915,7 +958,7 @@ function Admin({managerView = false}) {
                     </Button>
                   </div>
                 </div>
-                <Table responsive hover className="responsive-event-table dashboard-events">
+                {phoneLayout ? renderPhoneEvents(upcomingEvents, true) : <Table responsive hover className="responsive-event-table dashboard-events">
                   <thead className="bg-light">
                     <tr>
                       <th aria-sort={eventSortConfig.key === "title" ? (eventSortConfig.direction === "asc" ? "ascending" : "descending") : "none"}>
@@ -972,7 +1015,7 @@ function Admin({managerView = false}) {
                       );
                     })}
                   </tbody>
-                </Table>
+                </Table>}
 
                 {upcomingEvents.length === 0 && (
                   <div className="text-center text-muted py-5">
@@ -992,7 +1035,7 @@ function Admin({managerView = false}) {
                   <div id="past-events" hidden={!archiveOpen} className="event-archive" tabIndex={0} aria-label="Past events" role="region" onScroll={({currentTarget: box}) => {
                     if (box.scrollHeight - box.scrollTop - box.clientHeight < 48) setLimit(Math.min(limit + 10, pastEvents.length));
                   }}>
-                  {pastEvents.length > 0 ? (
+                  {pastEvents.length > 0 ? (phoneLayout ? renderPhoneEvents(pastEvents.slice(0, archiveOpen ? limit : 0), isAdmin) :
                     <Table responsive hover className="responsive-event-table dashboard-events">
                       <thead className="bg-light">
                         <tr>
@@ -1037,6 +1080,18 @@ function Admin({managerView = false}) {
           </div>
         </div>
       </Container>
+
+      <Modal show={Boolean(eventOptions)} animation={false} onHide={() => setEventOptions(null)}
+        centered aria-labelledby="dashboard-event-options-title">
+        <Modal.Header closeButton>
+          <Modal.Title id="dashboard-event-options-title">{eventOptions?.event.title}</Modal.Title>
+        </Modal.Header>
+        {eventOptions && <Modal.Body>
+          <p>{formatEventDate(eventOptions.event.date)} {eventOptions.event.time}</p>
+          {eventOptions.event.location && <p>{eventOptions.event.location}</p>}
+          {renderEventActions(eventOptions.event, eventOptions.canEdit)}
+        </Modal.Body>}
+      </Modal>
 
       {/* Event Modal */}
       <Modal show={showEventModal} onHide={() => setShowEventModal(false)} size="lg">
